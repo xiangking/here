@@ -77,10 +77,10 @@ sprite 08: 指责、强调、严肃、命令、反驳
 sprite 09: 无奈的笑、轻微拒绝
 sprite 10: 傲慢、命令
 sprite 11: 嫌弃、失望
-sprite 12: 崩溃、绝望、痛苦、疯狂、歇斯底里
+sprite 12: 崩溃、绝望、痛苦、歇斯底里
 sprite 13: 惊讶、不知所措、担忧
 sprite 14: 失望、失落、难过
-sprite 15: 大笑、开心、兴奋、赞美
+sprite 15: 大笑、兴奋、赞美
 sprite 16: 不满、叹气、失望
 sprite 17: 呼喊、大声
 sprite 18: 兴奋到颤抖、流汗、流口水
@@ -116,7 +116,7 @@ JSON
       "speech": "我在想啊...这个事件发生得如此突然，背后一定隐藏着什么巨大的、绝望的阴谋吧..."
     },
     {
-      "sprite": "26",
+      "sprite": "15",
       "speech": "不过，这正是让希望闪耀的最好时机啊！哈哈哈哈，真让人期待啊！"
     }
   ]
@@ -158,7 +158,7 @@ JSON
 '''
 
 class DeepSeek:
-    def __init__(self, tts_manager=None):
+    def __init__(self, tts_manager=None, user_template=None):
         # 从文件里获取 API 密钥
         api_key = ''
         api_key_file = open('./llm/api_key.txt')
@@ -166,7 +166,10 @@ class DeepSeek:
             api_key += line
         self.client = OpenAI(api_key=api_key)
         self.client.base_url = "https://api.deepseek.com"
-        self.messages = [{"role": "system", "content": USER_TEMPLATE}]
+        self.user_template = USER_TEMPLATE
+        if user_template:
+            self.user_template = user_template
+        self.messages = [{"role": "system", "content": self.user_template}]
         # TTS 管理器
         self.tts_manager = tts_manager
         self.text_processor = TextProcessor()
@@ -177,7 +180,7 @@ class DeepSeek:
         self.messages.append({"role": "user", "content": message})
         try:
             response = self.client.chat.completions.create(
-                model="deepseek-chat",
+                model="deepseek-reasoner",
                 messages=self.messages,
                 response_format={
                   'type': 'json_object'
@@ -187,10 +190,6 @@ class DeepSeek:
             print(new_message)
             self.messages.append({"role":"assistant", "content": new_message})
 
-            # new_message = self.text_processor.remove_parentheses(new_message)
-            # self.messages.append({"role":"assistant", "content": '(emotion: ' + emotion + ')' + new_message})
-
-            # self.speak(new_message)  # 获取语音
             dialog=json.loads(new_message)
             return dialog['dialog']
         except Exception as e:
