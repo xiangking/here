@@ -294,10 +294,10 @@ def test_context_is_injected_into_system_prompt(monkeypatch):
     agent = FakeAIAgent.instances[-1]
     assert agent.kwargs["ephemeral_system_prompt"] == ""
     system_prompt = agent.run_conversation_system_message
-    assert "Here 专属上下文" in system_prompt
+    assert "here 专属上下文" in system_prompt
     assert "system_action 必须为 null" in system_prompt
     assert '"system_action": null' in system_prompt
-    assert system_prompt.count("Here 专属上下文") == 1
+    assert system_prompt.count("here 专属上下文") == 1
     assert system_prompt.count("system_action 必须为 null") == 1
     assert "Scene template" in system_prompt
     assert "Alice persona" not in system_prompt

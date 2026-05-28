@@ -17,7 +17,7 @@ class DesktopDeliveryAdapter:
 
 
 class MessagingDeliveryAdapter:
-    """External delivery through Here's local messaging module."""
+    """External delivery through here local messaging module."""
 
     def __init__(self, sender: MessageSender) -> None:
         self.sender = sender

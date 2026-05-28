@@ -313,7 +313,7 @@ def export_background(background_configs: List[Background], output_path: str | N
     
     Args:
         background_configs (List[Background]): 要导出的 Background 对象列表。
-        output_path (str): 导出的 .bg 文件路径，默认写入 Here app home exports/background.bg。
+        output_path (str): 导出的 .bg 文件路径，默认写入 here app home exports/background.bg。
     """
     output_target = Path(output_path).expanduser() if output_path else EXPORTS_DIR / 'background.bg'
     output_target.parent.mkdir(exist_ok=True, parents=True)

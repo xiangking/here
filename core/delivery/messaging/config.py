@@ -10,7 +10,7 @@ import yaml
 
 
 class MessagingConfig:
-    """Load local external-message settings from Here and UniMessage-style sources."""
+    """Load local external-message settings from here and UniMessage-style sources."""
 
     DEFAULT_PATHS = (
         "~/.unimessage/config.yaml",

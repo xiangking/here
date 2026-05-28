@@ -22,7 +22,7 @@ _PROJECT_ROOT = project_root()
 _cached_key: tuple[str, str, float] | None = None
 _cached_theme: ChatChromeTheme | None = None
 
-# 设置 UI 等可指向临时 JSON，便于不覆盖 ``Here app home config/chat_ui_theme.json`` 的实时预览。
+# 设置 UI 等可指向临时 JSON，便于不覆盖 ``here app home config/chat_ui_theme.json`` 的实时预览。
 _preview_path: Path | None = None
 
 
@@ -158,7 +158,7 @@ def _suffix(chrome_extra: str) -> str:
 
 
 def resolve_theme_path(system_chat_ui_theme_path: str) -> Path:
-    """``system_config.chat_ui_theme_path`` 为空时用 ``Here app home config/chat_ui_theme.json``。"""
+    """``system_config.chat_ui_theme_path`` 为空时用 ``here app home config/chat_ui_theme.json``。"""
     raw = (system_chat_ui_theme_path or "").strip()
     if raw:
         p = Path(raw)

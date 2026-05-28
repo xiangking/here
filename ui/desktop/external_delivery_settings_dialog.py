@@ -36,7 +36,7 @@ CHANNEL_HELP = {
         "配置步骤：\n"
         "1. 在 Telegram 搜索 @BotFather，创建一个 bot，复制它给你的 Bot Token。\n"
         "2. 点击“自动识别 chat_id”，再用你的 Telegram 账号给这个 bot 发一条消息。\n"
-        "3. Here 会自动填入你的个人 chat_id；勾选启用并保存。"
+        "3. here 会自动填入你的个人 chat_id；勾选启用并保存。"
     ),
     "discord": (
         "配置步骤：\n"

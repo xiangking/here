@@ -1,4 +1,4 @@
-"""Thin root entrypoint for Here development runs."""
+"""Thin root entrypoint for here development runs."""
 
 from __future__ import annotations
 

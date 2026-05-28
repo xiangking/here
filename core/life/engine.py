@@ -369,7 +369,7 @@ class LifeEngine:
         profile = getattr(character, "character_profile", {}) or {}
         life = profile.get("life") if isinstance(profile.get("life"), dict) else {}
         return (
-            "请为 Here 桌面伴侣角色润色一天的生活安排，只输出 JSON。\n"
+            "请为 here 桌面伴侣角色润色一天的生活安排，只输出 JSON。\n"
             "要求：保留 blocks 的 start/end 数量和大致时间，不写台词，不写完整故事；"
             "让活动更符合角色职业、性格、长期目标和与用户像聊天/视频通话联系的关系。\n"
             f"角色名：{name}\n"

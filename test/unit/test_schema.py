@@ -88,14 +88,14 @@ class TestCharacter:
             sprite_prefix="alice",
             character_profile=default_character_profile("Alice"),
             character_setting="A brave warrior.",
-            visual_reference_image="Here app home characters/alice/ref.png",
+            visual_reference_image="here app home characters/alice/ref.png",
             visual_identity="black hair, red coat",
             sprite_scale=1.5,
             emotion_tags="happy:0, sad:1",
             speech_speed=1.2,
         )
         assert c.character_setting == "A brave warrior."
-        assert c.visual_reference_image == "Here app home characters/alice/ref.png"
+        assert c.visual_reference_image == "here app home characters/alice/ref.png"
         assert c.visual_identity == "black hair, red coat"
         assert c.sprite_scale == 1.5
         assert c.speech_speed == 1.2

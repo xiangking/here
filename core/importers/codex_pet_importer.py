@@ -1,4 +1,4 @@
-"""Import Codex/agent-pet spritesheets as Here characters."""
+"""Import Codex/agent-pet spritesheets as here characters."""
 
 from __future__ import annotations
 
@@ -127,7 +127,7 @@ def import_codex_pet_as_character(
     config_manager: ConfigManager | None = None,
     make_active: bool = True,
 ) -> CodexPetImportResult:
-    """Import an agent-pet/Codex pet folder into Here.
+    """Import an agent-pet/Codex pet folder into here.
 
     The importer expands the 8x9 spritesheet into PNG frame folders because
     the current desktop renderer already consumes ``Sprite.frames`` directly.
@@ -342,7 +342,7 @@ def _state_group(state_name: str) -> str:
 
 
 def _mapped_dialog_sprites(extracted: dict[str, Sprite]) -> tuple[list[Sprite], list[tuple[str, str, str, str]]]:
-    """Return sprites ordered by Here state concepts, not raw pet rows."""
+    """Return sprites ordered by here state concepts, not raw pet rows."""
     mapped: dict[str, str] = {}
     custom: list[tuple[str, str]] = []
     for source_state in extracted:

@@ -10,7 +10,7 @@ from core.delivery.messaging.wechat_openclaw import monitor_manager
 
 
 class TelegramChatBridge:
-    """Poll Telegram messages from the configured chat and feed Here chat."""
+    """Poll Telegram messages from the configured chat and feed here chat."""
 
     def __init__(
         self,

@@ -84,7 +84,7 @@ def default_character_profile(name: str = "", *, preset: str = "human") -> dict[
                 "age": 24,
                 "birthday": "",
                 "gender": "女性虚拟助手",
-                "occupation": "Here 桌面设置助手",
+                "occupation": "here 桌面设置助手",
                 "life_status": "常驻应用内",
                 "relationship_to_user": "工作伙伴",
                 "first_person": "我",

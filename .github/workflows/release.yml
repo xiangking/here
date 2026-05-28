@@ -71,13 +71,13 @@ jobs:
         include:
           - os: windows-latest
             platform: windows-x64
-            artifact: Shinsekai-${{ needs.tag.outputs.TAG }}-windows-x64.zip
+            artifact: here-${{ needs.tag.outputs.TAG }}-windows-x64.zip
             embed_url: https://www.python.org/ftp/python/3.10.8/python-3.10.8-embed-amd64.zip
             embed_archive: python-embed.zip
             pth_file: python310._pth
           - os: macos-13
             platform: macos-x64
-            artifact: Shinsekai-${{ needs.tag.outputs.TAG }}-macos-x64.zip
+            artifact: here-${{ needs.tag.outputs.TAG }}-macos-x64.zip
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write

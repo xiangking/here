@@ -30,7 +30,7 @@ class AgentDialogMessage(BaseModel):
     effect: Optional[str] = Field("", description="特效名称")
     system_action: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Here 内部动作，例如确认命名后重命名当前角色；不会进入 TTS/UI 台词",
+        description="here 内部动作，例如确认命名后重命名当前角色；不会进入 TTS/UI 台词",
     )
 
 

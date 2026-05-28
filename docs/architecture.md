@@ -1,4 +1,4 @@
-# Here Architecture
+# here Architecture
 
 This repository uses a direct, non-compatible module layout. Old import paths, aliases, and migration shims are intentionally not preserved.
 
@@ -6,7 +6,7 @@ This repository uses a direct, non-compatible module layout. Old import paths, a
 
 - `app/`: application entrypoints and product assembly.
 - `core/`: product-agnostic runtime, messaging, handlers, delivery, lifecycle-adjacent domain code, and agent backend bridges.
-- `internal_agent/`: the built-in Here agent implementation.
+- `internal_agent/`: the built-in here agent implementation.
 - `services/`: service integrations such as ASR, TTS, image generation, configuration, and i18n.
 - `ui/`: desktop UI modules and shared UI assets.
 - `infrastructure/`: filesystem paths, logging, storage primitives, and other platform concerns.
@@ -26,8 +26,8 @@ This repository uses a direct, non-compatible module layout. Old import paths, a
 
 Runtime files are resolved through `infrastructure.paths`. Development runs use `.local/here` under the repository root. Packaged system runs use the platform app home:
 
-- macOS: `~/Library/Application Support/Here`
-- Windows: `%APPDATA%/Here`
+- macOS: `~/Library/Application Support/here`
+- Windows: `%APPDATA%/here`
 - Linux: `~/.local/share/here`
 
 The app home owns these folders: `config`, `state`, `memory`, `characters`, `backgrounds`, `generated`, `cache`, `models`, `logs`, and `exports`.

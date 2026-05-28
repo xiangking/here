@@ -1,6 +1,6 @@
 """Project-facing wrapper around NousResearch hermes-agent.
 
-Here keeps the desktop shell, TTS, sprites and JSON dialogue parser. All
+here keeps the desktop shell, TTS, sprites and JSON dialogue parser. All
 reasoning, planning, memory, todo state and tool loops are delegated to
 ``run_agent.AIAgent``.
 """
@@ -26,7 +26,7 @@ _IMAGE_UNSUPPORTED_MODEL_KEYS: set[tuple[str, str, str]] = set()
 _MODEL_CONFIG_HERMES_HOME = os.environ.get("HERMES_HOME")
 
 DIALOG_PROTOCOL = """
-最终 assistant 正文必须只输出 Here 角色对话 JSON，不要把工具状态、计划、记忆日志或调试信息写入正文。
+最终 assistant 正文必须只输出 here 角色对话 JSON，不要把工具状态、计划、记忆日志或调试信息写入正文。
 格式为 JSON 数组；每个角色元素必须包含 character_name、speech、emotion、system_action，可选 effect。
 emotion 必须使用当前角色已有状态名，优先从 neutral、happy、thinking、surprised、sad、angry 中选择；不要输出立绘编号。
 背景、BGM、CG 等系统资源如需编号，使用 asset_id；普通角色对话不要使用 asset_id。
@@ -507,9 +507,9 @@ class HermesAgentBackend:
 
         sections: list[str] = []
         sections.append(
-            "【Here 专属上下文】\n"
-            "你正在 Here 桌面精灵项目中运行。Hermes 的 SOUL.md、MEMORY.md、USER.md 已被定向到 Here 当前角色目录；"
-            "只能使用这些 Here 文件、当前聊天模板与本轮上下文作为角色长期身份来源。"
+            "【here 专属上下文】\n"
+            "你正在 here 桌面精灵项目中运行。Hermes 的 SOUL.md、MEMORY.md、USER.md 已被定向到 here 当前角色目录；"
+            "只能使用这些 here 文件、当前聊天模板与本轮上下文作为角色长期身份来源。"
         )
         if context.selected_characters:
             names = "、".join(context.selected_characters)

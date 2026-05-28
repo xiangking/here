@@ -36,7 +36,7 @@ class AgentResponseStreamParser:
             self._buffer = ""
 
     def recover_messages(self, text: str) -> Iterator[AgentDialogMessage]:
-        """从一段完整文本中尽量恢复 Here 对话消息。
+        """从一段完整文本中尽量恢复 here 对话消息。
 
         Hermes 偶尔会返回 Markdown 代码块、JSON 数组，或在 speech 中混入未转义的英文引号。
         这些都不应该直接进入 UI；这里按固定字段做最后一层容错提取。

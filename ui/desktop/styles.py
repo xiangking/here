@@ -1,7 +1,7 @@
 """
 桌面助手主窗口等 UI 的 QSS 集中定义；动态色值与字号通过参数传入。
 
-可由 ``Here app home config/chat_ui_theme.json`` 提供额外声明（见 :mod:`ui.desktop.theme_chrome`）。
+可由 ``here app home config/chat_ui_theme.json`` 提供额外声明（见 :mod:`ui.desktop.theme_chrome`）。
 """
 
 from __future__ import annotations

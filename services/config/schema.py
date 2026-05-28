@@ -32,7 +32,7 @@ class Sprite(BaseModel):
     frame_col: DefaultIfNone[int] = Field(default=0, description="spritesheet 起始列索引，从 0 开始")
     frame_interval_ms: DefaultIfNone[int] = Field(default=120, description="动画帧间隔，毫秒")
     fps: DefaultIfNone[float] = Field(default=0.0, description="动画帧率；大于 0 时优先于 frame_interval_ms")
-    state_name: DefaultIfNone[str] = Field(default="", description="Here 标准化状态名，例如 neutral/happy/thinking")
+    state_name: DefaultIfNone[str] = Field(default="", description="here 标准化状态名，例如 neutral/happy/thinking")
     state_group: DefaultIfNone[str] = Field(
         default="",
         description="状态分组：core_emotion / system_optional_emotion / custom / mouse_event",
@@ -194,7 +194,7 @@ class SystemConfig(BaseModel):
     )
     chat_ui_theme_path: DefaultIfNone[str] = Field(
         default="",
-        description="聊天主窗外观补丁 JSON 路径，留空则使用 Here app home 中的 chat_ui_theme.json（若存在）",
+        description="聊天主窗外观补丁 JSON 路径，留空则使用 here app home 中的 chat_ui_theme.json（若存在）",
     )
     dialog_box_width_pct: DefaultIfNone[int] = Field(
         default=0,
@@ -268,7 +268,7 @@ class SystemConfig(BaseModel):
     )
     sprite_realtime_cache_dir: DefaultIfNone[str] = Field(
         default="",
-        description="实时生成的立绘缓存目录；留空则使用 Here app home cache/sprite_cache",
+        description="实时生成的立绘缓存目录；留空则使用 here app home cache/sprite_cache",
     )
 
 # Main Config Model

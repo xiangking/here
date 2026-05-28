@@ -1,4 +1,4 @@
-"""Desktop entrypoint for Here."""
+"""Desktop entrypoint for here."""
 
 from __future__ import annotations
 

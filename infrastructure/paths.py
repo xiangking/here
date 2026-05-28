@@ -1,4 +1,4 @@
-"""Centralized filesystem layout for Here."""
+"""Centralized filesystem layout for here."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-APP_NAME = "Here"
+APP_NAME = "here"
 APP_ID = "here"
 ENV_APP_HOME = "HERE_APP_HOME"
 

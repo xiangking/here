@@ -37,7 +37,7 @@ def normalize_emotion(value: Any) -> str:
 
 
 def resolve_sprite_index(character: Any, emotion: str) -> int:
-    """Resolve a Here emotion name to a zero-based sprite index."""
+    """Resolve a here emotion name to a zero-based sprite index."""
     sprites = list(getattr(character, "sprites", []) or [])
     if not sprites:
         return -1

@@ -39,7 +39,7 @@ def image_path_to_data_uri(path: Path) -> str:
 def build_hermes_user_message(text: str) -> str | list[dict[str, Any]]:
     """Convert `[图片: path]` markers into OpenAI-style multimodal content parts.
 
-    Hermes already owns model/provider handling. Here only packages local user
+    Hermes already owns model/provider handling. here only packages local user
     attachments so Hermes can see the images natively.
     """
 

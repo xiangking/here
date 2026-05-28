@@ -185,7 +185,7 @@ class ProactiveContactScheduler:
             raw = self.agent_backend.oneshot(
                 prompt,
                 system_prompt=(
-                    "你是 Here 桌面角色的主动联系消息生成器。"
+                    "你是 here 桌面角色的主动联系消息生成器。"
                     "只输出一个 JSON 对象，不输出解释、Markdown、思考过程或额外文本。"
                 ),
                 tools=False,
@@ -218,7 +218,7 @@ class ProactiveContactScheduler:
         basis = "；".join(item.memory_basis[-2:])
         return (
             "这是角色主动联系用户，不是回复用户消息。\n"
-            "请只输出一个 Here 角色对话 JSON 对象，且只输出一条当前角色消息。\n"
+            "请只输出一个 here 角色对话 JSON 对象，且只输出一条当前角色消息。\n"
             f"当前角色：{active_name}\n"
             f"{life_state}\n"
             f"主动联系风格：{contact_plan.contact_style}\n"

@@ -1,4 +1,4 @@
-"""Daily life simulation for Here characters."""
+"""Daily life simulation for here characters."""
 
 from core.life.engine import DEFAULT_TIMEZONE, DailyLifePlan, LifeBlock, LifeEngine
 from core.life.scheduler import DailyLifeScheduler
