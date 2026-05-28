@@ -14,4 +14,4 @@ else
     PYTHON_EXE="python3"
 fi
 
-$PYTHON_EXE webui_qt.py
+$PYTHON_EXE -m app.desktop.main

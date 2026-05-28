@@ -38,7 +38,7 @@ def init_frozen_stdio(log_name: str) -> None:
     safe = "".join(c for c in log_name if c.isalnum() or c in "._-")
     if not safe:
         safe = "app"
-    rel = os.environ.get("EASYAI_PROJECT_ROOT")
+    rel = os.environ.get("HERE_PROJECT_ROOT")
     root = Path(rel).resolve() if rel else Path(sys.executable).resolve().parent.parent
     d = root / "logs"
     d.mkdir(parents=True, exist_ok=True)

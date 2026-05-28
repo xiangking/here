@@ -2,15 +2,15 @@
 
 import pytest
 
-from asr.asr_manager import ASRAdapterFactory
-from asr.asr_adapter import (
+from services.asr.asr_manager import ASRAdapterFactory
+from services.asr.asr_adapter import (
     voice_ui_to_asr_lang,
     ui_lang_to_asr_lang,
     system_config_to_asr_lang,
     normalize_asr_provider_storage_key,
     _whisper_triplet_from_sys,
 )
-from sdk.adapters.asr import ASRAdapter
+from services.asr.protocols import ASRAdapter
 from test.mocks import MockASRAdapter
 
 

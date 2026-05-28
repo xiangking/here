@@ -1,7 +1,7 @@
 """
 消息处理器调度器 — TtsMessageDispatcher 和 UiOutputMessageDispatcher。
 
-处理器抽象类在 :mod:`sdk.handlers`；具体实现见
+处理器抽象类在 :mod:`core.handlers.protocols`；具体实现见
 :mod:`core.handlers.tts_message_handler` / :mod:`core.handlers.ui_message_handler`。
 """
 
@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from typing import List
 
-from sdk.handlers import MessageHandler, UIOutputMessageHandler
-from sdk.messages import LLMDialogMessage, TTSOutputMessage
+from core.handlers.protocols import MessageHandler, UIOutputMessageHandler
+from core.messaging.messages import AgentDialogMessage, TTSOutputMessage
 
 
 class TtsMessageDispatcher:
@@ -23,7 +23,7 @@ class TtsMessageDispatcher:
         for h in self._handlers:
             h.init()
 
-    def dispatch(self, msg: LLMDialogMessage) -> None:
+    def dispatch(self, msg: AgentDialogMessage) -> None:
         for h in self._handlers:
             if h.can_handle(msg):
                 h.pre_process(msg)
@@ -56,17 +56,15 @@ class UiOutputMessageDispatcher:
 
 
 def default_tts_handler_chain() -> TtsMessageDispatcher:
-    """插件 handler 在前，内置链在后（先匹配先处理）。"""
-    from core.plugins.plugin_host import get_plugin_tts_handlers
+    """内置 TTS handler 链。"""
     from core.handlers.tts_message_handler import get_tts_handlers
 
-    chain = list(get_plugin_tts_handlers()) + list(get_tts_handlers())
+    chain = list(get_tts_handlers())
     return TtsMessageDispatcher(chain)
 
 
 def default_ui_output_handler_chain() -> UiOutputMessageDispatcher:
-    from core.plugins.plugin_host import get_plugin_ui_handlers
     from core.handlers.ui_message_handler import get_ui_output_handlers
 
-    chain = list(get_plugin_ui_handlers()) + list(get_ui_output_handlers())
+    chain = list(get_ui_output_handlers())
     return UiOutputMessageDispatcher(chain)

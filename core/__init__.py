@@ -1,1 +1,1 @@
-"""Application core: bootstrap, messaging, handlers, runtime, plugins, sprite session."""
+"""Application core: bootstrap, messaging, handlers, runtime, and sprite session."""

@@ -9,53 +9,10 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock
 
-from sdk.adapters.llm import LLMAdapter
-from sdk.adapters.tts import TTSAdapter
-from sdk.adapters.t2i import T2IAdapter
-from sdk.adapters.asr import ASRAdapter
-
-
-class MockLLMAdapter(LLMAdapter):
-    """Returns canned responses; records every chat() call for assertions."""
-
-    def __init__(self, responses=None, **kwargs):
-        super().__init__(**kwargs)
-        self.responses = list(responses) if responses else ["Hello, I am a mock LLM."]
-        self.call_history: List[dict] = []
-        self._cursor = 0
-
-    def chat(self, messages, stream=False, **kwargs):
-        self.call_history.append({"messages": messages, "stream": stream, "kwargs": kwargs})
-        if self._cursor >= len(self.responses):
-            self._cursor = 0
-        resp = self.responses[self._cursor]
-        self._cursor += 1
-
-        if stream:
-            def _gen():
-                for char in resp:
-                    chunk = MagicMock()
-                    chunk.choices = [MagicMock()]
-                    chunk.choices[0].delta = MagicMock()
-                    chunk.choices[0].delta.content = char
-                    chunk.choices[0].delta.reasoning_content = None
-                    chunk.choices[0].delta.tool_calls = None
-                    yield chunk
-            return _gen()
-        else:
-            response = MagicMock()
-            response.choices = [MagicMock()]
-            response.choices[0].message = MagicMock()
-            response.choices[0].message.content = resp
-            response.choices[0].message.tool_calls = None
-            response.choices[0].message.reasoning_content = None
-            return response
-
-    def reset(self):
-        self.call_history.clear()
-        self._cursor = 0
+from services.tts.protocols import TTSAdapter
+from services.t2i.protocols import T2IAdapter
+from services.asr.protocols import ASRAdapter
 
 
 class MockTTSAdapter(TTSAdapter):

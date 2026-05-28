@@ -2,7 +2,7 @@
 
 import pytest
 
-from i18n import (
+from services.i18n import (
     tr,
     tr_in_bundle,
     init_i18n,
@@ -91,11 +91,12 @@ class TestTrInBundle:
 
 
 class TestSupportedLangs:
-    def test_three_languages(self):
-        assert len(SUPPORTED_LANGS) == 3
+    def test_supported_languages(self):
+        assert len(SUPPORTED_LANGS) == 4
         assert "zh_CN" in SUPPORTED_LANGS
         assert "en" in SUPPORTED_LANGS
         assert "ja" in SUPPORTED_LANGS
+        assert "ko" in SUPPORTED_LANGS
 
 
 class TestNormalizeLang:

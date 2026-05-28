@@ -14,20 +14,13 @@ def build_sprite_arg_parser(tr_i18n: Callable[..., str]) -> argparse.ArgumentPar
         "-t",
         type=str,
         help=tr_i18n("main.arg_t_help"),
-        default="komaeda_sprite",
+        default="here_companion",
     )
     parser.add_argument("--init_sprite_path", "-isp", type=str, default="")
     parser.add_argument("--history", "--his", type=str, default="")
     parser.add_argument("--tts", type=str, default="")
-    parser.add_argument("--llm", type=str, default="deepseek")
     parser.add_argument("--bg", type=str, default="")
-    parser.add_argument("--t2i", type=str, default="ComfyUI")
-    parser.add_argument(
-        "--room_id",
-        type=str,
-        default="",
-        help=tr_i18n("main.arg_room_help"),
-    )
+    parser.add_argument("--t2i", type=str, default="")
     return parser
 
 

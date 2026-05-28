@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import MagicMock
 
-from sdk.messages import TTSOutputMessage
+from core.messaging.messages import TTSOutputMessage
 from core.handlers.ui_message_handler import (
     ChainOfThoughtUiHandler,
     OptionsUiHandler,
@@ -150,6 +150,40 @@ class TestCharacterDialogUiHandler:
         h = CharacterDialogUiHandler()
         assert h.can_handle(_tts_out("Alice", is_system=True)) is False
         assert h.can_handle(_tts_out("NARR", is_system=True)) is False
+
+    def test_idle_reset_switches_back_to_default_sprite(self, mock_app_runtime, monkeypatch):
+        character = MagicMock(sprites=[{"path": "/tmp/default.png"}])
+        monkeypatch.setattr(
+            "core.handlers.ui_message_handler.get_character_by_name",
+            lambda name: character if name == "TestChar" else None,
+        )
+        h = CharacterDialogUiHandler()
+        h._idle_reset_delay_seconds = 0.01
+
+        h._schedule_idle_reset("TestChar")
+        h._idle_reset_timer.join(timeout=1)
+
+        mock_app_runtime.ui_update_manager.update_sprite.assert_called_with("TestChar", 0)
+        assert h._last_character == "TestChar"
+        assert h._last_sprite == "1"
+
+    def test_cancel_idle_reset_prevents_stale_sprite_reset(self, mock_app_runtime, monkeypatch):
+        character = MagicMock(sprites=[{"path": "/tmp/default.png"}])
+        monkeypatch.setattr(
+            "core.handlers.ui_message_handler.get_character_by_name",
+            lambda name: character if name == "TestChar" else None,
+        )
+        h = CharacterDialogUiHandler()
+        h._idle_reset_delay_seconds = 0.05
+
+        h._schedule_idle_reset("TestChar")
+        h._cancel_idle_reset()
+        h._idle_reset_timer = None
+
+        import time
+
+        time.sleep(0.08)
+        mock_app_runtime.ui_update_manager.update_sprite.assert_not_called()
 
 
 class TestHandlerChainAssembly:

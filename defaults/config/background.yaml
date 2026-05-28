@@ -1,0 +1,6 @@
+- name: 默认背景
+  sprite_prefix: default_bg
+  sprites: []
+  bg_tags: ''
+  bgm_list: []
+  bgm_tags: ''

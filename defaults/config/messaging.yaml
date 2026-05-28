@@ -1,0 +1,10 @@
+telegram:
+  enabled: false
+discord:
+  enabled: false
+wechat:
+  enabled: false
+feishu:
+  enabled: false
+whatsapp:
+  enabled: false

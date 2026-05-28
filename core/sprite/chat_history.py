@@ -2,23 +2,23 @@
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
-from llm.history_manager import HistoryManager, parse_assistant_dialog_content
+from infrastructure.paths import get_app_paths
 
 from core.messaging.dialog_tokens import is_option_history_name, is_option_history_plain
-from sdk.messages import TTSOutputMessage
+from core.messaging.messages import TTSOutputMessage
 
-CHAT_HISTORY_PATH = "./data/chat_history"
+CHAT_HISTORY_PATH = str(get_app_paths().chat_history_dir)
 
 chat_history: list[Any] = []
-history_manager = HistoryManager(chat_history)
 
 
 def get_history() -> list[Any]:
     """获取聊天历史记录。"""
-    return history_manager.get_history()
+    return chat_history
 
 
 def getHistory() -> list[Any]:
@@ -27,19 +27,19 @@ def getHistory() -> list[Any]:
 
 
 def save_chat_history(file_path: str, history: Any) -> None:
-    """根据提供的文件名保存聊天记录到 JSON 文件。"""
-    history_manager.save_chat_history(file_path, history)
+    """旧对话后端历史已移除；此函数保留给 UI 调用点做空操作。"""
 
 
 def load_chat_history(file_path: str) -> Any:
-    return history_manager.load_chat_history(file_path)
+    return []
 
 
-def clear_chat_history(history_file: str, ui_queue: Any, llm_manager: Any) -> None:
-    from i18n import tr
+def clear_chat_history(history_file: str, ui_queue: Any, agent_backend: Any) -> None:
+    from services.i18n import tr
 
-    history_manager.clear_chat_history(history_file)
-    llm_manager.clear_messages()
+    chat_history.clear()
+    if hasattr(agent_backend, "reset_session"):
+        agent_backend.reset_session()
     ui_queue.put(
         TTSOutputMessage(
             audio_path="",
@@ -53,7 +53,13 @@ def clear_chat_history(history_file: str, ui_queue: Any, llm_manager: Any) -> No
 
 def copy_chat_history_to_clipboard() -> None:
     """将聊天记录复制到系统剪贴板，去除 HTML 标签并格式化为纯文本。"""
-    history_manager.copy_chat_history_to_clipboard()
+    try:
+        from PySide6.QtWidgets import QApplication
+
+        text = "\n".join(re.sub(r"<[^>]+>", "", str(x)) for x in chat_history)
+        QApplication.clipboard().setText(text)
+    except Exception:
+        pass
 
 
 def replay_history_entry(window: Any, history_entry: str) -> None:
@@ -95,13 +101,16 @@ def extract_valid_dialog_from_messages(messages: list) -> list:
         if message.get("role") != "assistant":
             continue
         content = message.get("content", "")
-        dialog = parse_assistant_dialog_content(content)
-        if dialog:
-            return dialog
+        try:
+            data = json.loads(content)
+            if isinstance(data, list):
+                return data
+        except Exception:
+            continue
     return []
 
 
-def revert_chat_history(user_index: int, llm_manager: Any, hist: list, window: Any) -> None:
+def revert_chat_history(user_index: int, agent_backend: Any, hist: list, window: Any) -> None:
     """按 user_index 回溯到该用户消息之前的上一条 assistant 记录。"""
     if user_index < 0:
         return
@@ -129,28 +138,15 @@ def revert_chat_history(user_index: int, llm_manager: Any, hist: list, window: A
 
     del hist[target_index + 1:]
 
-    messages = llm_manager.get_messages()
-    if not messages:
-        return
-
-    new_messages = []
-    current_user_idx = -1
-    for message in messages:
-        role = message.get("role")
-        if role == "user":
-            current_user_idx += 1
-            if current_user_idx >= user_index:
-                break
-        new_messages.append(message)
-
-    llm_manager.set_messages(new_messages)
+    if hasattr(agent_backend, "reset_session"):
+        agent_backend.reset_session()
 
     if hist:
         replay_history_entry(window, hist[-1])
 
 
 def save_bg(bg_path: str | None, bgm_path: str | None) -> None:
-    from config.config_manager import ConfigManager
+    from services.config.config_manager import ConfigManager
 
     config = ConfigManager()
     config.config.system_config.background_path = bg_path

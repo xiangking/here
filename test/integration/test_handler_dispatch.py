@@ -9,7 +9,7 @@ extensively in unit/handlers/.
 import pytest
 from unittest.mock import MagicMock
 
-from sdk.messages import LLMDialogMessage, TTSOutputMessage
+from core.messaging.messages import AgentDialogMessage, TTSOutputMessage
 from core.handlers.handler_registry import (
     TtsMessageDispatcher,
     UiOutputMessageDispatcher,
@@ -62,8 +62,7 @@ class TestTTSHandlerChainAssembly:
     def test_default_handler_is_last_builtin(self):
         chain = default_tts_handler_chain()
         types = [type(h) for h in chain._handlers]
-        # Default may not be absolute last if plugins registered handlers,
-        # but it's last among built-in handlers
+        # Default should remain last among built-in handlers.
         builtin_types = [t for t in types if t.__module__.startswith("core.handlers.tts_message_handler")]
         assert builtin_types[-1] == DefaultCharacterTtsHandler
 
@@ -71,7 +70,7 @@ class TestTTSHandlerChainAssembly:
         handler = MagicMock()
         handler.can_handle.return_value = False
         chain = TtsMessageDispatcher([handler])
-        msg = LLMDialogMessage(name="Whatever", text="...", asset_id="-1")
+        msg = AgentDialogMessage(name="Whatever", text="...", asset_id="-1")
         with pytest.raises(RuntimeError, match="无 TTS handler 匹配"):
             chain.dispatch(msg)
 
@@ -82,7 +81,7 @@ class TestTTSHandlerChainAssembly:
         h2 = MagicMock()
         h2.can_handle.return_value = True
         chain = TtsMessageDispatcher([h1, h2])
-        msg = LLMDialogMessage(name="Test", text="Hi", asset_id="0")
+        msg = AgentDialogMessage(name="Test", text="Hi", asset_id="0")
         chain.dispatch(msg)
         h1.handle.assert_called_once()
         h2.handle.assert_not_called()
@@ -149,25 +148,25 @@ class TestHandlerChainCoordination:
 
     def test_tts_chain_cot_handler_matches_cot_name(self, mock_app_runtime):
         handler = ChainOfThoughtTtsHandler()
-        assert handler.can_handle(LLMDialogMessage(name="COT", text="...", asset_id="-1")) is True
+        assert handler.can_handle(AgentDialogMessage(name="COT", text="...", asset_id="-1")) is True
 
     def test_tts_chain_bgm_handler_matches_bgm_name(self):
         handler = BgmTtsHandler()
-        assert handler.can_handle(LLMDialogMessage(name="bgm", text="", asset_id="1")) is True
+        assert handler.can_handle(AgentDialogMessage(name="bgm", text="", asset_id="1")) is True
 
     def test_tts_chain_cg_handler_matches_cg_name(self):
         handler = CgTtsHandler()
-        assert handler.can_handle(LLMDialogMessage(name="CG", text="prompt", asset_id="-1")) is True
+        assert handler.can_handle(AgentDialogMessage(name="CG", text="prompt", asset_id="-1")) is True
 
     def test_tts_chain_system_dialog_matches_narr_and_choice(self, mock_app_runtime):
         handler = SystemDialogTtsHandler()
-        assert handler.can_handle(LLMDialogMessage(name="NARR", text="...", asset_id="-1")) is True
-        assert handler.can_handle(LLMDialogMessage(name="CHOICE", text="...", asset_id="-1")) is True
+        assert handler.can_handle(AgentDialogMessage(name="NARR", text="...", asset_id="-1")) is True
+        assert handler.can_handle(AgentDialogMessage(name="CHOICE", text="...", asset_id="-1")) is True
 
     def test_tts_chain_default_matches_any_character(self):
         handler = DefaultCharacterTtsHandler()
-        assert handler.can_handle(LLMDialogMessage(name="Alice", text="...", asset_id="0")) is True
-        assert handler.can_handle(LLMDialogMessage(name="Anything", text="...", asset_id="-1")) is True
+        assert handler.can_handle(AgentDialogMessage(name="Alice", text="...", asset_id="0")) is True
+        assert handler.can_handle(AgentDialogMessage(name="Anything", text="...", asset_id="-1")) is True
 
     def test_ui_chain_option_handler_matches_choice(self):
         handler = OptionsUiHandler()

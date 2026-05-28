@@ -7,6 +7,7 @@ UI worker 用 TTS 输出消息处理器（见 handler_registry.UIOutputMessageHa
 from __future__ import annotations
 
 import re
+import threading
 import time
 import traceback
 from pathlib import Path
@@ -14,10 +15,10 @@ from typing import Any, List
 
 import pygame
 
-from i18n import tr as tr_i18n
+from services.i18n import tr as tr_i18n
 
-from asr.asr_adapter import get_asr_log
-from config.config_manager import ConfigManager
+from services.asr.asr_adapter import get_asr_log
+from services.config.config_manager import ConfigManager
 from core.runtime.app_runtime import get_app_runtime
 from core.messaging.dialog_tokens import (
     SYSTEM_UI_SKIP,
@@ -28,8 +29,8 @@ from core.messaging.dialog_tokens import (
     match_scene_name,
     match_stat_name,
 )
-from sdk.handlers import UIOutputMessageHandler
-from sdk.messages import TTSOutputMessage
+from core.handlers.protocols import UIOutputMessageHandler
+from core.messaging.messages import TTSOutputMessage
 
 _config = ConfigManager()
 
@@ -163,9 +164,50 @@ class CharacterDialogUiHandler(UIOutputMessageHandler):
         super().__init__()
         self._last_character = None
         self._last_sprite = None
+        self._idle_reset_timer = None
+        self._idle_reset_generation = 0
+        self._idle_reset_delay_seconds = 3.0
 
     def can_handle(self, out: TTSOutputMessage) -> bool:
         return not out.is_system_message
+
+    def _cancel_idle_reset(self) -> None:
+        self._idle_reset_generation += 1
+        timer = self._idle_reset_timer
+        self._idle_reset_timer = None
+        if timer is not None:
+            timer.cancel()
+
+    def _schedule_idle_reset(self, character_name: str, effect: str = "") -> None:
+        if not character_name:
+            return
+        if str(effect or "").strip().upper() == "LEAVE":
+            return
+        character_config = get_character_by_name(character_name)
+        if not character_config or not getattr(character_config, "sprites", None):
+            return
+
+        self._cancel_idle_reset()
+        generation = self._idle_reset_generation
+
+        def _reset() -> None:
+            if generation != self._idle_reset_generation:
+                return
+            try:
+                rt = get_app_runtime()
+                active_name = rt.active_character.name if rt.active_character is not None else character_name
+                if active_name != character_name:
+                    return
+                rt.ui_update_manager.update_sprite(character_name, 0)
+                self._last_character = character_name
+                self._last_sprite = "1"
+            except Exception as e:
+                print(f"UIWorker: 回默认立绘失败: {e}")
+
+        timer = threading.Timer(self._idle_reset_delay_seconds, _reset)
+        timer.daemon = True
+        self._idle_reset_timer = timer
+        timer.start()
 
     def handle(self, out: TTSOutputMessage) -> None:
         rt = get_app_runtime()
@@ -173,8 +215,14 @@ class CharacterDialogUiHandler(UIOutputMessageHandler):
         ui.hide_busy_bar()
         ch = _play()
         character_name = out.name
+        if rt.active_character is not None:
+            active_name = rt.active_character.name
+            if active_name and character_name != active_name:
+                print(f"UIWorker: 将输出角色「{character_name}」归一为当前角色「{active_name}」")
+                character_name = active_name
         speech = out.text or ""
         sprite_id = out.asset_id
+        emotion = out.emotion or "neutral"
         audio_path = out.audio_path
         if audio_path:
             audio_path = Path(audio_path).as_posix()
@@ -183,14 +231,19 @@ class CharacterDialogUiHandler(UIOutputMessageHandler):
         is_continuation = not speech  # 非首段，仅播放音频
 
         if not is_continuation:
-            from sdk.logging.timing import tracker
+            self._cancel_idle_reset()
+            from infrastructure.logging.timing import tracker
             tracker.stop_cross("e2e")
 
         character_config = get_character_by_name(character_name)
         if character_config:
             try:
                 if self._last_character != character_name or self._last_sprite != sprite_id:
-                    ui.update_sprite(character_name, int(sprite_id) - 1)
+                    scene = ""
+                    if speech:
+                        scene = speech[:50]
+
+                    ui.update_sprite(character_name, int(sprite_id) - 1, emotion=emotion, scene=scene)
                     self._last_character = character_name
                     self._last_sprite = sprite_id
             except (ValueError, TypeError, IndexError) as e:
@@ -200,7 +253,7 @@ class CharacterDialogUiHandler(UIOutputMessageHandler):
             fallback_color = "#84C2D5"
             if not character_config:
                 print(f"UIWorker: 未找到角色配置「{character_name}」，跳过立绘；仅在有台词时用占位颜色显示")
-            ui.post_notification(f"{character_name}正在回复……")
+            ui.post_notification(f"{character_name}正在输入……")
             if speech:
                 color = character_config.color if character_config else fallback_color
                 ui.update_dialog(character_name, speech, color, is_system=False)
@@ -249,13 +302,14 @@ class CharacterDialogUiHandler(UIOutputMessageHandler):
             if remaining > 0:
                 ev.wait(timeout=remaining)
         if is_final:
-            # sendMessage 已暂停 ASR；无 TTS / 音频失败时原先不会走到 post_llm_reply_finished，导致麦克风永久暂停。
+            # sendMessage 已暂停 ASR；无 TTS / 音频失败时也要恢复麦克风。
             get_asr_log().info(
                 "CharacterDialogUiHandler: dialog handler done "
-                "(audio_played=%s) → post_llm_reply_finished",
+                "(audio_played=%s) → post_agent_reply_finished",
                 audio_played,
             )
-            ui.post_llm_reply_finished()
+            ui.post_agent_reply_finished()
+            self._schedule_idle_reset(character_name, effect)
         rt.audio_path_queue.task_done()
 
     def post_process(self, out: TTSOutputMessage) -> None:

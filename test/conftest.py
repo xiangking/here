@@ -31,17 +31,17 @@ _PROJECT_ROOT = _THIS_FILE.parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from sdk.messages import UserInputMessage, LLMDialogMessage, TTSOutputMessage
+from core.messaging.messages import UserInputMessage, AgentDialogMessage, TTSOutputMessage
 
 # Re-export mock adapters from the importable module so fixtures work
-from test.mocks import MockLLMAdapter, MockTTSAdapter, MockT2IAdapter, MockASRAdapter
+from test.mocks import MockTTSAdapter, MockT2IAdapter, MockASRAdapter
 
 
 # =========================================================================
 # Test Data Factories — create valid Pydantic model instances with defaults
 # =========================================================================
 
-from config.schema import (
+from services.config.schema import (
     Sprite,
     Character,
     Background,
@@ -49,6 +49,7 @@ from config.schema import (
     SystemConfig,
     AppConfig,
 )
+from core.sprite.character_profile import default_character_profile
 
 
 def make_sprite(path: str = "", voice_path: str = "", voice_text: str = "") -> Sprite:
@@ -72,6 +73,7 @@ def make_character(
         "name": name,
         "color": color,
         "sprite_prefix": sprite_prefix,
+        "character_profile": default_character_profile(name),
         "character_setting": character_setting,
     }
     kw.update(overrides)
@@ -85,17 +87,10 @@ def make_background(name: str = "TestBg", sprite_prefix: str = "test_bg", **over
 
 
 def make_api_config(
-    llm_provider: str = "Deepseek",
-    llm_api_key: dict = None,
-    llm_model: dict = None,
     **overrides,
 ) -> ApiConfig:
     kw = {
-        "llm_provider": llm_provider,
-        "llm_api_key": llm_api_key or {"Deepseek": "sk-test"},
-        "llm_model": llm_model or {"Deepseek": "deepseek-chat"},
-        "is_streaming": True,
-        "temperature": 0.7,
+        "hermes_streaming": True,
     }
     kw.update(overrides)
     return ApiConfig(**kw)
@@ -129,15 +124,16 @@ def make_user_input(text: str = "Hello") -> UserInputMessage:
     return UserInputMessage(text=text)
 
 
-def make_llm_dialog(
+def make_agent_dialog(
     name: str = "TestChar",
-    text: str = "Hello from LLM",
+    text: str = "Hello from Hermes Agent",
+    emotion: str = "neutral",
     asset_id: str = "-1",
     translate: str = "",
     effect: str = "",
-) -> LLMDialogMessage:
-    return LLMDialogMessage(
-        name=name, text=text, asset_id=asset_id, translate=translate, effect=effect
+) -> AgentDialogMessage:
+    return AgentDialogMessage(
+        name=name, text=text, emotion=emotion, asset_id=asset_id, translate=translate, effect=effect
     )
 
 
@@ -165,12 +161,6 @@ def make_tts_output(
 
 
 @pytest.fixture
-def mock_llm_adapter():
-    """A MockLLMAdapter with a default canned response."""
-    return MockLLMAdapter(responses=["Mock reply."])
-
-
-@pytest.fixture
 def mock_tts_adapter():
     return MockTTSAdapter()
 
@@ -192,8 +182,8 @@ def sample_app_config():
 
 
 @pytest.fixture
-def sample_llm_dialog():
-    return make_llm_dialog()
+def sample_agent_dialog():
+    return make_agent_dialog()
 
 
 @pytest.fixture
@@ -213,32 +203,103 @@ def sample_user_input():
 from core.runtime.app_runtime import AppRuntime, set_app_runtime
 
 
+class MockAgentBackend:
+    def __init__(self, response: str = '[{"character_name":"TestChar","speech":"Mock reply.","emotion":"neutral","asset_id":"-1"}]') -> None:
+        self.response = response
+        self.calls: list[dict] = []
+        self.oneshot_calls: list[dict] = []
+        self.interrupted = False
+
+    def chat(self, user_text: str, system_prompt: str = "", *, context=None, stream: bool = True):
+        self.calls.append(
+            {
+                "user_text": user_text,
+                "system_prompt": system_prompt,
+                "context": context,
+                "stream": stream,
+            }
+        )
+        if stream:
+            return iter([self.response])
+        return self.response
+
+    def oneshot(self, prompt: str, system_prompt: str = "", tools: bool = False) -> str:
+        self.oneshot_calls.append({"prompt": prompt, "system_prompt": system_prompt, "tools": tools})
+        return self.response
+
+    def interrupt(self) -> None:
+        self.interrupted = True
+
+    def reset_session(self) -> None:
+        self.calls.clear()
+
+
 @pytest.fixture
-def mock_app_runtime(mock_llm_adapter, sample_app_config):
+def mock_agent_backend():
+    return MockAgentBackend()
+
+
+@pytest.fixture
+def mock_app_runtime(mock_agent_backend, sample_app_config, tmp_path):
     """Set up a minimal AppRuntime as the global singleton; cleaned up after test.
 
     All queues are real queue.Queue instances so worker-like tests can push/pop.
     """
-    from config.config_manager import ConfigManager
+    from services.config.config_manager import ConfigManager
 
     # Build a ConfigManager that returns our sample config
     config_mgr = MagicMock(spec=ConfigManager)
     config_mgr.config = sample_app_config
-    config_mgr.get_character_by_name.return_value = (
-        sample_app_config.characters[0] if sample_app_config.characters else None
+    active_name = (
+        sample_app_config.system_config.active_character_name
+        or sample_app_config.characters[0].name
+        if sample_app_config.characters
+        else "系统精灵"
     )
+    active_name_holder = {"name": active_name}
 
-    # Minimal LLMManager using the mock adapter
-    from llm.llm_manager import LLMManager
+    def _get_character_by_name(name: str):
+        wanted = str(name or "").strip().lower()
+        for character in sample_app_config.characters:
+            if str(character.name or "").strip().lower() == wanted:
+                return character
+        return None
 
-    llm_mgr = LLMManager(adapter=mock_llm_adapter, max_tokens=128000)
+    def _resolve_active_character_name():
+        names = [str(c.name or "").strip() for c in sample_app_config.characters if str(c.name or "").strip()]
+        active = str(active_name_holder["name"] or "").strip()
+        if active in names:
+            return active
+        return names[0] if names else "系统精灵"
+
+    def _set_active_character_name(name: str):
+        active_name_holder["name"] = str(name or "").strip()
+        sample_app_config.system_config.active_character_name = active_name_holder["name"]
+        return _resolve_active_character_name()
+
+    def _rename_character(old_name: str, new_name: str):
+        target = _get_character_by_name(old_name)
+        if target is None or _get_character_by_name(new_name) is not None:
+            return _resolve_active_character_name()
+        target.name = str(new_name or "").strip()
+        if active_name_holder["name"] == old_name:
+            active_name_holder["name"] = target.name
+            sample_app_config.system_config.active_character_name = target.name
+        return target.name
+
+    config_mgr.get_character_by_name.side_effect = _get_character_by_name
+    config_mgr.resolve_active_character_name.side_effect = _resolve_active_character_name
+    config_mgr.set_active_character_name.side_effect = _set_active_character_name
+    config_mgr.rename_character.side_effect = _rename_character
 
     ui_update_manager = MagicMock()
+
+    from core.runtime.app_runtime import ActiveCharacterState
 
     rt = AppRuntime(
         config=config_mgr,
         ui_update_manager=ui_update_manager,
-        llm_manager=llm_mgr,
+        agent_backend=mock_agent_backend,
         tts_manager=None,
         t2i_manager=None,
         bgm_list=[],
@@ -248,6 +309,9 @@ def mock_app_runtime(mock_llm_adapter, sample_app_config):
         text_processor=MagicMock(),
         opencc=MagicMock(),
     )
+    rt.active_character = ActiveCharacterState(config_mgr)
+    from internal_agent.context import AgentMemoryStore
+    rt.agent_memory_store = AgentMemoryStore(tmp_path / "agent_memory")
     # opencc.convert returns input unchanged by default
     rt.opencc.convert.side_effect = lambda s: s
 

@@ -12,12 +12,18 @@ google-genai
 tiktoken
 pyaudio
 anthropic
-mcp>=1.2.0
 PySide6
+qrcode[pil]
+cryptography
+pyobjc-framework-AVFoundation; sys_platform == "darwin"
 QtPy>=2.4.1
 pyqt-toast-notification>=1.3.3
 pyyaml
 vosk
+faster-whisper
+RealtimeSTT
+fal-client
 gpu-list
 py7zr
-mem0ai
+edge-tts
+hermes-agent @ git+https://github.com/NousResearch/hermes-agent.git@0f0e20ef81709a6dd590b25af380b116db67628c

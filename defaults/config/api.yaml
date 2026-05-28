@@ -1,0 +1,40 @@
+agent_backend: auto
+internal_agent_provider: openai
+internal_agent_model: gpt-4o-mini
+internal_agent_base_url: https://api.openai.com/v1
+internal_agent_api_key: ''
+tts_provider: edge-tts
+tts_speed: 1.0
+tts_split_enabled: false
+tts_max_sentence_length: 15
+t2i_provider: image-api
+t2i_api_url: http://127.0.0.1:7860/v1/images/generations
+selfie_provider: ''
+hermes_streaming: true
+hermes_max_iterations: 90
+hermes_enabled_toolsets:
+  - memory
+  - session_search
+hermes_disabled_toolsets:
+  - telegram
+  - discord
+  - slack
+  - matrix
+  - messaging
+hermes_reasoning_config: {}
+hermes_max_tokens: null
+hermes_use_internal_memory: true
+hermes_disable_native_memory: true
+tts_extra_configs:
+  edge-tts:
+    voice: zh-CN-XiaoxiaoNeural
+    rate: +0%
+    volume: +0%
+    pitch: +0Hz
+asr_extra_configs:
+  vosk:
+    model_path: ./assets/system/models/vosk-model-small-cn-0.22
+    sample_rate: 16000
+    chunk_size: 8192
+t2i_extra_configs: {}
+selfie_extra_configs: {}

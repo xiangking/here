@@ -1,4 +1,4 @@
-"""Bind :class:`~sdk.chat_ui_context.ChatUIContext` and wire the signal bridge for the desktop chat entry (main)."""
+"""Bind :class:`~app.desktop.ui_context.ChatUIContext` and wire the signal bridge for the desktop chat entry (main)."""
 
 from __future__ import annotations
 
@@ -6,17 +6,21 @@ import traceback
 from collections.abc import Callable
 from typing import Any
 
-from config.config_manager import ConfigManager
+from services.config.config_manager import ConfigManager
 from core.sprite.chat_history import (
     clear_chat_history,
     copy_chat_history_to_clipboard,
     extract_valid_dialog_from_messages,
     revert_chat_history,
 )
-from sdk.messages import TTSOutputMessage
-from core.plugins.plugin_host import collect_chat_ui_contributions
-from llm.llm_manager import LLMManager
-from sdk.chat_ui_context import ChatUIContext, set_chat_ui_context
+from core.messaging.messages import TTSOutputMessage
+from app.desktop.ui_context import ChatUIContext, set_chat_ui_context
+from core.runtime.app_runtime import try_get_app_runtime
+
+
+def _current_agent_backend(fallback: Any) -> Any:
+    rt = try_get_app_runtime()
+    return getattr(rt, "agent_backend", fallback) if rt is not None else fallback
 
 
 def install_chat_ui_context(
@@ -24,7 +28,7 @@ def install_chat_ui_context(
     *,
     emit_user_text: Callable[[str], None],
 ) -> ChatUIContext:
-    """Create context from window factories, register globals, apply desktop plugin widgets."""
+    """Create context from window factories and register globals."""
     state_proxy = window._make_state_proxy()
     ui_actions = window._make_ui_actions()
     ctx = ChatUIContext.bind(
@@ -33,7 +37,6 @@ def install_chat_ui_context(
         submit_user_text=emit_user_text,
     )
     set_chat_ui_context(ctx)
-    ctx.apply_chat_ui_plugin_widgets(collect_chat_ui_contributions())
     return ctx
 
 
@@ -53,13 +56,13 @@ def wire_chat_ui_bridge(
     emit_user_text: Callable[[str], None],
     chat_history: list,
     history_file: str,
-    llm_manager: LLMManager,
+    agent_backend: Any,
     audio_path_queue: Any,
     tts_manager: Any,
     ui_worker: Any,
     tr_i18n: Callable[..., str],
 ) -> None:
-    """Connect bridge slots to queues, LLM, and history actions."""
+    """Connect bridge slots to queues, Hermes Agent, and history actions."""
 
     def _tr(key: str, **kwargs: Any) -> str:
         if kwargs:
@@ -83,7 +86,7 @@ def wire_chat_ui_bridge(
         lambda: clear_chat_history(
             history_file=history_file,
             ui_queue=audio_path_queue,
-            llm_manager=llm_manager,
+            agent_backend=_current_agent_backend(agent_backend),
         )
     )
     ctx.on_skip_speech_signal(lambda: ui_worker.skip_speech())
@@ -91,7 +94,7 @@ def wire_chat_ui_bridge(
     ctx.on_revert_chat_history(
         lambda index: revert_chat_history(
             user_index=index,
-            llm_manager=llm_manager,
+            agent_backend=_current_agent_backend(agent_backend),
             hist=chat_history,
             window=window,
         )

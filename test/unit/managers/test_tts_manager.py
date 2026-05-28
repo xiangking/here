@@ -5,15 +5,25 @@ from pathlib import Path
 
 import pytest
 
-from tts.tts_manager import TTSManager, TTSAdapterFactory
+from services.tts.tts_manager import TTSManager, TTSAdapterFactory
 from test.mocks import MockTTSAdapter
 
 
 class TestTTSAdapterFactoryRegistry:
     def test_all_registered_adapters_present(self):
-        assert "gpt-sovits" in TTSAdapterFactory._adapters
-        assert "genie-tts" in TTSAdapterFactory._adapters
-        assert "cosyvoice" in TTSAdapterFactory._adapters
+        assert "edge-tts" in TTSAdapterFactory._adapters
+        assert "openai-tts" in TTSAdapterFactory._adapters
+        assert "elevenlabs" in TTSAdapterFactory._adapters
+        assert "minimax-tts" in TTSAdapterFactory._adapters
+        assert "fish-audio" in TTSAdapterFactory._adapters
+
+    def test_online_tts_adapters_construct_without_network(self):
+        assert TTSAdapterFactory.create_adapter("openai-tts", api_key="test")
+        assert TTSAdapterFactory.create_adapter("elevenlabs", api_key="test")
+        assert TTSAdapterFactory.create_adapter(
+            "minimax-tts", api_key="test", group_id="test"
+        )
+        assert TTSAdapterFactory.create_adapter("fish-audio", api_key="test")
 
     def test_unknown_adapter_raises(self):
         with pytest.raises(ValueError, match="Unsupported TTS adapter"):
@@ -36,18 +46,12 @@ class TestTTSManagerWithMock:
         assert mgr.tts_adapter is mock_tts_adapter
         mgr.shutdown()
 
-    def test_generate_tts_with_ref_audio(self, mock_tts_adapter, tmp_path):
+    def test_generate_tts(self, mock_tts_adapter):
         mgr = TTSManager()
         mgr.set_tts_adapter(mock_tts_adapter)
 
-        ref_audio = tmp_path / "ref.wav"
-        ref_audio.write_text("fake ref")
-
         result = mgr.generate_tts(
             text="Hello world",
-            ref_audio_path=str(ref_audio),
-            prompt_text="Hello",
-            prompt_lang="en",
             character_name="TestChar",
             speed_factor=1.0,
         )
@@ -58,11 +62,11 @@ class TestTTSManagerWithMock:
         assert call["kwargs"]["character_name"] == "TestChar"
         mgr.shutdown()
 
-    def test_generate_tts_no_ref_audio_returns_empty(self, mock_tts_adapter):
+    def test_generate_tts_does_not_require_ref_audio(self, mock_tts_adapter):
         mgr = TTSManager()
         mgr.set_tts_adapter(mock_tts_adapter)
-        result = mgr.generate_tts(text="Hello", ref_audio_path=None)
-        assert result == ""
+        result = mgr.generate_tts(text="Hello")
+        assert result is not None
         mgr.shutdown()
 
     def test_set_language(self, mock_tts_adapter):
@@ -107,8 +111,8 @@ class TestTTSManagerWithMock:
 
         # queue_speech passes (text, language_processor) to generate_tts
         out_file = str(tmp_path / "out.wav")
-        mgr.generate_tts = lambda text, text_processor=None, ref_audio_path=None, **kw: mock_tts_adapter.generate_speech(
-            text=text, file_path=out_file, ref_audio_path=str(ref_audio)
+        mgr.generate_tts = lambda text, text_processor=None, **kw: mock_tts_adapter.generate_speech(
+            text=text, file_path=out_file
         )
 
         mgr.queue_speech(text="Queued speech")

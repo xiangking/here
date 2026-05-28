@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import MagicMock
 
-from sdk.messages import LLMDialogMessage
+from core.messaging.messages import AgentDialogMessage
 from core.handlers.handler_registry import TtsMessageDispatcher
 from core.handlers.tts_message_handler import (
     DefaultCharacterTtsHandler,
@@ -17,19 +17,19 @@ class TestDefaultCharacterTtsHandler:
     def test_can_handle_any_message(self, mock_app_runtime):
         """DefaultCharacterTtsHandler is the catch-all — always returns True."""
         handler = DefaultCharacterTtsHandler()
-        msg = LLMDialogMessage(name="TestChar", text="Hello", asset_id="0")
+        msg = AgentDialogMessage(name="TestChar", text="Hello", asset_id="0")
         assert handler.can_handle(msg) is True
 
 
 class TestSpecializedHandlers:
     def test_bgm_handler_matches_bgm(self, mock_app_runtime):
         handler = BgmTtsHandler()
-        msg = LLMDialogMessage(name="BGM", text="...", asset_id="0")
+        msg = AgentDialogMessage(name="BGM", text="...", asset_id="0")
         assert handler.can_handle(msg) is True
 
     def test_cg_handler_matches_cg(self, mock_app_runtime):
         handler = CgTtsHandler()
-        msg = LLMDialogMessage(name="CG", text="...", asset_id="0")
+        msg = AgentDialogMessage(name="CG", text="...", asset_id="0")
         assert handler.can_handle(msg) is True
 
     def test_handler_chain_has_default_last(self):
@@ -50,7 +50,7 @@ class TestTtsMessageDispatcher:
         handler2.can_handle.return_value = True
 
         dispatcher = TtsMessageDispatcher([handler1, handler2])
-        msg = LLMDialogMessage(name="Test", text="Hi", asset_id="0")
+        msg = AgentDialogMessage(name="Test", text="Hi", asset_id="0")
         dispatcher.dispatch(msg)
 
         handler1.pre_process.assert_called_once()
@@ -66,7 +66,7 @@ class TestTtsMessageDispatcher:
         handler2.can_handle.return_value = True
 
         dispatcher = TtsMessageDispatcher([handler1, handler2])
-        msg = LLMDialogMessage(name="Test", text="Hi", asset_id="0")
+        msg = AgentDialogMessage(name="Test", text="Hi", asset_id="0")
         dispatcher.dispatch(msg)
 
         handler1.handle.assert_not_called()
@@ -76,7 +76,7 @@ class TestTtsMessageDispatcher:
         handler = MagicMock()
         handler.can_handle.return_value = False
         dispatcher = TtsMessageDispatcher([handler])
-        msg = LLMDialogMessage(name="Test", text="Hi", asset_id="0")
+        msg = AgentDialogMessage(name="Test", text="Hi", asset_id="0")
 
         with pytest.raises(RuntimeError, match="无 TTS handler 匹配"):
             dispatcher.dispatch(msg)

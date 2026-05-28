@@ -1,5 +1,5 @@
 """
-LLM JSON 中 character_name 的固定保留字（新代号 + 旧版中文同义）。
+Hermes Agent JSON 中 character_name 的固定保留字（新代号 + 旧版中文同义）。
 
 - 新代号用于模板提示；老存档与旧提示仍用中文保留字，handlers 同时识别。
 - TTS 路径里需与 OpenCC 结果比较时用 match_*_tts(cc, name)。

@@ -1,17 +1,22 @@
 # Sample API config for tests
-llm_provider: Deepseek
-llm_api_key:
-  Deepseek: sk-test-sample-key
-llm_base_url: https://api.deepseek.com
-llm_model:
-  Deepseek: deepseek-chat
-is_streaming: true
-temperature: 0.7
-repetition_penalty: 1.0
-presence_penalty: 0.0
-frequency_penalty: 0.0
-max_context_tokens: 128000
-tts_provider: gpt-sovits
-t2i_provider: comfyui
-gpt_sovits_url: http://127.0.0.1:9880
-gpt_sovits_api_path: data/tts_bundles
+agent_backend: auto
+internal_agent_provider: openai
+internal_agent_model: gpt-4o-mini
+internal_agent_base_url: https://api.openai.com/v1
+internal_agent_api_key:
+hermes_streaming: true
+hermes_max_iterations: 90
+hermes_enabled_toolsets: []
+hermes_disabled_toolsets:
+  - telegram
+  - discord
+  - slack
+  - matrix
+  - messaging
+hermes_reasoning_config: {}
+hermes_max_tokens:
+tts_provider: edge-tts
+t2i_provider: image-api
+t2i_api_url: http://127.0.0.1:7860/v1/images/generations
+selfie_provider: ''
+selfie_extra_configs: {}

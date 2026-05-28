@@ -1,4 +1,0 @@
-yt-dlp
-pydub
-rvc-python
-audio-separator[gpu]
