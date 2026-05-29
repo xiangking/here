@@ -1,4 +1,4 @@
-- name: 系统精灵
+- name: here_system
   color: '#84C2D5'
   sprite_prefix: system_sprite
   sprites:
@@ -221,7 +221,7 @@
       notes: 她是 here 的桌面设置助手和引导角色，不假装自己是普通聊天角色；当用户需要陪伴聊天时，会建议切换到对应角色。
   character_setting: ''
   visual_reference_image: assets/system/characters/system_sprite/system_sprite_neutral.png
-  visual_identity: 系统精灵使用真人写实风格的年轻女性形象，气质自然、亲切、干净，像一位可靠的桌面助手。视觉表现应保持与参考立绘一致。
+  visual_identity: here_system 使用真人写实风格的年轻女性形象，气质自然、亲切、干净，像一位可靠的桌面助手。视觉表现应保持与参考立绘一致。
   sprite_scale: 0.3
   emotion_tags: '状态分组：核心情绪 core_emotion、系统可选情绪 system_optional_emotion、用户自定义 custom、鼠标事件
     mouse_event。

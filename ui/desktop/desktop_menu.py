@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 )
 from pathlib import Path
 
-from services.config.character_manager import MODEL_DIR, UPLOAD_DIR, VOICE_DIR
+from infrastructure.paths import get_app_paths
 from services.config.config_manager import ConfigManager, SYSTEM_CHARACTER_NAME
 from core.agent import create_agent_backend
 from internal_agent.context import AgentMemoryStore
@@ -50,6 +50,7 @@ from ui.desktop.asr_settings_dialog import ASRSettingsDialog
 from ui.desktop.create_character_dialog import CreateCharacterDialog
 from ui.desktop.external_delivery_settings_dialog import ExternalDeliverySettingsDialog
 from ui.desktop.proactive_photo_settings_dialog import ProactivePhotoSettingsDialog
+from ui.desktop.storage_settings_dialog import StorageSettingsDialog
 from ui.desktop.tts_settings_dialog import TTSSettingsDialog
 from services.tts.tts_manager import TTSAdapterFactory, TTSManager
 from services.selfie.factory import build_selfie_runtime
@@ -245,6 +246,7 @@ class DesktopMenuMixin:
         clear_history_action = QAction(tr("desktop.menu.clear_history"), self)
         copy_history_action = QAction(tr("desktop.menu.copy_history"), self)
         language_action = QAction(tr("desktop.menu.ui_language"), self)
+        storage_settings_action = QAction(tr("desktop.menu.storage_locations"), self)
         api_settings_action = QAction(tr("desktop.menu.api_settings"), self)
         asr_action = QAction(tr("desktop.menu.asr_settings"), self)
         display_state_menu = QMenu(tr("desktop.menu.display_state"), self)
@@ -304,6 +306,7 @@ class DesktopMenuMixin:
 
         history_action.triggered.connect(lambda: self.open_chat_history_dialog.emit())
         language_action.triggered.connect(self.show_language_settings)
+        storage_settings_action.triggered.connect(self.show_storage_settings)
         api_settings_action.triggered.connect(self.show_api_settings)
         asr_action.triggered.connect(self.show_asr_settings)
         clear_history_action.triggered.connect(self.clear_history)
@@ -333,6 +336,7 @@ class DesktopMenuMixin:
         records_menu.addAction(life_plan_action)
         menu.addMenu(records_menu)
         menu.addAction(language_action)
+        menu.addAction(storage_settings_action)
         menu.addAction(api_settings_action)
         menu.addAction(asr_action)
         self._add_tts_settings_menu(menu)
@@ -596,6 +600,19 @@ class DesktopMenuMixin:
             self,
             config_manager=config_manager,
             reset_adapter_callback=self._reset_mic_adapter_after_asr_change,
+            notify_callback=self.setNotification,
+        )
+        dialog.exec()
+
+    def show_storage_settings(self) -> None:
+        self._sync_i18n_from_config()
+        try:
+            config_manager.reload()
+        except Exception:
+            pass
+        dialog = StorageSettingsDialog(
+            self,
+            config_manager=config_manager,
             notify_callback=self.setNotification,
         )
         dialog.exec()
@@ -908,7 +925,12 @@ class DesktopMenuMixin:
         try:
             config_manager.delete_character(active_name)
             if sprite_prefix:
-                for base_dir in (UPLOAD_DIR, VOICE_DIR, MODEL_DIR):
+                paths = get_app_paths()
+                for base_dir in (
+                    paths.characters_dir,
+                    paths.generated_dir / "voices",
+                    paths.models_dir,
+                ):
                     char_dir = Path(base_dir) / sprite_prefix
                     if char_dir.exists():
                         shutil.rmtree(char_dir, ignore_errors=True)

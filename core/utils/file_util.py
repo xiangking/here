@@ -18,15 +18,35 @@ import platform
 import subprocess
 
 APP_PATHS = get_app_paths()
-SPRITE_DIR = APP_PATHS.characters_dir
-SPEECH_DIR = APP_PATHS.generated_dir / 'voices'
-MODEL_DIR = APP_PATHS.models_dir
 CONFIG_DIR = APP_PATHS.config_dir
-CHARACTERS_CONFIG_PATH = CONFIG_DIR / 'characters.yaml'
 BACKGROUND_CONFIG_PATH = CONFIG_DIR / 'background.yaml'
 BACKGROUND_UPLOAD_DIR = APP_PATHS.backgrounds_dir / 'images'
 BGM_UPLOAD_DIR = APP_PATHS.backgrounds_dir / 'bgm'
 EXPORTS_DIR = APP_PATHS.exports_dir
+
+
+def _sprite_dir() -> Path:
+    return get_app_paths().characters_dir
+
+
+def _speech_dir() -> Path:
+    return get_app_paths().generated_dir / 'voices'
+
+
+def _model_dir() -> Path:
+    return get_app_paths().models_dir
+
+
+def _config_dir() -> Path:
+    return get_app_paths().config_dir
+
+
+def _characters_config_path() -> Path:
+    return _config_dir() / 'characters.yaml'
+
+
+def _exports_dir() -> Path:
+    return get_app_paths().exports_dir
 
 def export_character(character_configs: list[CharacterConfig], output_path: str):
     """
@@ -36,7 +56,7 @@ def export_character(character_configs: list[CharacterConfig], output_path: str)
         character_configs (list[CharacterConfig]): 要导出的 CharacterConfig 对象列表。
         output_path (str): 导出的 .cha 文件路径。
     """
-    temp_dir = EXPORTS_DIR / f'temp_export_{os.getpid()}'
+    temp_dir = _exports_dir() / f'temp_export_{os.getpid()}'
     temp_dir.mkdir(exist_ok=True, parents=True)
     
     try:
@@ -88,12 +108,12 @@ def export_character(character_configs: list[CharacterConfig], output_path: str)
 
             # 处理立绘和语音文件
             if config.sprite_prefix:
-                sprite_source_dir = SPRITE_DIR / config.sprite_prefix
+                sprite_source_dir = _sprite_dir() / config.sprite_prefix
                 if sprite_source_dir.is_dir():
                     shutil.copytree(sprite_source_dir, temp_dir / 'sprites' / config.sprite_prefix, dirs_exist_ok=True)
                 
                 # 复制语音文件
-                voice_source_dir = SPEECH_DIR / config.sprite_prefix
+                voice_source_dir = _speech_dir() / config.sprite_prefix
                 if voice_source_dir.is_dir():
                     shutil.copytree(voice_source_dir, temp_dir / 'speech' / config.sprite_prefix, dirs_exist_ok=True)
 
@@ -188,7 +208,7 @@ def import_character(input_path: str) -> list[CharacterConfig]:
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"文件未找到: {input_path}")
         
-    temp_dir = EXPORTS_DIR / f'temp_import_{os.getpid()}'
+    temp_dir = _exports_dir() / f'temp_import_{os.getpid()}'
     temp_dir.mkdir(exist_ok=True, parents=True)
     
     imported_configs = []
@@ -209,8 +229,9 @@ def import_character(input_path: str) -> list[CharacterConfig]:
         existing_names = set()
         existing_sprite_prefixes = set()
         
-        if CHARACTERS_CONFIG_PATH.exists():
-            with open(CHARACTERS_CONFIG_PATH, 'r', encoding='utf-8') as f:
+        characters_config_path = _characters_config_path()
+        if characters_config_path.exists():
+            with open(characters_config_path, 'r', encoding='utf-8') as f:
                 existing_configs = yaml.safe_load(f) or []
                 for config in existing_configs:
                     existing_names.add(config.get('name', ''))
@@ -252,13 +273,13 @@ def import_character(input_path: str) -> list[CharacterConfig]:
             # 恢复立绘文件（使用新的sprite_prefix）
             if new_sprite_prefix:
                 source_sprite_dir = temp_dir / 'sprites' / original_sprite_prefix
-                dest_sprite_dir = SPRITE_DIR / new_sprite_prefix
+                dest_sprite_dir = _sprite_dir() / new_sprite_prefix
                 if source_sprite_dir.is_dir():
                     shutil.copytree(source_sprite_dir, dest_sprite_dir, dirs_exist_ok=True)
 
                 # 恢复语音文件（使用新的sprite_prefix）
                 source_speech_dir = temp_dir / 'speech' / original_sprite_prefix
-                dest_speech_dir = SPEECH_DIR / new_sprite_prefix
+                dest_speech_dir = _speech_dir() / new_sprite_prefix
                 if source_speech_dir.is_dir():
                     shutil.copytree(source_speech_dir, dest_speech_dir, dirs_exist_ok=True)
             
@@ -270,7 +291,7 @@ def import_character(input_path: str) -> list[CharacterConfig]:
             for key, path in model_paths.items():
                 if path:  # 确保路径不为空
                     source_model_path = temp_dir / path
-                    dest_model_dir = MODEL_DIR / new_sprite_prefix
+                    dest_model_dir = _model_dir() / new_sprite_prefix
                     dest_model_dir.mkdir(parents=True, exist_ok=True)
                     dest_model_path = dest_model_dir / Path(path).name
                     if source_model_path.exists():  # 确保源文件存在
@@ -283,21 +304,23 @@ def import_character(input_path: str) -> list[CharacterConfig]:
             imported_configs.append(CharacterConfig.parse_dic(char_data=char_data))
         
         # 将配置追加到 characters.yaml
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        config_dir = _config_dir()
+        config_dir.mkdir(parents=True, exist_ok=True)
         
         existing_data = []
-        if CHARACTERS_CONFIG_PATH.exists():
-            with open(CHARACTERS_CONFIG_PATH, 'r', encoding='utf-8') as f:
+        characters_config_path = _characters_config_path()
+        if characters_config_path.exists():
+            with open(characters_config_path, 'r', encoding='utf-8') as f:
                 existing_data = yaml.safe_load(f) or []
 
         # 将导入的配置转换为字典格式并追加
         new_data_list = [config.__dict__ for config in imported_configs]
         existing_data.extend(new_data_list)
         
-        with open(CHARACTERS_CONFIG_PATH, 'w', encoding='utf-8') as f:
+        with open(characters_config_path, 'w', encoding='utf-8') as f:
             yaml.dump(existing_data, f, allow_unicode=True, sort_keys=False)
 
-        print(f"人物成功从 {input_path} 导入，并已将配置追加到 {CHARACTERS_CONFIG_PATH}。")
+        print(f"人物成功从 {input_path} 导入，并已将配置追加到 {characters_config_path}。")
         return imported_configs
 
     finally:

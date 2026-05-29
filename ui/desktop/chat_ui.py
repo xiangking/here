@@ -7,7 +7,7 @@ import numpy as np
 import threading
 import yaml
 import time
-from PySide6.QtCore import QByteArray, QEvent, QPoint, QRect, Qt, Signal, QSize, QUrl
+from PySide6.QtCore import QByteArray, QEvent, QPoint, QRect, Qt, Signal, QSize
 from PySide6.QtGui import (
     QAction,
     QCursor,
@@ -62,7 +62,6 @@ config_manager = ConfigManager()
 
 _logger = logging.getLogger(__name__)
 
-DIALOG_FRAME_PATH = Path('./assets/system/picture/dialog_frame.png').absolute().as_posix()
 INPUT_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"}
 
 
@@ -492,7 +491,7 @@ class ChatUIWindow(DesktopToolbarMixin, DesktopMenuMixin, QWidget):
             config_manager.config.system_config.chat_ui_theme_path
         )
 
-        # 对话气泡只用 QSS 渐变，不要再叠一层 dialog_frame 位图，否则整图会随 QLabel
+        # 对话气泡只用 QSS 渐变，不要再叠一层边框位图，否则整图会随 QLabel
         # 拉伸，PNG 里画的装饰/灰边会看起来像「外圈多了一圈框」。
         self.dialog_label.setStyleSheet(
             styles.dialog_label_theme_applied(
@@ -518,7 +517,6 @@ class ChatUIWindow(DesktopToolbarMixin, DesktopMenuMixin, QWidget):
                 self.font_size,
                 self.theme_color,
                 self.second_color,
-                QUrl.fromLocalFile(DIALOG_FRAME_PATH).toString(),
                 chrome_extra=ch.numeric_label_extra,
             )
         )
@@ -591,7 +589,11 @@ class ChatUIWindow(DesktopToolbarMixin, DesktopMenuMixin, QWidget):
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
         )
         self.dialog_label.setStyleSheet(
-            styles.dialog_label_initial(self.font_size, DIALOG_FRAME_PATH)
+            styles.dialog_label_theme_applied(
+                self.font_size,
+                self.theme_color,
+                self.second_color,
+            )
         )
         self.dialog_label.setWordWrap(True)
         self.dialog_label.hide()

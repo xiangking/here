@@ -167,7 +167,7 @@ def test_agent_worker_records_life_promise_in_memory(mock_app_runtime):
 
 
 def test_agent_worker_falls_back_when_hermes_returns_plain_text(mock_app_runtime):
-    mock_app_runtime.agent_backend.response = "现在有两个角色：系统精灵和角色A。"
+    mock_app_runtime.agent_backend.response = "现在有两个角色：here_system 和角色A。"
     mock_app_runtime.config.resolve_active_character_name.return_value = "TestChar"
     worker = AgentWorker(Queue(), Queue())
     worker.user_input_queue.put(UserInputMessage(text="现在有哪些角色"))
@@ -177,7 +177,7 @@ def test_agent_worker_falls_back_when_hermes_returns_plain_text(mock_app_runtime
 
     item = worker.tts_queue.get_nowait()
     assert item.name == "TestChar"
-    assert item.text == "现在有两个角色：系统精灵和角色A。"
+    assert item.text == "现在有两个角色：here_system 和角色A。"
     assert item.emotion == "neutral"
 
 

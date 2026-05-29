@@ -254,7 +254,7 @@ def mock_app_runtime(mock_agent_backend, sample_app_config, tmp_path):
         sample_app_config.system_config.active_character_name
         or sample_app_config.characters[0].name
         if sample_app_config.characters
-        else "系统精灵"
+        else "here_system"
     )
     active_name_holder = {"name": active_name}
 
@@ -270,7 +270,7 @@ def mock_app_runtime(mock_agent_backend, sample_app_config, tmp_path):
         active = str(active_name_holder["name"] or "").strip()
         if active in names:
             return active
-        return names[0] if names else "系统精灵"
+        return names[0] if names else "here_system"
 
     def _set_active_character_name(name: str):
         active_name_holder["name"] = str(name or "").strip()

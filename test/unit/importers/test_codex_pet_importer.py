@@ -22,7 +22,7 @@ def _write_minimal_config(tmp_path: Path, monkeypatch) -> Path:
         yaml.safe_dump(
             [
                 {
-                    "name": "系统精灵",
+                    "name": "here_system",
                     "color": "#84C2D5",
                     "sprite_prefix": "system",
                     "sprites": [],

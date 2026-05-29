@@ -17,18 +17,20 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Check for embedded python, fall back to system python
+:: Check for embedded python, fall back to uv-managed source environment
 if exist "runtime\python.exe" (
     set "PYTHON_EXE=runtime\python.exe"
 ) else (
-    echo Embedded Python not found, falling back to system python...
-    where python > nul 2>&1
+    where uv > nul 2>&1
     if %errorlevel% neq 0 (
-        echo Error: python not found in PATH either
+        echo Error: embedded Python not found and uv is not in PATH
+        echo Install uv first: https://docs.astral.sh/uv/getting-started/installation/
         pause
         exit /b 1
     )
-    set "PYTHON_EXE=python"
+    uv run python -m app.desktop.main
+    pause
+    exit /b %errorlevel%
 )
 
 %PYTHON_EXE% -m app.desktop.main

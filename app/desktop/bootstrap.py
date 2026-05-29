@@ -390,7 +390,7 @@ def run_desktop_app():
 
     # 确保在程序退出时停止所有线程
     try:
-        appIcon = QIcon("./assets/system/picture/icon.png")
+        appIcon = QIcon(str(project_root / "assets" / "system" / "picture" / "Icon.png"))
         app.setWindowIcon(appIcon)
     except Exception as e:
         print(tr_i18n("main.print_icon_fail", e=str(e)))

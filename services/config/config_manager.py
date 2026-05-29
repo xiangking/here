@@ -10,11 +10,42 @@ from services.config.schema import AppConfig, Character, ApiConfig, SystemConfig
 import traceback
 from core.delivery.models import DELIVERY_CHANNELS
 
-SYSTEM_CHARACTER_NAME = "系统精灵"
+SYSTEM_CHARACTER_NAME = "here_system"
+LEGACY_SYSTEM_CHARACTER_NAMES = {"系统精灵"}
 
 
 def _is_reserved_character_name(name: str) -> bool:
-    return str(name or "").strip() == SYSTEM_CHARACTER_NAME
+    normalized = str(name or "").strip()
+    return normalized == SYSTEM_CHARACTER_NAME or normalized in LEGACY_SYSTEM_CHARACTER_NAMES
+
+
+def _migrate_legacy_system_character_names(
+    characters_data: Any,
+    system_data: Any,
+) -> bool:
+    changed = False
+    if isinstance(characters_data, list):
+        has_new_name = any(
+            isinstance(item, dict) and str(item.get("name") or "").strip() == SYSTEM_CHARACTER_NAME
+            for item in characters_data
+        )
+        for item in characters_data:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "").strip()
+            if name not in LEGACY_SYSTEM_CHARACTER_NAMES:
+                continue
+            if has_new_name:
+                continue
+            item["name"] = SYSTEM_CHARACTER_NAME
+            has_new_name = True
+            changed = True
+    if isinstance(system_data, dict):
+        active = str(system_data.get("active_character_name") or "").strip()
+        if active in LEGACY_SYSTEM_CHARACTER_NAMES:
+            system_data["active_character_name"] = SYSTEM_CHARACTER_NAME
+            changed = True
+    return changed
 
 
 def is_placeholder_character_name(name: str) -> bool:
@@ -88,6 +119,7 @@ class ConfigManager:
             characters_data = self._load_yaml(self._CHARACTERS_CONFIG_PATH)
             system_data = self._load_yaml(self._SYSTEM_CONFIG_PATH)
             background_data = self._load_yaml(self._BACKGOUND_CONFIG_PATH)
+            migrated_legacy_names = _migrate_legacy_system_character_names(characters_data, system_data)
 
             # 通过 Pydantic 进行验证和结构化
             api_config = ApiConfig.model_validate(api_data)
@@ -107,6 +139,9 @@ class ConfigManager:
                 characters=character_list,
                 background_list=background
             )
+            if migrated_legacy_names:
+                self.save_characters_config()
+                self.save_system_config()
             print("配置加载成功！")
         except ValidationError as e:
             self._config = None
@@ -231,7 +266,7 @@ class ConfigManager:
     def rename_character(self, old_name: str, new_name: str) -> str:
         """重命名角色并保存 characters.yaml / active_character_name。
 
-        返回最终角色名；不允许自动重命名系统精灵，也不允许覆盖已有角色。
+        返回最终角色名；不允许自动重命名内置系统角色，也不允许覆盖已有角色。
         """
         old = str(old_name or "").strip()
         new = str(new_name or "").strip()

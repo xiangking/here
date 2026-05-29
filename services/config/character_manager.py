@@ -5,7 +5,7 @@ from pathlib import Path
 from infrastructure.paths import get_app_paths
 from typing import List, Dict, Any, Tuple, Optional, Union
 from services.config.schema import Character, Sprite
-from services.config.config_manager import ConfigManager
+from services.config.config_manager import ConfigManager, SYSTEM_CHARACTER_NAME
 from core.sprite.character_profile import (
     build_character_setting_from_profile,
     default_character_profile,
@@ -13,10 +13,21 @@ from core.sprite.character_profile import (
 )
 import yaml
 
-UPLOAD_DIR = str(get_app_paths().characters_dir)
-VOICE_DIR = str(get_app_paths().generated_dir / "voices")
-MODEL_DIR = str(get_app_paths().models_dir)
-CHARACTER_CONFIG_PATH = get_app_paths().config_dir / "characters.yaml"
+
+def _characters_dir() -> Path:
+    return get_app_paths().characters_dir
+
+
+def _voice_dir() -> Path:
+    return get_app_paths().generated_dir / "voices"
+
+
+def _models_dir() -> Path:
+    return get_app_paths().models_dir
+
+
+def _characters_config_path() -> Path:
+    return get_app_paths().config_dir / "characters.yaml"
 
 
 class CharacterManager:
@@ -138,7 +149,7 @@ class CharacterManager:
         """
         try:
             self._save_characters_config()
-            return f"人物设定已保存到 {CHARACTER_CONFIG_PATH}！"
+            return f"人物设定已保存到 {_characters_config_path()}！"
         except Exception as e:
             return f"保存失败: {str(e)}"
 
@@ -254,6 +265,8 @@ class CharacterManager:
         
         if not name or name == "新角色":
             return "请选择要删除的角色！", current_names
+        if str(name).strip() == SYSTEM_CHARACTER_NAME:
+            return "内置系统角色不能删除。", current_names
         
         character_to_delete: Optional[Character] = self._config_manager.get_character_by_name(name)
         
@@ -274,8 +287,8 @@ class CharacterManager:
             return "已删除角色", new_names
         
         # 删除相关目录
-        for base_dir in [UPLOAD_DIR, VOICE_DIR, MODEL_DIR]:
-            char_dir = os.path.join(base_dir, sprite_prefix)
+        for base_dir in [_characters_dir(), _voice_dir(), _models_dir()]:
+            char_dir = os.path.join(str(base_dir), sprite_prefix)
             if os.path.exists(char_dir):
                 shutil.rmtree(char_dir)
 
@@ -303,7 +316,7 @@ class CharacterManager:
         if not character:
             return f"找不到角色: {character_name}", [], ''
         
-        char_dir = os.path.join(UPLOAD_DIR, character.sprite_prefix)
+        char_dir = os.path.join(str(_characters_dir()), character.sprite_prefix)
         Path(char_dir).mkdir(parents=True, exist_ok=True)
         
         if character.sprites is None:
@@ -346,12 +359,12 @@ class CharacterManager:
             return f"找不到角色: {character_name}", [], ""
         
         # 删除立绘目录
-        char_dir = os.path.join(UPLOAD_DIR, character.sprite_prefix)
+        char_dir = os.path.join(str(_characters_dir()), character.sprite_prefix)
         if os.path.exists(char_dir):
             shutil.rmtree(char_dir)
 
         # 删除语音目录
-        char_voice_dir = os.path.join(VOICE_DIR, character.sprite_prefix)
+        char_voice_dir = os.path.join(str(_voice_dir()), character.sprite_prefix)
         if os.path.exists(char_voice_dir):
             shutil.rmtree(char_voice_dir)
         
@@ -467,7 +480,7 @@ class CharacterManager:
         if (not voice_file) and (not original_voice_path):
             return "请选择语音文件！", None
         
-        voice_char_dir = os.path.join(VOICE_DIR, character.sprite_prefix)
+        voice_char_dir = os.path.join(str(_voice_dir()), character.sprite_prefix)
         Path(voice_char_dir).mkdir(parents=True, exist_ok=True)
         
         file_ext = Path(voice_file).suffix

@@ -20,6 +20,7 @@ import pygame
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QTextDocument
 
+from infrastructure.paths import resolve_character_asset_path
 from services.config.config_manager import ConfigManager
 from services.t2i.t2i_manager import T2IManager
 
@@ -176,7 +177,7 @@ class UIUpdateManager(QObject):
 
     def _sprite_has_static_image(self, sprite: Any) -> bool:
         raw_path = self._sprite_path(sprite).strip()
-        return bool(raw_path) and Path(raw_path).expanduser().is_file()
+        return bool(raw_path) and resolve_character_asset_path(raw_path).is_file()
 
     def _sprite_value(self, sprite: Any, key: str, default: Any = None) -> Any:
         if isinstance(sprite, dict):
@@ -236,8 +237,8 @@ class UIUpdateManager(QObject):
         if frame_paths:
             for raw_path in frame_paths:
                 raw = str(raw_path or "").strip()
-                path = Path(raw)
-                if not raw or not path.expanduser().is_file():
+                path = resolve_character_asset_path(raw)
+                if not raw or not path.is_file():
                     print(f"UIUpdateManager: 动画帧不存在: {path}")
                     continue
                 frame = self._load_rgba_image(path)
@@ -250,8 +251,8 @@ class UIUpdateManager(QObject):
         if not spritesheet_path:
             return []
 
-        sheet_path = Path(spritesheet_path)
-        if not sheet_path.expanduser().is_file():
+        sheet_path = resolve_character_asset_path(spritesheet_path)
+        if not sheet_path.is_file():
             print(f"UIUpdateManager: spritesheet 不存在: {sheet_path}")
             return []
         sheet = self._load_rgba_image(sheet_path)
@@ -332,7 +333,7 @@ class UIUpdateManager(QObject):
                     self.post_sprite_update(frames[0], character_name, character_config.sprite_scale)
                     return
 
-                image_path = Path(self._sprite_path(sprite))
+                image_path = resolve_character_asset_path(self._sprite_path(sprite))
                 if not self._sprite_has_static_image(sprite):
                     print(f"UIUpdateManager: 目标状态没有可用图片，保持当前立绘: {image_path}")
                     return

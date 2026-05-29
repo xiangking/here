@@ -522,7 +522,7 @@ Button */
 	border: 2px solid rgb(43, 50, 61);
 }
 
-/* EasyAIDesktopAssistant — 设置窗口侧栏/树等（原 PyDracula 仅 #pagesContainer 下定义按钮） */
+/* here: settings window sidebar/tree controls. */
 QPushButton {
 	border: 2px solid rgb(52, 59, 72);
 	border-radius: 5px;
@@ -578,4 +578,3 @@ QTextEdit, QTextBrowser {
 QSplitter::handle:horizontal, QSplitter::handle:vertical {
 	background-color: rgb(44, 49, 58);
 }
-

@@ -25,7 +25,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install system dependencies
         run: |
@@ -36,17 +36,18 @@ jobs:
             libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 \
             libglib2.0-0 libportaudio2 portaudio19-dev
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip -q
-          pip install -r requirements.txt -q
-          pip install pytest pytest-qt pytest-mock pytest-env -q
+          uv sync --python 3.11 --group dev
 
       - name: Run tests
         env:
           QT_QPA_PLATFORM: offscreen
           PYTHONIOENCODING: utf-8
-        run: python -m pytest -v --tb=short --strict-markers -p no:warnings
+        run: uv run pytest -v --tb=short --strict-markers -p no:warnings
 
   release:
     needs: [tag, test]
@@ -65,16 +66,16 @@ jobs:
           prerelease: true
 
   bundle:
-    needs: [tag, test]
+    needs: [tag, test, release]
     strategy:
       matrix:
         include:
           - os: windows-latest
             platform: windows-x64
             artifact: here-${{ needs.tag.outputs.TAG }}-windows-x64.zip
-            embed_url: https://www.python.org/ftp/python/3.10.8/python-3.10.8-embed-amd64.zip
+            embed_url: https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip
             embed_archive: python-embed.zip
-            pth_file: python310._pth
+            pth_file: python311._pth
           - os: macos-13
             platform: macos-x64
             artifact: here-${{ needs.tag.outputs.TAG }}-macos-x64.zip
@@ -84,19 +85,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python 3.10 (Windows download embeddable)
+      - name: Setup Python 3.11 (Windows download embeddable)
         if: matrix.platform == 'windows-x64'
         shell: bash
         run: |
-          curl -fL -o python-embed.zip "https://www.python.org/ftp/python/3.10.8/python-3.10.8-embed-amd64.zip"
+          curl -fL -o python-embed.zip "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
 
-      - name: Setup Python 3.10 (macOS via python-build-standalone)
+      - name: Setup Python 3.11 (macOS via python-build-standalone)
         if: matrix.platform != 'windows-x64'
         shell: bash
         run: |
-          gh release download 20221002 \
+          gh release download 20260510 \
             -R indygreg/python-build-standalone \
-            -p 'cpython-3.10.8+*x86_64-apple-darwin*.tar.gz' \
+            -p 'cpython-3.11.15+20260510-x86_64-apple-darwin-install_only.tar.gz' \
             -O python-standalone.tar.gz
         env:
           GH_TOKEN: ${{ github.token }}
@@ -113,24 +114,43 @@ jobs:
             tar -xzf python-standalone.tar.gz -C runtime/ --strip-components=1
           fi
 
-      - name: Setup pip and modify _pth (Windows)
+      - name: Enable site packages for embedded Python (Windows)
         if: matrix.platform == 'windows-x64'
         shell: bash
-        run: |
-          curl -fL -o runtime/get-pip.py https://bootstrap.pypa.io/get-pip.py
-          ./runtime/python.exe runtime/get-pip.py --no-warn-script-location
-          sed -i 's/^#import site/import site/' runtime/python310._pth
+        run: sed -i 's/^#import site/import site/' runtime/python311._pth
 
-      - name: Setup pip (macOS)
-        if: matrix.platform != 'windows-x64'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install bundle dependencies
         shell: bash
         run: |
-          ./runtime/bin/python3 -m pip install --upgrade pip -q
+          if [[ "${{ matrix.platform }}" == "windows-x64" ]]; then
+            uv pip install --python ./runtime/python.exe -r requirements.txt -q
+          else
+            uv pip install --python ./runtime/bin/python3 -r requirements.txt -q
+          fi
+
+      - name: Smoke test bundled runtime
+        shell: bash
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTHONIOENCODING: utf-8
+        run: |
+          if [[ "${{ matrix.platform }}" == "windows-x64" ]]; then
+            ./runtime/python.exe -c "import PySide6, openai, yaml; import app.desktop.main"
+          else
+            ./runtime/bin/python3 -c "import PySide6, openai, yaml; import app.desktop.main"
+          fi
 
       - name: Make scripts executable (macOS)
         if: matrix.platform != 'windows-x64'
         shell: bash
         run: chmod +x scripts/install.sh scripts/start.sh
+
+      - name: Remove Python download archives
+        shell: bash
+        run: rm -f python-embed.zip python-standalone.tar.gz
 
       - name: Create bundle archive (Windows)
         if: matrix.platform == 'windows-x64'

@@ -53,6 +53,35 @@ def test_selfie_service_builds_prompt_from_character_and_life_state(tmp_path):
     assert "No chat UI" in result.prompt
 
 
+def test_selfie_service_resolves_legacy_default_reference_path(tmp_path, monkeypatch):
+    from infrastructure.paths import save_storage_paths
+
+    app_home = tmp_path / "home"
+    assets_dir = tmp_path / "assets"
+    monkeypatch.setenv("HERE_APP_HOME", str(app_home))
+    save_storage_paths(character_assets_dir=str(assets_dir))
+    t2i = FakeT2IManager()
+    character = make_character(
+        name="Alice",
+        visual_identity="",
+        visual_reference_image="defaults/characters/here/animations/neutral/frame_001.png",
+    )
+    service = SelfieService(t2i_manager=t2i, provider_name="xai-grok-imagine", output_dir=tmp_path)
+
+    service.generate(
+        SelfieRequest(
+            character=character,
+            life_state="地点：住处",
+            photo_intent="拍一张自然自拍。",
+            now=datetime(2026, 5, 26, 12, 20),
+        )
+    )
+
+    assert t2i.calls[0]["kwargs"]["reference_image_path"] == (
+        assets_dir / "here" / "animations" / "neutral" / "frame_001.png"
+    ).as_posix()
+
+
 def test_selfie_service_preserves_explicit_size_extra(tmp_path):
     t2i = FakeT2IManager()
     character = make_character(name="Alice", visual_identity="short silver hair")

@@ -135,7 +135,7 @@ class MicButton(QPushButton):
                 notifier.adapter_failed.emit(gen, e)
 
         threading.Thread(
-            target=_run, daemon=True, name="easyai_asr_lazy_init"
+            target=_run, daemon=True, name="here_asr_lazy_init"
         ).start()
 
     def _on_lazy_adapter_ready(self, gen: int, adapter) -> None:
@@ -410,7 +410,7 @@ class MicButton(QPushButton):
                 notifier.start_failed.emit(gen, ad, e)
 
         threading.Thread(
-            target=_run, daemon=True, name="easyai_asr_start"
+            target=_run, daemon=True, name="here_asr_start"
         ).start()
 
     def _on_asr_start_finished(self, gen: int, ad) -> None:

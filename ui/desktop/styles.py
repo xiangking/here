@@ -50,41 +50,6 @@ def toolbar_action_button(
 # --- 对话框 / 输入区 ---
 
 
-def dialog_label_initial(font_size: str, dialog_frame_path: str) -> str:
-    return f"""
-            QTextBrowser {{
-                background-color: rgba(50, 50, 50, 200);
-                color: #f0f0f0;
-                font-size: {font_size};
-                font-family: {FONT_FAMILY};
-                padding: 40px;
-                border-radius: 12px;
-                border-bottom-left-radius: 0;
-                border-bottom-right-radius: 0;
-                line-height: 200%;
-                letter-spacing: 2px;
-                border-image: url({dialog_frame_path}) 40 40 40 40 stretch;
-                border-width: 40px;
-            }}
-            QTextBrowser QScrollBar:vertical {{
-                width: 8px;
-                background: transparent;
-                margin: 8px 4px 8px 0;
-            }}
-            QTextBrowser QScrollBar::handle:vertical {{
-                background: rgba(255, 255, 255, 95);
-                border-radius: 4px;
-                min-height: 24px;
-            }}
-            QTextBrowser QScrollBar::add-line:vertical,
-            QTextBrowser QScrollBar::sub-line:vertical {{
-                height: 0;
-                border: none;
-                background: transparent;
-            }}
-        """
-
-
 def _chrome_has_background_image(extra: str) -> bool:
     """chrome 中含 background-image 时，勿再写 background 渐变，否则 Qt 会盖住印花。"""
     return bool(re.search(r"(?i)background-image\s*:", extra or ""))
@@ -156,7 +121,6 @@ def numeric_info_label_theme_applied(
     font_size: str,
     theme_color: str,
     second_color: str,
-    dialog_frame_border_url: str,
     chrome_extra: str = "",
 ) -> str:
     cx = _chrome_x(chrome_extra)
@@ -177,8 +141,6 @@ def numeric_info_label_theme_applied(
                 line-height: 150%;
                 border-radius: 16px;
                 color: white;
-                border-image: url({dialog_frame_border_url}) 15 15 15 15 stretch;
-                border-width: 15px;
                 {grad}
                 {cx}
             }}

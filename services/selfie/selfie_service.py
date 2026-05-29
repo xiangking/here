@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from infrastructure.paths import get_app_paths
+from infrastructure.paths import get_app_paths, resolve_character_asset_path
 
 
 @dataclass(frozen=True)
@@ -58,7 +58,7 @@ class SelfieService:
         kwargs = dict(self.default_kwargs)
         reference_image = str(getattr(request.character, "visual_reference_image", "") or "").strip()
         if reference_image:
-            kwargs.setdefault("reference_image_path", reference_image)
+            kwargs.setdefault("reference_image_path", _resolve_reference_image(reference_image))
         if not kwargs.get("size"):
             kwargs.setdefault("width", 1024)
             kwargs.setdefault("height", 1024)
@@ -115,3 +115,10 @@ def _compact_text(value: str, limit: int) -> str:
     if len(text) <= limit:
         return text
     return text[: max(0, limit - 1)].rstrip() + "."
+
+
+def _resolve_reference_image(value: str) -> str:
+    text = str(value or "").strip()
+    if text.lower().startswith(("http://", "https://", "data:")):
+        return text
+    return resolve_character_asset_path(text).as_posix()

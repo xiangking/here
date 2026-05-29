@@ -81,7 +81,7 @@ class TestT2IAdapterFactoryRegistry:
         assert adapter.fal_edit_url == "https://fal.run/xai/grok-imagine-image/edit"
         assert adapter.fal_application == "xai/grok-imagine-image"
 
-    def test_xai_grok_imagine_accepts_full_clawra_edit_url(self):
+    def test_xai_grok_imagine_accepts_full_fal_edit_url(self):
         adapter = XAIGrokImagineAdapter(
             api_url="https://fal.run/xai/grok-imagine-image/edit",
             api_key="key",
@@ -243,7 +243,7 @@ class TestT2IAdapterFactoryRegistry:
         assert calls[0]["json"]["model"] == "x-ai/grok-imagine-image-quality"
         assert calls[0]["json"]["messages"][0]["content"] == "natural daily selfie"
 
-    def test_xai_grok_imagine_posts_clawra_style_edit_payload_for_reference_url(self, tmp_path):
+    def test_xai_grok_imagine_posts_fal_edit_payload_for_reference_url(self, tmp_path):
         adapter = XAIGrokImagineAdapter(api_url="https://fal.run", api_key="Key test-key")
         calls = []
 

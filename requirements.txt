@@ -19,7 +19,7 @@ pyobjc-framework-AVFoundation; sys_platform == "darwin"
 QtPy>=2.4.1
 pyqt-toast-notification>=1.3.3
 pyyaml
-vosk
+vosk; platform_system != "Darwin" or platform_machine != "arm64"
 faster-whisper
 RealtimeSTT
 fal-client
