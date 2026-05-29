@@ -50,6 +50,7 @@ here はデスクトップに常駐する AI コンパニオンです。キャ�
 | Python | Python 3.11。ASR コードがまだ `audioop` を使用しているため、プロジェクトは `<3.13` に制限されています。 |
 | 環境管理 | ソース実行と開発には [uv](https://docs.astral.sh/uv/) を使用します。 |
 | デスクトップ UI | PySide6 / Qt runtime。 |
+| macOS audio build dependency | PyAudio requires Homebrew PortAudio. `scripts/install.sh` installs it automatically when Homebrew is available. |
 | ASR | 任意。ASR 設定で Vosk、faster-whisper、RealtimeSTT を選択できます。 |
 | TTS と画像 API | 任意。API Key は UI または環境変数で設定できます。 |
 | 外部配信 | 任意。WeChat などのチャンネルは個別のローカル設定が必要です。 |
@@ -65,16 +66,18 @@ Apple Silicon macOS では、現在の公式 Vosk wheel が darwin arm64 をカ�
 ソース実行と開発は uv で管理します。システム Python や手動の `pip install` で環境を管理しないでください。
 
 ```bash
-uv sync --python 3.11
+bash scripts/install.sh
 uv run python -m app.desktop.main
 ```
+
+On macOS, the installer checks Homebrew and installs `portaudio` before running `uv sync`, so `pyaudio` can build from a clean environment.
 
 ### パッケージ版
 
 Release パッケージには起動スクリプトが含まれています。ソース開発では uv を使い、パッケージ版スクリプトは同梱 runtime を優先します。
 
 ```bash
-scripts/start.sh
+bash scripts/start.sh
 ```
 
 ```bat

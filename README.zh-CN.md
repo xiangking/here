@@ -66,6 +66,7 @@ here 是一个常驻桌面的 AI 伴侣。它负责角色人设、长期记忆�
 | Python | Python 3.11。项目约束为 `<3.13`，因为 ASR 代码仍使用 `audioop`。 |
 | 环境管理 | 源码安装和开发统一使用 [uv](https://docs.astral.sh/uv/)。 |
 | 桌面 UI | PySide6 / Qt runtime。 |
+| macOS 音频编译依赖 | PyAudio 需要 Homebrew PortAudio。`scripts/install.sh` 会在检测到 Homebrew 时自动安装。 |
 | ASR | 可选，可在 ASR 设置里选择 Vosk、faster-whisper 或 RealtimeSTT。 |
 | TTS 和生图 API | 可选，可在 UI 填写 API Key，也可以通过环境变量提供。 |
 | 外部送达 | 可选。微信等渠道需要各自的本地配置。 |
@@ -81,16 +82,18 @@ Apple Silicon macOS 上，`uv sync` 会跳过 `vosk`，因为当前官方 Vosk w
 源码开发和运行统一使用 uv。不要直接用系统 Python 或手动 `pip install` 管理项目环境。
 
 ```bash
-uv sync --python 3.11
+bash scripts/install.sh
 uv run python -m app.desktop.main
 ```
+
+macOS 上安装脚本会先检查 Homebrew，并在运行 `uv sync` 前安装 `portaudio`，避免全新环境里 `pyaudio` 编译失败。
 
 ### 打包版本
 
 Release 包内包含启动脚本。源码开发仍建议使用 uv；打包包内脚本会优先使用自带 runtime。
 
 ```bash
-scripts/start.sh
+bash scripts/start.sh
 ```
 
 ```bat

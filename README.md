@@ -66,6 +66,7 @@ Model reasoning is handled by Hermes Agent or the bundled OpenAI-compatible Inte
 | Python | Python 3.11. The project is constrained to `<3.13` because `audioop` is still used by ASR code. |
 | Environment manager | [uv](https://docs.astral.sh/uv/) is required for source installs and development. |
 | Desktop UI | PySide6 / Qt runtime. |
+| macOS audio build dependency | Homebrew PortAudio is required by PyAudio. `scripts/install.sh` installs it automatically when Homebrew is available. |
 | ASR | Optional. Vosk, faster-whisper, or RealtimeSTT can be selected in the ASR settings. |
 | TTS and image APIs | Optional. API keys can be entered in the UI or provided through environment variables. |
 | External delivery | Optional. WeChat and other delivery channels need their own local configuration. |
@@ -81,16 +82,18 @@ On Apple Silicon macOS, `uv sync` skips `vosk` because the current official Vosk
 Source development and runtime are managed with uv. Do not manage the project environment with a system Python or manual `pip install`.
 
 ```bash
-uv sync --python 3.11
+bash scripts/install.sh
 uv run python -m app.desktop.main
 ```
+
+On macOS, the installer checks Homebrew and installs `portaudio` before running `uv sync`, so `pyaudio` can build from a clean environment.
 
 ### Packaged Builds
 
 Release bundles include start scripts. Source development should still use uv; packaged scripts prefer the bundled runtime when available.
 
 ```bash
-scripts/start.sh
+bash scripts/start.sh
 ```
 
 ```bat

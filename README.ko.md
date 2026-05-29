@@ -50,6 +50,7 @@ here는 데스크톱에 상주하는 AI 컴패니언입니다. 캐릭터 프로�
 | Python | Python 3.11. ASR 코드가 아직 `audioop`을 사용하므로 프로젝트는 `<3.13`으로 제한됩니다. |
 | 환경 관리 | 소스 실행과 개발에는 [uv](https://docs.astral.sh/uv/)를 사용합니다. |
 | 데스크톱 UI | PySide6 / Qt runtime. |
+| macOS audio build dependency | PyAudio requires Homebrew PortAudio. `scripts/install.sh` installs it automatically when Homebrew is available. |
 | ASR | 선택 사항. ASR 설정에서 Vosk, faster-whisper, RealtimeSTT를 선택할 수 있습니다. |
 | TTS 및 이미지 API | 선택 사항. API Key는 UI 또는 환경 변수로 설정할 수 있습니다. |
 | 외부 전달 | 선택 사항. WeChat 등 채널은 별도의 로컬 설정이 필요합니다. |
@@ -65,16 +66,18 @@ Apple Silicon macOS에서는 현재 공식 Vosk wheel이 darwin arm64를 지원�
 소스 실행과 개발은 uv로 관리합니다. 시스템 Python이나 수동 `pip install`로 프로젝트 환경을 관리하지 마세요.
 
 ```bash
-uv sync --python 3.11
+bash scripts/install.sh
 uv run python -m app.desktop.main
 ```
+
+On macOS, the installer checks Homebrew and installs `portaudio` before running `uv sync`, so `pyaudio` can build from a clean environment.
 
 ### 패키지 빌드
 
 Release 번들에는 시작 스크립트가 포함됩니다. 소스 개발에는 uv를 사용하고, 패키지 스크립트는 포함된 runtime을 우선 사용합니다.
 
 ```bash
-scripts/start.sh
+bash scripts/start.sh
 ```
 
 ```bat
