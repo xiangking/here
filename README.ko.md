@@ -29,7 +29,7 @@
 
 here는 데스크톱에 상주하는 AI 컴패니언입니다. 캐릭터 프로필, 장기 기억, 일상 상태, 스프라이트 애니메이션, 음성, 입력, 채팅 표현, 선제 연락, 선택적인 현재 상태 사진을 다룹니다.
 
-모델 추론은 Hermes Agent 또는 내장 OpenAI-compatible Internal Agent가 담당합니다. 이미지 생성은 어댑터 기반이므로 Grok Imagine, GPT Image, OpenAI-compatible 서비스, 향후 추가될 이미지 API를 같은 선제 사진 흐름에서 사용할 수 있습니다.
+모델 추론은 기본적으로 내장 OpenAI-compatible Internal Agent가 담당하며, Hermes Agent는 선택형 호환 백엔드로 사용할 수 있습니다. 이미지 생성은 어댑터 기반이므로 Grok Imagine, GPT Image, OpenAI-compatible 서비스, 향후 추가될 이미지 API를 같은 선제 사진 흐름에서 사용할 수 있습니다.
 
 ## ✨ 주요 기능
 
@@ -50,7 +50,8 @@ here는 데스크톱에 상주하는 AI 컴패니언입니다. 캐릭터 프로�
 | Python | Python 3.11. ASR 코드가 아직 `audioop`을 사용하므로 프로젝트는 `<3.13`으로 제한됩니다. |
 | 환경 관리 | 소스 실행과 개발에는 [uv](https://docs.astral.sh/uv/)를 사용합니다. |
 | 데스크톱 UI | PySide6 / Qt runtime. |
-| Optional native extras | Local ASR, video sprite import, and AI background removal are optional extras to keep default installs and release bundles smaller. |
+| 선택형 네이티브 기능 | 로컬 ASR, 동영상 스프라이트 가져오기, AI 배경 제거는 선택형 extras입니다. 기본 설치와 릴리스 번들을 가볍게 유지합니다. |
+| 선택형 Hermes 백엔드 | 기존 Hermes Agent 백엔드가 필요할 때만 `bash scripts/install.sh --with-hermes`를 실행하세요. 이 extra는 GitHub에서 가져오므로 Git과 네트워크 접근이 필요합니다. |
 | ASR | 선택 사항. Vosk, faster-whisper, RealtimeSTT를 사용하기 전에 `bash scripts/install.sh --with-asr`를 실행하세요. |
 | TTS 및 이미지 API | 선택 사항. API Key는 UI 또는 환경 변수로 설정할 수 있습니다. |
 | 외부 전달 | 선택 사항. WeChat 등 채널은 별도의 로컬 설정이 필요합니다. |
@@ -71,14 +72,17 @@ bash scripts/install.sh
 uv run python -m app.desktop.main
 ```
 
-Optional native capabilities can be added when needed:
+필요할 때 선택 기능을 추가할 수 있습니다:
 
 ```bash
 bash scripts/install.sh --with-asr
 bash scripts/install.sh --with-video
 bash scripts/install.sh --with-background-removal
+bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
+
+`--full`은 네이티브 extras만 설치하며 Hermes Agent는 의도적으로 포함하지 않습니다. Hermes는 GitHub 소스 패키지에 의존하므로 필요할 때만 `--with-hermes`를 사용하세요.
 
 macOS에서 ASR extras를 사용하려면 Homebrew PortAudio가 필요합니다. 설치 스크립트는 Homebrew를 확인하고 `uv sync --extra asr` 전에 `portaudio`를 설치하므로, 깨끗한 환경에서도 `pyaudio`를 빌드할 수 있습니다.
 

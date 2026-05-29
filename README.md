@@ -45,7 +45,7 @@
 
 here is a desktop AI companion that stays with the user instead of behaving like a disposable chat box. It owns character profiles, long-term memory, daily state, animated sprites, speech, input, chat presentation, proactive contact, and optional current-state photos.
 
-Model reasoning is handled by Hermes Agent or the bundled OpenAI-compatible Internal Agent. Image generation is adapter-based so Grok Imagine, GPT Image, OpenAI-compatible services, and future providers can share the same proactive photo flow.
+Model reasoning is handled by the bundled OpenAI-compatible Internal Agent by default, with Hermes Agent available as an optional compatibility backend. Image generation is adapter-based so Grok Imagine, GPT Image, OpenAI-compatible services, and future providers can share the same proactive photo flow.
 
 ## ✨ Features
 
@@ -67,6 +67,7 @@ Model reasoning is handled by Hermes Agent or the bundled OpenAI-compatible Inte
 | Environment manager | [uv](https://docs.astral.sh/uv/) is required for source installs and development. |
 | Desktop UI | PySide6 / Qt runtime. |
 | Optional native extras | Local ASR, video sprite import, and AI background removal are optional extras to keep default installs and release bundles smaller. |
+| Optional Hermes backend | Install with `bash scripts/install.sh --with-hermes` only if you want the legacy Hermes Agent backend. This extra is fetched from GitHub and requires Git/network access. |
 | ASR | Optional. Install with `bash scripts/install.sh --with-asr` before using Vosk, faster-whisper, or RealtimeSTT. |
 | TTS and image APIs | Optional. API keys can be entered in the UI or provided through environment variables. |
 | External delivery | Optional. WeChat and other delivery channels need their own local configuration. |
@@ -93,8 +94,11 @@ Optional native capabilities can be added when needed:
 bash scripts/install.sh --with-asr
 bash scripts/install.sh --with-video
 bash scripts/install.sh --with-background-removal
+bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
+
+`--full` installs the native extras, but it intentionally does not install Hermes Agent because that backend depends on a GitHub source package. Use `--with-hermes` explicitly when you need it.
 
 On macOS, ASR extras require Homebrew PortAudio. The installer checks Homebrew and installs `portaudio` before running `uv sync --extra asr`, so `pyaudio` can build from a clean environment.
 

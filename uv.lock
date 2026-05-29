@@ -750,7 +750,6 @@ dependencies = [
     { name = "fal-client" },
     { name = "google-genai" },
     { name = "gpu-list" },
-    { name = "hermes-agent" },
     { name = "numpy" },
     { name = "openai" },
     { name = "opencc-python-reimplemented" },
@@ -784,6 +783,9 @@ full = [
     { name = "rembg" },
     { name = "vosk", marker = "platform_machine != 'arm64' or sys_platform != 'darwin'" },
 ]
+hermes = [
+    { name = "hermes-agent" },
+]
 video = [
     { name = "opencv-python" },
 ]
@@ -805,7 +807,7 @@ requires-dist = [
     { name = "faster-whisper", marker = "extra == 'full'" },
     { name = "google-genai" },
     { name = "gpu-list" },
-    { name = "hermes-agent", git = "https://github.com/NousResearch/hermes-agent.git?rev=0f0e20ef81709a6dd590b25af380b116db67628c" },
+    { name = "hermes-agent", marker = "extra == 'hermes'", git = "https://github.com/NousResearch/hermes-agent.git?rev=0f0e20ef81709a6dd590b25af380b116db67628c" },
     { name = "numpy" },
     { name = "openai" },
     { name = "opencc-python-reimplemented" },
@@ -830,7 +832,7 @@ requires-dist = [
     { name = "vosk", marker = "(platform_machine != 'arm64' and extra == 'asr') or (sys_platform != 'darwin' and extra == 'asr')" },
     { name = "vosk", marker = "(platform_machine != 'arm64' and extra == 'full') or (sys_platform != 'darwin' and extra == 'full')" },
 ]
-provides-extras = ["asr", "video", "background-removal", "full"]
+provides-extras = ["hermes", "asr", "video", "background-removal", "full"]
 
 [package.metadata.requires-dev]
 dev = [

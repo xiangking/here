@@ -17,4 +17,3 @@ fal-client
 gpu-list
 py7zr
 edge-tts
-hermes-agent @ git+https://github.com/NousResearch/hermes-agent.git@0f0e20ef81709a6dd590b25af380b116db67628c

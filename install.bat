@@ -10,6 +10,7 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 
 set "UV_SYNC_ARGS=--python 3.11"
 set "NEEDS_ASR=0"
+set "NEEDS_GIT=0"
 
 :parse_args
 if "%~1"=="" goto after_parse_args
@@ -45,6 +46,18 @@ if /I "%~1"=="--background-removal" (
     shift
     goto parse_args
 )
+if /I "%~1"=="--with-hermes" (
+    set "UV_SYNC_ARGS=%UV_SYNC_ARGS% --extra hermes"
+    set "NEEDS_GIT=1"
+    shift
+    goto parse_args
+)
+if /I "%~1"=="--hermes" (
+    set "UV_SYNC_ARGS=%UV_SYNC_ARGS% --extra hermes"
+    set "NEEDS_GIT=1"
+    shift
+    goto parse_args
+)
 if /I "%~1"=="--full" (
     set "UV_SYNC_ARGS=%UV_SYNC_ARGS% --extra full"
     set "NEEDS_ASR=1"
@@ -52,19 +65,21 @@ if /I "%~1"=="--full" (
     goto parse_args
 )
 echo Unknown option: %~1
-echo Supported options: --with-asr --with-video --with-background-removal --full
+echo Supported options: --with-asr --with-video --with-background-removal --with-hermes --full
 pause
 exit /b 1
 
 :after_parse_args
 
-REM Git is required because pyproject.toml uses git dependencies.
-where git > nul 2>&1
-if %errorlevel% neq 0 (
-    echo Error: Git not found in PATH
-    echo Install Git for Windows first: https://git-scm.com/download/win
-    pause
-    exit /b 1
+if "%NEEDS_GIT%"=="1" (
+    where git > nul 2>&1
+    if %errorlevel% neq 0 (
+        echo Error: Git not found in PATH
+        echo Git is only required when installing the optional Hermes Agent backend.
+        echo Install Git for Windows first: https://git-scm.com/download/win
+        pause
+        exit /b 1
+    )
 )
 
 REM PyAudio ships wheels for common Windows x64/x86 Python builds.

@@ -74,6 +74,7 @@ ensure_macos_audio_dependencies() {
 
 EXTRA_ARGS=()
 NEEDS_AUDIO=0
+NEEDS_GIT=0
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -87,13 +88,17 @@ while [ "$#" -gt 0 ]; do
         --with-background-removal|--background-removal)
             EXTRA_ARGS+=(--extra background-removal)
             ;;
+        --with-hermes|--hermes)
+            EXTRA_ARGS+=(--extra hermes)
+            NEEDS_GIT=1
+            ;;
         --full)
             EXTRA_ARGS+=(--extra full)
             NEEDS_AUDIO=1
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Supported options: --with-asr --with-video --with-background-removal --full"
+            echo "Supported options: --with-asr --with-video --with-background-removal --with-hermes --full"
             exit 1
             ;;
     esac
@@ -109,6 +114,12 @@ ensure_uv
 
 if [ "$NEEDS_AUDIO" -eq 1 ]; then
     ensure_macos_audio_dependencies
+fi
+
+if [ "$NEEDS_GIT" -eq 1 ] && ! command -v git >/dev/null 2>&1; then
+    echo "Error: Git is required only when installing the optional Hermes Agent backend."
+    echo "Install Git first, then rerun scripts/install.sh --with-hermes."
+    exit 1
 fi
 
 echo "Installing dependencies..."

@@ -45,7 +45,7 @@
 
 here 是一个常驻桌面的 AI 伴侣。它负责角色人设、长期记忆、日常状态、立绘动画、语音、输入、聊天演出、主动联系，以及可选的当前状态照片。
 
-模型推理由 Hermes Agent 或内置 OpenAI-compatible Internal Agent 承担。生图能力采用适配器设计，因此 Grok Imagine、GPT Image、OpenAI-compatible 服务和未来新增的生图 API 都可以复用同一套主动联系附图流程。
+模型推理默认由内置 OpenAI-compatible Internal Agent 承担，Hermes Agent 作为可选兼容后端提供。生图能力采用适配器设计，因此 Grok Imagine、GPT Image、OpenAI-compatible 服务和未来新增的生图 API 都可以复用同一套主动联系附图流程。
 
 ## ✨ 主要功能
 
@@ -67,6 +67,7 @@ here 是一个常驻桌面的 AI 伴侣。它负责角色人设、长期记忆�
 | 环境管理 | 源码安装和开发统一使用 [uv](https://docs.astral.sh/uv/)。 |
 | 桌面 UI | PySide6 / Qt runtime。 |
 | 可选原生能力 | 本地 ASR、视频立绘导入、AI 抠图都作为可选 extras，默认安装和发行包会更轻。 |
+| 可选 Hermes 后端 | 只有需要旧 Hermes Agent 后端时才运行 `bash scripts/install.sh --with-hermes`。这个 extra 来自 GitHub，需要 Git 和网络访问。 |
 | ASR | 可选。使用 Vosk、faster-whisper 或 RealtimeSTT 前，请先运行 `bash scripts/install.sh --with-asr`。 |
 | TTS 和生图 API | 可选，可在 UI 填写 API Key，也可以通过环境变量提供。 |
 | 外部送达 | 可选。微信等渠道需要各自的本地配置。 |
@@ -93,8 +94,11 @@ uv run python -m app.desktop.main
 bash scripts/install.sh --with-asr
 bash scripts/install.sh --with-video
 bash scripts/install.sh --with-background-removal
+bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
+
+`--full` 只安装原生能力 extras，刻意不包含 Hermes Agent，因为它依赖 GitHub 源码包。需要 Hermes 时请显式使用 `--with-hermes`。
 
 macOS 上 ASR extras 需要 Homebrew PortAudio。安装脚本会先检查 Homebrew，并在运行 `uv sync --extra asr` 前安装 `portaudio`，避免全新环境里 `pyaudio` 编译失败。
 
