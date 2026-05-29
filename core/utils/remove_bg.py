@@ -15,7 +15,7 @@ def ai_remove_background(input_path, output_path):
         print(f"AI 自动移除背景完成，图片已保存到 {output_path}")
 
     except ModuleNotFoundError as me:
-        print(f"请先pip install 相关的依赖 {me}")
+        print(f"缺少 AI 抠图依赖，请先运行：uv sync --extra background-removal ({me})")
     
     except Exception as e:
             print(f"处理出错：{e}, ")

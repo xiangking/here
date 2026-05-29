@@ -10,6 +10,7 @@ pytest.importorskip("PySide6")
 from core.runtime.workers import AgentWorker
 from core.delivery.models import DeliveryResult
 from core.messaging.messages import UserInputMessage
+from internal_agent.agent import InternalAgentModelError
 
 
 @dataclass
@@ -131,6 +132,24 @@ def test_agent_worker_emits_text_reply_when_hermes_fails(mock_app_runtime):
     item = worker.tts_queue.get_nowait()
     assert item.name == "TestChar"
     assert "没有处理成功" in item.text
+    assert item.emotion == "sad"
+
+
+def test_agent_worker_reports_internal_agent_model_errors(mock_app_runtime):
+    def _raise(*_args, **_kwargs):
+        raise InternalAgentModelError("Internal Agent 模型不可用：\"step-3.6\"。")
+
+    mock_app_runtime.agent_backend.chat = _raise
+    worker = AgentWorker(Queue(), Queue())
+    worker.user_input_queue.put(UserInputMessage(text="你好"))
+    worker.user_input_queue.put(None)
+
+    worker.run()
+
+    item = worker.tts_queue.get_nowait()
+    assert item.name == "TestChar"
+    assert "step-3.6" in item.text
+    assert "模型不可用" in item.text
     assert item.emotion == "sad"
 
 

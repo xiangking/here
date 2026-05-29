@@ -33,10 +33,22 @@ def normalize_agent_backend(value: str | None) -> str:
 
 
 def hermes_agent_available() -> bool:
-    return (
-        importlib.util.find_spec("run_agent") is not None
-        and importlib.util.find_spec("hermes_cli.config") is not None
-    )
+    if (
+        importlib.util.find_spec("run_agent") is None
+        or importlib.util.find_spec("hermes_cli.config") is None
+    ):
+        return False
+    try:
+        from hermes_cli.config import load_config
+
+        model_cfg = (load_config().get("model") or {})
+    except Exception:
+        return False
+    if not isinstance(model_cfg, dict):
+        return False
+    provider = str(model_cfg.get("provider") or "").strip()
+    model = str(model_cfg.get("default") or model_cfg.get("model") or "").strip()
+    return bool(provider and model)
 
 
 def create_agent_backend(

@@ -86,6 +86,25 @@ def test_auto_prefers_local_hermes_agent(monkeypatch):
     assert backend.selected_backend_id == "hermes-agent"
 
 
+def test_hermes_available_requires_model_configuration(monkeypatch):
+    import core.agent.backend_factory as factory
+
+    monkeypatch.setattr(factory.importlib.util, "find_spec", lambda _name: object())
+
+    config_mod = types.ModuleType("hermes_cli.config")
+    config_mod.load_config = lambda: {"model": {}}
+    hermes_pkg = types.ModuleType("hermes_cli")
+    monkeypatch.setitem(sys.modules, "hermes_cli", hermes_pkg)
+    monkeypatch.setitem(sys.modules, "hermes_cli.config", config_mod)
+
+    assert factory.hermes_agent_available() is False
+
+    config_mod.load_config = lambda: {
+        "model": {"provider": "openai-compatible", "default": "test-model"}
+    }
+    assert factory.hermes_agent_available() is True
+
+
 def test_hermes_request_falls_back_to_internal_when_local_hermes_missing(monkeypatch):
     import core.agent.backend_factory as factory
 

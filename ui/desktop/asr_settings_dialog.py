@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 import urllib.request
 import zipfile
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 
@@ -86,6 +87,12 @@ ASR_PROVIDER_LABELS = {
     "vosk": "Vosk",
     "faster_whisper": "faster-whisper",
     "realtime_stt": "RealtimeSTT",
+}
+
+ASR_PROVIDER_REQUIREMENTS = {
+    "vosk": ("pyaudio", "vosk"),
+    "faster_whisper": ("pyaudio", "faster_whisper"),
+    "realtime_stt": ("RealtimeSTT",),
 }
 
 ASR_WHISPER_MODEL_PRESETS = (
@@ -525,6 +532,13 @@ class ASRSettingsDialog(QDialog):
             str(self.provider_combo.currentData() or "vosk")
         )
 
+    def _missing_requirements(self, provider: str) -> list[str]:
+        missing: list[str] = []
+        for module_name in ASR_PROVIDER_REQUIREMENTS.get(provider, ()):
+            if find_spec(module_name) is None:
+                missing.append(module_name)
+        return missing
+
     def _current_model(self) -> str:
         data = self.model_combo.currentData()
         if data is not None and str(data) == "__custom__":
@@ -548,6 +562,9 @@ class ASRSettingsDialog(QDialog):
         if provider == "vosk":
             path = self._vosk_model_path()
             ok = self._is_vosk_model_dir(path)
+            missing = self._missing_requirements(provider)
+            if missing:
+                return "ASR optional dependencies missing: " + ", ".join(missing) + ". Install with: uv sync --extra asr"
             if ok:
                 return tr("desktop.settings_dialog.vosk_status_ok", path=path)
             whisper_models = _installed_whisper_models()
@@ -559,6 +576,9 @@ class ASRSettingsDialog(QDialog):
                 )
             return tr("desktop.settings_dialog.vosk_status_missing", path=path, suffix=suffix)
         model = self._current_model()
+        missing = self._missing_requirements(provider)
+        if missing:
+            return "ASR optional dependencies missing: " + ", ".join(missing) + ". Install with: uv sync --extra asr"
         size = ASR_WHISPER_MODEL_SIZE_LABELS.get(model, tr("desktop.settings_dialog.custom_size"))
         cached = model in _installed_whisper_models()
         cache_text = (
@@ -692,6 +712,13 @@ class ASRSettingsDialog(QDialog):
         vosk_path: str,
     ) -> None:
         try:
+            missing = self._missing_requirements(provider)
+            if missing:
+                raise RuntimeError(
+                    "ASR optional dependencies missing: "
+                    + ", ".join(missing)
+                    + ". Install with: uv sync --extra asr"
+                )
             if provider == "vosk":
                 self._download_vosk_model(vosk_path)
             else:

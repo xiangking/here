@@ -7,7 +7,6 @@ from typing import List, Dict, Any, Tuple, Optional, Union
 from services.config.schema import Background, Sprite # 确保导入了 Background 和 Sprite
 from services.config.config_manager import ConfigManager
 import core.utils.file_util as fu
-import pandas as pd
 import yaml
 
 BACKGROUND_CONFIG_PATH = get_app_paths().config_dir / "background.yaml"
@@ -342,14 +341,14 @@ class BackgroundManager:
             Tuple[str, List[str], str]: (操作结果消息, 所有背景音乐路径列表, 更新后的标签文本)
         """
         if not background_name:
-            return "请先选择或创建背景组！", pd.DataFrame(), ''
+            return "请先选择或创建背景组！", [], ''
         
         if not bgm_files:
-            return "请选择要上传的背景音乐文件！", pd.DataFrame(), ''
+            return "请选择要上传的背景音乐文件！", [], ''
         
         background: Optional[Background] = self._config_manager.get_background_by_name(background_name)
         if not background:
-            return f"找不到背景组: {background_name}", pd.DataFrame(), ''
+            return f"找不到背景组: {background_name}", [], ''
         
         # 修正目录，使用 Background 的 prefix 和 BGM_UPLOAD_DIR
         bgm_dir = os.path.join(BGM_UPLOAD_DIR, background.sprite_prefix) # 使用 sprite_prefix 作为子目录名
@@ -458,7 +457,7 @@ class BackgroundManager:
         
         return bgm_paths, bgm_tags, []
     
-    def format_bgms_for_display(self,bgm_paths: List[str], bgm_tags: str) -> pd.DataFrame:
+    def format_bgms_for_display(self, bgm_paths: List[str], bgm_tags: str) -> List[Dict[str, Any]]:
         """
         将 BGM 路径和标签格式化为带序号和复选框的 Dataframe。
         """
@@ -481,14 +480,14 @@ class BackgroundManager:
                 "路径": path,
                 "标签描述": tag_content
             })
-        return pd.DataFrame(data)
+        return data
     
     def load_bgms_and_tags(self, background_name: str):
         """
         根据选择的背景组加载并显示 BGM 列表和标签。
         """
         if not background_name:
-            return pd.DataFrame(), ""
+            return [], ""
             
         bgm_paths, bgm_tags, _ = self.get_background_bgms(background_name)
         
@@ -549,24 +548,29 @@ class BackgroundManager:
     def batch_delete_bgms(
         self,
         background_name: str, 
-        bgm_dataframe: pd.DataFrame,
+        bgm_dataframe: Any,
         bgm_tags 
-    ) -> Tuple[str, pd.DataFrame]:
+    ) -> Tuple[str, Any]:
         """
         根据 Dataframe 中的复选框状态批量删除选定的背景音乐。
         """
         if not background_name:
-            return "请先选择背景组！", pd.DataFrame(), bgm_tags
+            return "请先选择背景组！", [], bgm_tags
 
-        if bgm_dataframe.empty:
-            return "没有音乐条可供删除。", pd.DataFrame(), ""
+        if not bgm_dataframe:
+            return "没有音乐条可供删除。", [], ""
 
         # 1. 确定要删除的索引
         try:
-            # 获取 Dataframe 中 '选择' 为 True 的行
-            selected_rows = bgm_dataframe[bgm_dataframe['选择'] == True]
-            # 获取这些行在原始 BGM 列表中的索引 (即 '序号' - 1)
-            indices_to_delete = selected_rows['序号'].tolist()
+            if hasattr(bgm_dataframe, "empty"):
+                selected_rows = bgm_dataframe[bgm_dataframe['选择'] == True]
+                indices_to_delete = selected_rows['序号'].tolist()
+            else:
+                indices_to_delete = [
+                    int(row.get("序号", 0))
+                    for row in bgm_dataframe
+                    if isinstance(row, dict) and row.get("选择") is True
+                ]
         except Exception as e:
             return f"处理数据失败: {e}", bgm_dataframe, bgm_tags
 

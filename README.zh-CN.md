@@ -66,31 +66,49 @@ here 是一个常驻桌面的 AI 伴侣。它负责角色人设、长期记忆�
 | Python | Python 3.11。项目约束为 `<3.13`，因为 ASR 代码仍使用 `audioop`。 |
 | 环境管理 | 源码安装和开发统一使用 [uv](https://docs.astral.sh/uv/)。 |
 | 桌面 UI | PySide6 / Qt runtime。 |
-| macOS 音频编译依赖 | PyAudio 需要 Homebrew PortAudio。`scripts/install.sh` 会在检测到 Homebrew 时自动安装。 |
-| ASR | 可选，可在 ASR 设置里选择 Vosk、faster-whisper 或 RealtimeSTT。 |
+| 可选原生能力 | 本地 ASR、视频立绘导入、AI 抠图都作为可选 extras，默认安装和发行包会更轻。 |
+| ASR | 可选。使用 Vosk、faster-whisper 或 RealtimeSTT 前，请先运行 `bash scripts/install.sh --with-asr`。 |
 | TTS 和生图 API | 可选，可在 UI 填写 API Key，也可以通过环境变量提供。 |
 | 外部送达 | 可选。微信等渠道需要各自的本地配置。 |
 
 Windows 用户请把项目放在纯英文路径下，例如 `D:\here`，避免部分音频/Qt/嵌入式 Python 组件遇到非 ASCII 路径问题。
 
-Apple Silicon macOS 上，`uv sync` 会跳过 `vosk`，因为当前官方 Vosk wheel 不覆盖 darwin arm64。语音识别请在「语音识别 ASR」里选择 `faster-whisper` 或 `RealtimeSTT`；Intel macOS、Windows 和 Linux 仍可安装 Vosk。
+Apple Silicon macOS 上，可选 ASR 安装会跳过 `vosk`，因为当前官方 Vosk wheel 不覆盖 darwin arm64。语音识别请在「语音识别 ASR」里选择 `faster-whisper` 或 `RealtimeSTT`；Intel macOS、Windows 和 Linux 仍可安装 Vosk。
 
 ## 📦 安装
 
 ### 源码运行
 
 源码开发和运行统一使用 uv。不要直接用系统 Python 或手动 `pip install` 管理项目环境。
+如果当前环境没有 uv，安装和启动脚本会通过 Astral 官方安装器自动安装。
 
 ```bash
 bash scripts/install.sh
 uv run python -m app.desktop.main
 ```
 
-macOS 上安装脚本会先检查 Homebrew，并在运行 `uv sync` 前安装 `portaudio`，避免全新环境里 `pyaudio` 编译失败。
+按需安装可选原生能力：
+
+```bash
+bash scripts/install.sh --with-asr
+bash scripts/install.sh --with-video
+bash scripts/install.sh --with-background-removal
+bash scripts/install.sh --full
+```
+
+macOS 上 ASR extras 需要 Homebrew PortAudio。安装脚本会先检查 Homebrew，并在运行 `uv sync --extra asr` 前安装 `portaudio`，避免全新环境里 `pyaudio` 编译失败。
 
 ### 打包版本
 
 Release 包内包含启动脚本。源码开发仍建议使用 uv；打包包内脚本会优先使用自带 runtime。
+
+从源码树构建本地 macOS 包：
+
+```bash
+python3 scripts/build_bundle.py --target macos-arm64 --name here-local-macos-arm64-lite
+```
+
+GitHub Release 会通过 `.github/workflows/release.yml` 构建 macOS arm64 和 Windows x64 包。
 
 ```bash
 bash scripts/start.sh
@@ -99,6 +117,8 @@ bash scripts/start.sh
 ```bat
 start.bat
 ```
+
+发行包默认采用轻量依赖，不内置本地 ASR、视频导入或 AI 抠图依赖。
 
 ## ⚙️ 配置
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import types
 
 import internal_agent.agent as agent_module
-from internal_agent.agent import InternalAgent
+from internal_agent.agent import InternalAgent, InternalAgentModelError
 from internal_agent.memory import build_identity_prompt
 from internal_agent.memory_tool import run as run_memory_tool
 from internal_agent.session_search import search
@@ -369,6 +369,65 @@ def test_internal_agent_runs_memory_tool_from_non_stream_response(monkeypatch, t
     assert result["final_response"] == "记好了。"
     user_text = (tmp_path / "agent" / "memories" / "USER.md").read_text(encoding="utf-8")
     assert "用户喜欢简洁回答。" in user_text
+
+
+def test_internal_agent_retries_without_tools_when_provider_rejects_tools(monkeypatch):
+    class _ChatCompletions:
+        def __init__(self):
+            self.calls = []
+
+        def create(self, **kwargs):
+            self.calls.append(kwargs)
+            if "tools" in kwargs:
+                raise RuntimeError("unsupported parameter: 'tools'")
+            message = types.SimpleNamespace(role="assistant", content="纯聊天回复。")
+            return types.SimpleNamespace(choices=[types.SimpleNamespace(message=message)])
+
+    completions = _ChatCompletions()
+
+    class _OpenAI:
+        def __init__(self, **kwargs):
+            self.chat = types.SimpleNamespace(completions=completions)
+
+    monkeypatch.setattr(agent_module, "OpenAI", _OpenAI)
+    statuses: list[str] = []
+    agent = InternalAgent(
+        api_key="test",
+        model="test-model",
+        enabled_toolsets=["memory"],
+        status_callback=statuses.append,
+    )
+
+    result = agent.run_conversation("hi")
+
+    assert result["final_response"] == "纯聊天回复。"
+    assert len(completions.calls) == 2
+    assert "tools" in completions.calls[0]
+    assert "tools" not in completions.calls[1]
+    assert statuses == ["当前 Internal Agent API 不支持 tools，已自动改为纯聊天模式。"]
+
+
+def test_internal_agent_raises_clear_error_when_model_is_unavailable(monkeypatch):
+    class _ChatCompletions:
+        def create(self, **kwargs):
+            raise RuntimeError(
+                'Error code: 404 - {"error": {"message": "The model does not exist", "type": "model_invalid"}}'
+            )
+
+    class _OpenAI:
+        def __init__(self, **kwargs):
+            self.chat = types.SimpleNamespace(completions=_ChatCompletions())
+
+    monkeypatch.setattr(agent_module, "OpenAI", _OpenAI)
+    agent = InternalAgent(api_key="test", model="missing-model")
+
+    try:
+        agent.run_conversation("hi")
+    except InternalAgentModelError as exc:
+        assert "missing-model" in str(exc)
+        assert "获取可用模型" in str(exc)
+    else:
+        raise AssertionError("expected InternalAgentModelError")
 
 
 def test_internal_agent_persists_full_tool_conversation_to_session_store(monkeypatch, tmp_path):

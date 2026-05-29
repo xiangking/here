@@ -150,7 +150,7 @@ class ApiConfig(BaseModel):
 class SystemConfig(BaseModel):
     """系统相关的通用配置"""
     # 应用 DefaultIfNone
-    base_font_size_px: DefaultIfNone[int] = Field(default=56, description="基础字体大小 (像素)")
+    base_font_size_px: DefaultIfNone[int] = Field(default=40, description="基础字体大小 (像素)")
     default_sprite_scale: DefaultIfNone[float] = Field(
         default=0.72,
         description="默认精灵缩放倍率",

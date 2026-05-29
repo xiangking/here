@@ -12,14 +12,11 @@ def _app():
 
 
 def _write_png(path):
-    import cv2
+    from PIL import Image
 
     rgba = np.zeros((2, 2, 4), dtype=np.uint8)
     rgba[:, :, 3] = 255
-    bgra = cv2.cvtColor(rgba, cv2.COLOR_RGBA2BGRA)
-    ok, data = cv2.imencode(".png", bgra)
-    assert ok
-    path.write_bytes(data.tobytes())
+    Image.fromarray(rgba, "RGBA").save(path)
 
 
 def test_update_sprite_keeps_current_state_when_static_path_is_empty(monkeypatch):

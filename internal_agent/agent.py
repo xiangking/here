@@ -21,6 +21,10 @@ from internal_agent.session_store import SessionStore
 DEFAULT_MODEL = "gpt-4o-mini"
 
 
+class InternalAgentModelError(RuntimeError):
+    """Raised when the configured model is unavailable for the current API key."""
+
+
 class InternalAgent:
     """Minimal OpenAI-compatible agent runtime."""
 
@@ -73,6 +77,7 @@ class InternalAgent:
         self.session_store = session_store or self._default_session_store()
         self._api_key = api_key or self._api_key_from_env()
         self._api_max_retries = 3
+        self._tools_supported = True
         self._interrupted = threading.Event()
 
     def interrupt(self) -> None:
@@ -101,7 +106,11 @@ class InternalAgent:
         for _ in range(max(1, self.max_iterations)):
             if self._interrupted.is_set():
                 break
-            assistant_message = self._request(messages, tools=tools, stream_callback=stream_callback)
+            assistant_message = self._request_with_tool_fallback(
+                messages,
+                tools=tools,
+                stream_callback=stream_callback,
+            )
             tool_calls = assistant_message.get("tool_calls") or []
             if not tool_calls:
                 final_response = str(assistant_message.get("content") or "")
@@ -118,6 +127,29 @@ class InternalAgent:
         persisted = self._messages_without_system(messages)
         self._persist_session(persisted, system_message=system_message)
         return {"final_response": final_response, "messages": persisted, "completed": True}
+
+    def _request_with_tool_fallback(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        tools: list[dict[str, Any]] | None,
+        stream_callback: Callable[[str], None] | None,
+    ) -> dict[str, Any]:
+        active_tools = tools if self._tools_supported else None
+        try:
+            return self._request(messages, tools=active_tools, stream_callback=stream_callback)
+        except Exception as exc:
+            if _looks_like_model_unavailable(exc):
+                raise InternalAgentModelError(
+                    f'Internal Agent 模型不可用："{self.model}"。'
+                    "请在 API / Agent 后端设置中改成当前 API Key 可用的模型，"
+                    "或点击“获取可用模型”后选择列表里的模型。"
+                ) from exc
+            if active_tools is None or not _looks_like_tools_unsupported(exc):
+                raise
+            self._tools_supported = False
+            self._emit_status("当前 Internal Agent API 不支持 tools，已自动改为纯聊天模式。")
+            return self._request(messages, tools=None, stream_callback=stream_callback)
 
     def _api_key_from_env(self) -> str:
         candidates: list[str] = []
@@ -306,6 +338,14 @@ class InternalAgent:
             except Exception:
                 pass
 
+    def _emit_status(self, text: str) -> None:
+        if self.status_callback is None:
+            return
+        try:
+            self.status_callback(text)
+        except Exception:
+            pass
+
     def _default_session_store(self) -> SessionStore | None:
         if self.memory_home is None:
             return None
@@ -375,6 +415,53 @@ def _response_message_to_dict(response: Any) -> dict[str, Any]:
     if message is None:
         raise RuntimeError("Model response choice did not include a message.")
     return _message_to_dict(message)
+
+
+def _looks_like_tools_unsupported(exc: BaseException) -> bool:
+    pieces: list[str] = [str(exc)]
+    for attr in ("body", "message", "response", "details"):
+        try:
+            value = getattr(exc, attr, None)
+        except Exception:
+            value = None
+        if value:
+            pieces.append(str(value))
+    text = "\n".join(pieces).lower()
+    phrases = (
+        "tools is not supported",
+        "tools are not supported",
+        "tool calls are not supported",
+        "tool_calls are not supported",
+        "function calling is not supported",
+        "functions are not supported",
+        "unsupported parameter: 'tools'",
+        'unsupported parameter: "tools"',
+        "unrecognized request argument supplied: tools",
+        "unknown parameter: tools",
+        "invalid parameter: tools",
+    )
+    return any(phrase in text for phrase in phrases)
+
+
+def _looks_like_model_unavailable(exc: BaseException) -> bool:
+    pieces: list[str] = [str(exc)]
+    for attr in ("body", "message", "response", "details"):
+        try:
+            value = getattr(exc, attr, None)
+        except Exception:
+            value = None
+        if value:
+            pieces.append(str(value))
+    text = "\n".join(pieces).lower()
+    phrases = (
+        "model_invalid",
+        "model does not exist",
+        "does not exist or you do not have access",
+        "model_not_found",
+        "unknown model",
+        "invalid model",
+    )
+    return any(phrase in text for phrase in phrases)
 
 
 def _get_attr(value: Any, name: str) -> Any:

@@ -182,6 +182,8 @@ def run_desktop_app():
         f"stream={hermes_config.get('stream')}",
         f"max_iterations={hermes_config.get('max_iterations')}",
     )
+    print(f"App home: {app_paths.root}")
+    print(f"API config path: {getattr(config, '_API_CONFIG_PATH', app_paths.config_dir / 'api.yaml')}")
 
     # Legacy flow
     image_queue = Queue()
@@ -235,7 +237,8 @@ def run_desktop_app():
         status_callback=ui_updates.post_notification,
         tool_status_callback=lambda text: ui_updates.post_busy_bar(str(text), 0.0),
     )
-    print(f"Selected agent backend: {getattr(agent_backend, 'selected_backend_id', type(agent_backend).__name__)}")
+    selected_backend = getattr(agent_backend, "selected_backend_id", type(agent_backend).__name__)
+    print(f"Selected agent backend: {selected_backend}")
     window = ChatUIWindow(
         image_queue,
         emotion_queue,
@@ -244,6 +247,7 @@ def run_desktop_app():
         background_mode=(bg_group is not None),
     )
     connect_to_desktop_window(ui_updates, window)
+    ui_updates.post_notification(f"Agent 后端: {selected_backend}")
 
     rt = AppRuntime(
         config=config,

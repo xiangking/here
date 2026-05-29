@@ -166,6 +166,7 @@ class MicButton(QPushButton):
             exc,
             exc_info=(type(exc), exc, exc.__traceback__),
         )
+        self._mic_notify(f"麦克风初始化失败：{exc}")
         self._mic_busy_hide()
 
     def _mic_busy_show(self, text: str, duration_seconds: float = 0.0) -> None:

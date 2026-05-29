@@ -50,31 +50,49 @@ here はデスクトップに常駐する AI コンパニオンです。キャ�
 | Python | Python 3.11。ASR コードがまだ `audioop` を使用しているため、プロジェクトは `<3.13` に制限されています。 |
 | 環境管理 | ソース実行と開発には [uv](https://docs.astral.sh/uv/) を使用します。 |
 | デスクトップ UI | PySide6 / Qt runtime。 |
-| macOS audio build dependency | PyAudio requires Homebrew PortAudio. `scripts/install.sh` installs it automatically when Homebrew is available. |
-| ASR | 任意。ASR 設定で Vosk、faster-whisper、RealtimeSTT を選択できます。 |
+| Optional native extras | Local ASR, video sprite import, and AI background removal are optional extras to keep default installs and release bundles smaller. |
+| ASR | 任意。Vosk、faster-whisper、RealtimeSTT を使う前に `bash scripts/install.sh --with-asr` を実行してください。 |
 | TTS と画像 API | 任意。API Key は UI または環境変数で設定できます。 |
 | 外部配信 | 任意。WeChat などのチャンネルは個別のローカル設定が必要です。 |
 
 Windows では、音声、Qt、組み込み Python コンポーネントのパス問題を避けるため、`D:\here` のような ASCII のみのパスに置いてください。
 
-Apple Silicon macOS では、現在の公式 Vosk wheel が darwin arm64 をカバーしていないため、`uv sync` は `vosk` をスキップします。`Speech recognition ASR` で `faster-whisper` または `RealtimeSTT` を選択してください。Intel macOS、Windows、Linux では Vosk を利用できます。
+Apple Silicon macOS では、任意 ASR インストール時に `vosk` をスキップします。現在の公式 Vosk wheel が darwin arm64 をカバーしていないためです。`Speech recognition ASR` で `faster-whisper` または `RealtimeSTT` を選択してください。Intel macOS、Windows、Linux では Vosk を利用できます。
 
 ## 📦 インストール
 
 ### ソースから実行
 
 ソース実行と開発は uv で管理します。システム Python や手動の `pip install` で環境を管理しないでください。
+uv がまだ使えない環境では、インストール/起動スクリプトが Astral 公式インストーラで自動インストールします。
 
 ```bash
 bash scripts/install.sh
 uv run python -m app.desktop.main
 ```
 
-On macOS, the installer checks Homebrew and installs `portaudio` before running `uv sync`, so `pyaudio` can build from a clean environment.
+Optional native capabilities can be added when needed:
+
+```bash
+bash scripts/install.sh --with-asr
+bash scripts/install.sh --with-video
+bash scripts/install.sh --with-background-removal
+bash scripts/install.sh --full
+```
+
+macOS で ASR extras を使うには Homebrew PortAudio が必要です。インストーラは Homebrew を確認し、`uv sync --extra asr` の前に `portaudio` をインストールするため、クリーン環境でも `pyaudio` をビルドできます。
 
 ### パッケージ版
 
 Release パッケージには起動スクリプトが含まれています。ソース開発では uv を使い、パッケージ版スクリプトは同梱 runtime を優先します。
+
+ソースツリーからローカル macOS パッケージを作成します:
+
+```bash
+python3 scripts/build_bundle.py --target macos-arm64 --name here-local-macos-arm64-lite
+```
+
+GitHub Releases は `.github/workflows/release.yml` で macOS arm64 と Windows x64 のパッケージを作成します。
 
 ```bash
 bash scripts/start.sh
@@ -83,6 +101,8 @@ bash scripts/start.sh
 ```bat
 start.bat
 ```
+
+Release bundles are intentionally lightweight and do not include local ASR, video import, or AI background-removal dependencies by default.
 
 ## ⚙️ 設定
 

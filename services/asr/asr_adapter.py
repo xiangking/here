@@ -385,7 +385,7 @@ class FasterWhisperAdapter(ASRAdapter):
             from faster_whisper import WhisperModel
         except ImportError as exc:
             raise RuntimeError(
-                "faster-whisper ASR dependencies are missing. Run: pip install faster-whisper"
+                "faster-whisper ASR dependencies are missing. Run: uv sync --extra asr"
             ) from exc
 
         self._np = np
@@ -522,7 +522,7 @@ class RealtimeSTTAdapter(ASRAdapter):
                 from realtimestt import AudioToTextRecorder
             except ImportError as exc:
                 raise RuntimeError(
-                    "RealtimeSTT ASR dependencies are missing. Run: pip install RealtimeSTT"
+                    "RealtimeSTT ASR dependencies are missing. Run: uv sync --extra asr"
                 ) from exc
 
         self._AudioToTextRecorder = AudioToTextRecorder

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pygame
 import shutil
+from openai import OpenAI
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
@@ -677,19 +678,28 @@ class DesktopMenuMixin:
         base_url_edit = QLineEdit(str(getattr(api, "internal_agent_base_url", "") or "https://api.openai.com/v1"), dialog)
         api_key_edit = QLineEdit(str(getattr(api, "internal_agent_api_key", "") or ""), dialog)
         api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        model_combo = QComboBox(dialog)
+        model_combo.setEditable(False)
+        model_combo.setVisible(False)
+        fetch_models_btn = QPushButton(tr("desktop.settings_dialog.fetch_models"), dialog)
 
         core_rows: list[QWidget] = []
+        model_combo_row: list[QWidget] = []
 
-        def add_core_row(label_key: str, widget: QWidget) -> None:
+        def add_core_row(label_key: str, widget: QWidget, *, row_group: list[QWidget] | None = None) -> None:
             label = QLabel(tr(label_key), dialog)
             form.addRow(label, widget)
             core_rows.extend([label, widget])
+            if row_group is not None:
+                row_group.extend([label, widget])
 
         form.addRow(QLabel(tr("desktop.settings_dialog.agent_backend"), dialog), backend_combo)
         add_core_row("desktop.settings_dialog.core_provider", provider_edit)
         add_core_row("desktop.settings_dialog.core_model", model_edit)
+        add_core_row("desktop.settings_dialog.available_models", model_combo, row_group=model_combo_row)
         add_core_row("desktop.settings_dialog.core_base_url", base_url_edit)
         add_core_row("desktop.settings_dialog.core_api_key", api_key_edit)
+        add_core_row("desktop.settings_dialog.fetch_models", fetch_models_btn)
 
         hint = QLabel(tr("desktop.settings_dialog.agent_backend_hint"), dialog)
         hint.setWordWrap(True)
@@ -700,9 +710,71 @@ class DesktopMenuMixin:
             show_core = str(backend_combo.currentData() or "") in {"internal-agent", "auto"}
             for row_widget in core_rows:
                 row_widget.setVisible(show_core)
+            show_model_combo = show_core and model_combo.count() > 0
+            for row_widget in model_combo_row:
+                row_widget.setVisible(show_model_combo)
 
         backend_combo.currentIndexChanged.connect(lambda *_: update_core_visibility())
         update_core_visibility()
+
+        def fetch_available_models() -> None:
+            base_url = base_url_edit.text().strip()
+            api_key = api_key_edit.text().strip() or "unused"
+            try:
+                client = OpenAI(api_key=api_key, base_url=base_url.rstrip("/") or None)
+                ids = sorted(str(model.id) for model in client.models.list().data if str(model.id or "").strip())
+            except Exception as exc:
+                QMessageBox.warning(
+                    dialog,
+                    tr("desktop.settings_dialog.fetch_models_failed_title"),
+                    tr("desktop.settings_dialog.fetch_models_failed", error=str(exc)),
+                )
+                return
+            if not ids:
+                QMessageBox.information(
+                    dialog,
+                    tr("desktop.settings_dialog.fetch_models_title"),
+                    tr("desktop.settings_dialog.fetch_models_empty"),
+                )
+                return
+            model_combo.blockSignals(True)
+            model_combo.clear()
+            for model_id in ids:
+                model_combo.addItem(model_id, model_id)
+            model_combo.blockSignals(False)
+            current_model = model_edit.text().strip()
+            idx = model_combo.findText(current_model)
+            if idx < 0:
+                preferred = next(
+                    (
+                        model_id
+                        for model_id in ids
+                        if model_id.startswith("step-3.7")
+                        or model_id.startswith("step-3.5")
+                        or model_id == "gpt-4o-mini"
+                    ),
+                    ids[0],
+                )
+                idx = model_combo.findText(preferred)
+                model_edit.setText(preferred)
+                self.setNotification(
+                    tr(
+                        "desktop.menu.notify_model_unavailable_replaced",
+                        old=current_model or "-",
+                        new=preferred,
+                    )
+                )
+            model_combo.setCurrentIndex(idx if idx >= 0 else 0)
+            model_combo.setVisible(True)
+            update_core_visibility()
+
+        def apply_model_combo(index: int) -> None:
+            model_id = str(model_combo.itemData(index) or model_combo.currentText() or "").strip()
+            if model_id:
+                model_edit.setText(model_id)
+
+        model_combo.currentIndexChanged.connect(apply_model_combo)
+        fetch_models_btn.clicked.connect(fetch_available_models)
 
         buttons = QHBoxLayout()
         cancel_btn = QPushButton(tr("desktop.menu.cancel"), dialog)
@@ -729,6 +801,8 @@ class DesktopMenuMixin:
         config_manager.config.api_config = api_new
         config_manager.save_api_config()
         rt = try_get_app_runtime()
+        selected_backend = str(backend_combo.currentText())
+        runtime_backend = ""
         if rt is not None:
             try:
                 old_backend = getattr(rt, "agent_backend", None)
@@ -748,15 +822,18 @@ class DesktopMenuMixin:
                     rt.proactive_contact_scheduler.agent_backend = new_backend
                 if old_backend is not None and hasattr(old_backend, "reset_session"):
                     old_backend.reset_session()
+                runtime_backend = str(
+                    getattr(new_backend, "selected_backend_id", type(new_backend).__name__)
+                    or ""
+                )
             except Exception as exc:
                 self.setNotification(f"Agent 后端配置已保存，但即时切换失败：{exc}")
                 return
-        self.setNotification(
-            tr(
-                "desktop.menu.notify_agent_backend_saved",
-                backend=str(backend_combo.currentText()),
-            )
-        )
+        if runtime_backend and runtime_backend != str(backend_combo.currentData() or ""):
+            selected_backend = f"{selected_backend}（当前实际运行：{runtime_backend}）"
+        elif runtime_backend:
+            selected_backend = f"{selected_backend}（已生效）"
+        self.setNotification(tr("desktop.menu.notify_agent_backend_saved", backend=selected_backend))
 
     def show_create_character_dialog(self) -> None:
         self._sync_i18n_from_config()

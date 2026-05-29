@@ -50,31 +50,49 @@ here는 데스크톱에 상주하는 AI 컴패니언입니다. 캐릭터 프로�
 | Python | Python 3.11. ASR 코드가 아직 `audioop`을 사용하므로 프로젝트는 `<3.13`으로 제한됩니다. |
 | 환경 관리 | 소스 실행과 개발에는 [uv](https://docs.astral.sh/uv/)를 사용합니다. |
 | 데스크톱 UI | PySide6 / Qt runtime. |
-| macOS audio build dependency | PyAudio requires Homebrew PortAudio. `scripts/install.sh` installs it automatically when Homebrew is available. |
-| ASR | 선택 사항. ASR 설정에서 Vosk, faster-whisper, RealtimeSTT를 선택할 수 있습니다. |
+| Optional native extras | Local ASR, video sprite import, and AI background removal are optional extras to keep default installs and release bundles smaller. |
+| ASR | 선택 사항. Vosk, faster-whisper, RealtimeSTT를 사용하기 전에 `bash scripts/install.sh --with-asr`를 실행하세요. |
 | TTS 및 이미지 API | 선택 사항. API Key는 UI 또는 환경 변수로 설정할 수 있습니다. |
 | 외부 전달 | 선택 사항. WeChat 등 채널은 별도의 로컬 설정이 필요합니다. |
 
 Windows에서는 오디오, Qt, 임베디드 Python 구성 요소의 경로 문제를 피하기 위해 `D:\here`처럼 ASCII 전용 경로에 프로젝트를 두세요.
 
-Apple Silicon macOS에서는 현재 공식 Vosk wheel이 darwin arm64를 지원하지 않기 때문에 `uv sync`가 `vosk`를 건너뜁니다. `Speech recognition ASR`에서 `faster-whisper` 또는 `RealtimeSTT`를 선택하세요. Intel macOS, Windows, Linux에서는 Vosk를 설치할 수 있습니다.
+Apple Silicon macOS에서는 선택 ASR 설치가 `vosk`를 건너뜁니다. 현재 공식 Vosk wheel이 darwin arm64를 지원하지 않기 때문입니다. `Speech recognition ASR`에서 `faster-whisper` 또는 `RealtimeSTT`를 선택하세요. Intel macOS, Windows, Linux에서는 Vosk를 설치할 수 있습니다.
 
 ## 📦 설치
 
 ### 소스 실행
 
 소스 실행과 개발은 uv로 관리합니다. 시스템 Python이나 수동 `pip install`로 프로젝트 환경을 관리하지 마세요.
+현재 환경에서 uv를 사용할 수 없으면 설치/시작 스크립트가 Astral 공식 설치 프로그램으로 자동 설치합니다.
 
 ```bash
 bash scripts/install.sh
 uv run python -m app.desktop.main
 ```
 
-On macOS, the installer checks Homebrew and installs `portaudio` before running `uv sync`, so `pyaudio` can build from a clean environment.
+Optional native capabilities can be added when needed:
+
+```bash
+bash scripts/install.sh --with-asr
+bash scripts/install.sh --with-video
+bash scripts/install.sh --with-background-removal
+bash scripts/install.sh --full
+```
+
+macOS에서 ASR extras를 사용하려면 Homebrew PortAudio가 필요합니다. 설치 스크립트는 Homebrew를 확인하고 `uv sync --extra asr` 전에 `portaudio`를 설치하므로, 깨끗한 환경에서도 `pyaudio`를 빌드할 수 있습니다.
 
 ### 패키지 빌드
 
 Release 번들에는 시작 스크립트가 포함됩니다. 소스 개발에는 uv를 사용하고, 패키지 스크립트는 포함된 runtime을 우선 사용합니다.
+
+소스 트리에서 로컬 macOS 번들을 빌드합니다:
+
+```bash
+python3 scripts/build_bundle.py --target macos-arm64 --name here-local-macos-arm64-lite
+```
+
+GitHub Releases는 `.github/workflows/release.yml`로 macOS arm64와 Windows x64 번들을 빌드합니다.
 
 ```bash
 bash scripts/start.sh
@@ -83,6 +101,8 @@ bash scripts/start.sh
 ```bat
 start.bat
 ```
+
+Release bundles are intentionally lightweight and do not include local ASR, video import, or AI background-removal dependencies by default.
 
 ## ⚙️ 설정
 

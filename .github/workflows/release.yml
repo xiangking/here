@@ -73,96 +73,29 @@ jobs:
           - os: windows-latest
             platform: windows-x64
             artifact: here-${{ needs.tag.outputs.TAG }}-windows-x64.zip
-            embed_url: https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip
-            embed_archive: python-embed.zip
-            pth_file: python311._pth
-          - os: macos-13
-            platform: macos-x64
-            artifact: here-${{ needs.tag.outputs.TAG }}-macos-x64.zip
+          - os: macos-15
+            platform: macos-arm64
+            artifact: here-${{ needs.tag.outputs.TAG }}-macos-arm64.zip
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python 3.11 (Windows download embeddable)
-        if: matrix.platform == 'windows-x64'
-        shell: bash
-        run: |
-          curl -fL -o python-embed.zip "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
-
-      - name: Setup Python 3.11 (macOS via python-build-standalone)
-        if: matrix.platform != 'windows-x64'
-        shell: bash
-        run: |
-          gh release download 20260510 \
-            -R indygreg/python-build-standalone \
-            -p 'cpython-3.11.15+20260510-x86_64-apple-darwin-install_only.tar.gz' \
-            -O python-standalone.tar.gz
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Extract Python to runtime/
-        shell: bash
-        run: |
-          rm -rf runtime
-          if [[ "${{ matrix.platform }}" == "windows-x64" ]]; then
-            mkdir -p runtime
-            unzip -q python-embed.zip -d runtime/
-          else
-            mkdir -p runtime
-            tar -xzf python-standalone.tar.gz -C runtime/ --strip-components=1
-          fi
-
-      - name: Enable site packages for embedded Python (Windows)
-        if: matrix.platform == 'windows-x64'
-        shell: bash
-        run: sed -i 's/^#import site/import site/' runtime/python311._pth
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
 
-      - name: Install bundle dependencies
+      - name: Build bundle
         shell: bash
-        run: |
-          if [[ "${{ matrix.platform }}" == "windows-x64" ]]; then
-            uv pip install --python ./runtime/python.exe -r requirements.txt -q
-          else
-            uv pip install --python ./runtime/bin/python3 -r requirements.txt -q
-          fi
+        run: python scripts/build_bundle.py --target "${{ matrix.platform }}" --name "here-${{ needs.tag.outputs.TAG }}-${{ matrix.platform }}"
 
-      - name: Smoke test bundled runtime
+      - name: Rename bundle artifact
         shell: bash
-        env:
-          QT_QPA_PLATFORM: offscreen
-          PYTHONIOENCODING: utf-8
-        run: |
-          if [[ "${{ matrix.platform }}" == "windows-x64" ]]; then
-            ./runtime/python.exe -c "import PySide6, openai, yaml; import app.desktop.main"
-          else
-            ./runtime/bin/python3 -c "import PySide6, openai, yaml; import app.desktop.main"
-          fi
-
-      - name: Make scripts executable (macOS)
-        if: matrix.platform != 'windows-x64'
-        shell: bash
-        run: chmod +x scripts/install.sh scripts/start.sh
-
-      - name: Remove Python download archives
-        shell: bash
-        run: rm -f python-embed.zip python-standalone.tar.gz
-
-      - name: Create bundle archive (Windows)
-        if: matrix.platform == 'windows-x64'
-        shell: pwsh
-        run: |
-          Compress-Archive -Path * -DestinationPath "${{ matrix.artifact }}" -Force
-
-      - name: Create bundle archive (macOS)
-        if: matrix.platform != 'windows-x64'
-        shell: bash
-        run: |
-          zip -r "${{ matrix.artifact }}" . -x '.git/*' '*.pyc' '__pycache__/*'
+        run: mv "dist/here-${{ needs.tag.outputs.TAG }}-${{ matrix.platform }}.zip" "${{ matrix.artifact }}"
 
       - name: Upload bundle to release
         uses: softprops/action-gh-release@v2

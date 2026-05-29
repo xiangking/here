@@ -5,28 +5,19 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
   "numpy",
   "pygame",
-  "opencv_python",
   "openai",
   "opencc-python-reimplemented",
   "pydantic",
-  "pandas",
   "requests",
-  "onnxruntime",
-  "rembg",
   "google-genai",
   "tiktoken",
-  "pyaudio",
   "anthropic",
-  "PySide6",
+  "PySide6-Essentials",
   "qrcode[pil]",
   "cryptography",
   "pyobjc-framework-AVFoundation; sys_platform == 'darwin'",
   "QtPy>=2.4.1",
-  "pyqt-toast-notification>=1.3.3",
   "pyyaml",
-  "vosk; platform_system != 'Darwin' or platform_machine != 'arm64'",
-  "faster-whisper",
-  "RealtimeSTT",
   "fal-client",
   "gpu-list",
   "py7zr",
@@ -34,10 +25,31 @@ dependencies = [
   "hermes-agent @ git+https://github.com/NousResearch/hermes-agent.git@0f0e20ef81709a6dd590b25af380b116db67628c",
 ]
 
+[project.optional-dependencies]
+asr = [
+  "pyaudio",
+  "vosk; platform_system != 'Darwin' or platform_machine != 'arm64'",
+  "faster-whisper",
+  "RealtimeSTT",
+]
+video = [
+  "opencv_python",
+]
+background-removal = [
+  "rembg",
+]
+full = [
+  "pyaudio",
+  "vosk; platform_system != 'Darwin' or platform_machine != 'arm64'",
+  "faster-whisper",
+  "RealtimeSTT",
+  "opencv_python",
+  "rembg",
+]
+
 [dependency-groups]
 dev = [
   "pytest",
   "pytest-env",
   "pytest-mock",
-  "pytest-qt",
 ]

@@ -14,9 +14,9 @@ import traceback
 from pathlib import Path
 from typing import Any, Dict, List, MutableSequence, Optional, Tuple
 
-import cv2
 import numpy as np
 import pygame
+from PIL import Image
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QTextDocument
 
@@ -184,17 +184,6 @@ class UIUpdateManager(QObject):
             return sprite.get(key, default)
         return getattr(sprite, key, default)
 
-    def _normalize_image_channels(self, cv_image: np.ndarray) -> np.ndarray:
-        if cv_image.ndim == 2:
-            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_GRAY2RGBA)
-        elif cv_image.shape[2] == 3:
-            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
-            alpha_channel = np.full((cv_image.shape[0], cv_image.shape[1]), 255, dtype=np.uint8)
-            cv_image = cv2.merge([cv_image, alpha_channel])
-        elif cv_image.shape[2] == 4:
-            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGRA2RGBA)
-        return cv_image
-
     def _load_rgba_image(self, image_path: Path) -> Optional[np.ndarray]:
         image_path = image_path.expanduser()
         stat = image_path.stat()
@@ -205,16 +194,17 @@ class UIUpdateManager(QObject):
             self._sprite_image_cache.move_to_end(cache_key)
             return cached[1]
 
-        img_data = np.fromfile(str(image_path), dtype=np.uint8)
-        cv_image = cv2.imdecode(img_data, cv2.IMREAD_UNCHANGED)
-        if cv_image is None:
+        try:
+            with Image.open(image_path) as image:
+                rgba_image = image.convert("RGBA")
+                array = np.ascontiguousarray(np.array(rgba_image, dtype=np.uint8))
+        except Exception:
             return None
-        cv_image = self._normalize_image_channels(cv_image)
-        self._sprite_image_cache[cache_key] = (fingerprint, cv_image)
+        self._sprite_image_cache[cache_key] = (fingerprint, array)
         self._sprite_image_cache.move_to_end(cache_key)
         while len(self._sprite_image_cache) > self._sprite_image_cache_limit:
             self._sprite_image_cache.popitem(last=False)
-        return cv_image
+        return array
 
     def _frame_interval_ms(self, sprite: Any) -> int:
         fps = self._sprite_value(sprite, "fps", 0) or 0

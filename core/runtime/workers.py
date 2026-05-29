@@ -27,6 +27,10 @@ from internal_agent.context import AgentMemoryStore, build_agent_context
 from core.agent.multimodal import build_hermes_user_message
 from core.delivery.models import DeliveryMessage
 from core.life import LifeEngine
+try:
+    from internal_agent.agent import InternalAgentModelError
+except Exception:  # pragma: no cover - defensive for unusual import states
+    InternalAgentModelError = RuntimeError
 
 
 def _dialog_html(name: str, text: str, color: str) -> str:
@@ -164,6 +168,14 @@ class AgentWorker(BaseWorker):
             self.ui_update_manager.post_notification(f"外部渠道发送失败，已回到桌面：{exc}")
         self.tts_queue.put(agent_dialog)
 
+    def _error_message_for_exception(self, exc: Exception) -> str:
+        if isinstance(exc, InternalAgentModelError):
+            return str(exc)
+        return (
+            "这次消息没有处理成功。如果你发了图片，可能是当前 Hermes 模型或接口不支持图片输入；"
+            "你可以换成支持视觉的模型，或者先用文字描述一下图片。"
+        )
+
     def run(self):
         while self.running:
             try:
@@ -299,7 +311,7 @@ class AgentWorker(BaseWorker):
                 self._emit_agent_dialog(
                     AgentDialogMessage(
                         name=active_character,
-                        text="这次消息没有处理成功。如果你发了图片，可能是当前 Hermes 模型或接口不支持图片输入；你可以换成支持视觉的模型，或者先用文字描述一下图片。",
+                        text=self._error_message_for_exception(e),
                         emotion="sad",
                     ),
                     active_character=active_character,

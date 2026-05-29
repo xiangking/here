@@ -13,6 +13,7 @@ import yaml
 APP_NAME = "here"
 APP_ID = "here"
 ENV_APP_HOME = "HERE_APP_HOME"
+ENV_PROJECT_ROOT = "HERE_PROJECT_ROOT"
 STORAGE_PATHS_CONFIG_FILE = "storage_paths.yaml"
 DEFAULT_CHARACTER_ASSET_PREFIXES = (
     "defaults/characters/",
@@ -27,6 +28,9 @@ PROJECT_RELATIVE_PREFIXES = (
 
 
 def project_root() -> Path:
+    override = os.environ.get(ENV_PROJECT_ROOT, "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
     return Path(__file__).resolve().parents[1]
 
 

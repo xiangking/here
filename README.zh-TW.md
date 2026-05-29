@@ -50,31 +50,49 @@ here 是一個常駐桌面的 AI 伴侶。它負責角色設定、長期記憶�
 | Python | Python 3.11。專案約束為 `<3.13`，因為 ASR 程式碼仍使用 `audioop`。 |
 | 環境管理 | 原始碼安裝和開發統一使用 [uv](https://docs.astral.sh/uv/)。 |
 | 桌面 UI | PySide6 / Qt runtime。 |
-| macOS 音訊編譯依賴 | PyAudio 需要 Homebrew PortAudio。`scripts/install.sh` 會在偵測到 Homebrew 時自動安裝。 |
-| ASR | 可選，可在 ASR 設定裡選擇 Vosk、faster-whisper 或 RealtimeSTT。 |
+| 可選原生能力 | 本機 ASR、影片立繪匯入、AI 去背都作為可選 extras，預設安裝和發行包會更輕。 |
+| ASR | 可選。使用 Vosk、faster-whisper 或 RealtimeSTT 前，請先執行 `bash scripts/install.sh --with-asr`。 |
 | TTS 和生圖 API | 可選，可在 UI 填寫 API Key，也可以透過環境變數提供。 |
 | 外部送達 | 可選。微信等渠道需要各自的本機設定。 |
 
 Windows 使用者請把專案放在純英文路徑下，例如 `D:\here`，避免部分音訊/Qt/嵌入式 Python 元件遇到非 ASCII 路徑問題。
 
-Apple Silicon macOS 上，`uv sync` 會跳過 `vosk`，因為目前官方 Vosk wheel 不覆蓋 darwin arm64。語音辨識請在「語音辨識 ASR」裡選擇 `faster-whisper` 或 `RealtimeSTT`；Intel macOS、Windows 和 Linux 仍可安裝 Vosk。
+Apple Silicon macOS 上，可選 ASR 安裝會跳過 `vosk`，因為目前官方 Vosk wheel 不覆蓋 darwin arm64。語音辨識請在「語音辨識 ASR」裡選擇 `faster-whisper` 或 `RealtimeSTT`；Intel macOS、Windows 和 Linux 仍可安裝 Vosk。
 
 ## 📦 安裝
 
 ### 原始碼執行
 
 原始碼開發和執行統一使用 uv。不要直接用系統 Python 或手動 `pip install` 管理專案環境。
+如果目前環境沒有 uv，安裝和啟動腳本會透過 Astral 官方安裝器自動安裝。
 
 ```bash
 bash scripts/install.sh
 uv run python -m app.desktop.main
 ```
 
-macOS 上安裝腳本會先檢查 Homebrew，並在執行 `uv sync` 前安裝 `portaudio`，避免全新環境裡 `pyaudio` 編譯失敗。
+按需安裝可選原生能力：
+
+```bash
+bash scripts/install.sh --with-asr
+bash scripts/install.sh --with-video
+bash scripts/install.sh --with-background-removal
+bash scripts/install.sh --full
+```
+
+macOS 上 ASR extras 需要 Homebrew PortAudio。安裝腳本會先檢查 Homebrew，並在執行 `uv sync --extra asr` 前安裝 `portaudio`，避免全新環境裡 `pyaudio` 編譯失敗。
 
 ### 打包版本
 
 Release 包內包含啟動腳本。原始碼開發仍建議使用 uv；打包包內腳本會優先使用自帶 runtime。
+
+從原始碼樹建立本機 macOS 包：
+
+```bash
+python3 scripts/build_bundle.py --target macos-arm64 --name here-local-macos-arm64-lite
+```
+
+GitHub Release 會透過 `.github/workflows/release.yml` 建立 macOS arm64 和 Windows x64 包。
 
 ```bash
 bash scripts/start.sh
@@ -83,6 +101,8 @@ bash scripts/start.sh
 ```bat
 start.bat
 ```
+
+發行包預設採用輕量依賴，不內建本機 ASR、影片匯入或 AI 去背依賴。
 
 ## ⚙️ 設定
 

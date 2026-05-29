@@ -66,31 +66,49 @@ Model reasoning is handled by Hermes Agent or the bundled OpenAI-compatible Inte
 | Python | Python 3.11. The project is constrained to `<3.13` because `audioop` is still used by ASR code. |
 | Environment manager | [uv](https://docs.astral.sh/uv/) is required for source installs and development. |
 | Desktop UI | PySide6 / Qt runtime. |
-| macOS audio build dependency | Homebrew PortAudio is required by PyAudio. `scripts/install.sh` installs it automatically when Homebrew is available. |
-| ASR | Optional. Vosk, faster-whisper, or RealtimeSTT can be selected in the ASR settings. |
+| Optional native extras | Local ASR, video sprite import, and AI background removal are optional extras to keep default installs and release bundles smaller. |
+| ASR | Optional. Install with `bash scripts/install.sh --with-asr` before using Vosk, faster-whisper, or RealtimeSTT. |
 | TTS and image APIs | Optional. API keys can be entered in the UI or provided through environment variables. |
 | External delivery | Optional. WeChat and other delivery channels need their own local configuration. |
 
 On Windows, keep the project in an ASCII-only path such as `D:\here` to avoid path issues in audio, Qt, or embedded Python components.
 
-On Apple Silicon macOS, `uv sync` skips `vosk` because the current official Vosk wheels do not cover darwin arm64. Choose `faster-whisper` or `RealtimeSTT` in `Speech recognition ASR`; Vosk remains installable on Intel macOS, Windows, and Linux.
+On Apple Silicon macOS, the optional ASR install skips `vosk` because the current official Vosk wheels do not cover darwin arm64. Choose `faster-whisper` or `RealtimeSTT` in `Speech recognition ASR`; Vosk remains installable on Intel macOS, Windows, and Linux.
 
 ## 📦 Installation
 
 ### Source Run
 
 Source development and runtime are managed with uv. Do not manage the project environment with a system Python or manual `pip install`.
+If uv is not already available, the install and start scripts will install it automatically through Astral's official installer.
 
 ```bash
 bash scripts/install.sh
 uv run python -m app.desktop.main
 ```
 
-On macOS, the installer checks Homebrew and installs `portaudio` before running `uv sync`, so `pyaudio` can build from a clean environment.
+Optional native capabilities can be added when needed:
+
+```bash
+bash scripts/install.sh --with-asr
+bash scripts/install.sh --with-video
+bash scripts/install.sh --with-background-removal
+bash scripts/install.sh --full
+```
+
+On macOS, ASR extras require Homebrew PortAudio. The installer checks Homebrew and installs `portaudio` before running `uv sync --extra asr`, so `pyaudio` can build from a clean environment.
 
 ### Packaged Builds
 
 Release bundles include start scripts. Source development should still use uv; packaged scripts prefer the bundled runtime when available.
+
+Build a local macOS bundle from the source tree:
+
+```bash
+python3 scripts/build_bundle.py --target macos-arm64 --name here-local-macos-arm64-lite
+```
+
+GitHub Releases are built by `.github/workflows/release.yml` for macOS arm64 and Windows x64.
 
 ```bash
 bash scripts/start.sh
@@ -99,6 +117,8 @@ bash scripts/start.sh
 ```bat
 start.bat
 ```
+
+Release bundles are intentionally lightweight and do not include local ASR, video import, or AI background-removal dependencies by default.
 
 ## ⚙️ Configuration
 
