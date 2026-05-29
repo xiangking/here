@@ -75,7 +75,7 @@ if "%NEEDS_GIT%"=="1" (
     where git > nul 2>&1
     if %errorlevel% neq 0 (
         echo Error: Git not found in PATH
-        echo Git is only required when installing the optional Hermes Agent backend.
+        echo Git is only required when installing the local Hermes Agent package into this environment.
         echo Install Git for Windows first: https://git-scm.com/download/win
         pause
         exit /b 1

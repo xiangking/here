@@ -45,7 +45,7 @@
 
 here is a desktop AI companion that stays with the user instead of behaving like a disposable chat box. It owns character profiles, long-term memory, daily state, animated sprites, speech, input, chat presentation, proactive contact, and optional current-state photos.
 
-Model reasoning is handled by the bundled OpenAI-compatible Internal Agent by default, with Hermes Agent available as an optional compatibility backend. Image generation is adapter-based so Grok Imagine, GPT Image, OpenAI-compatible services, and future providers can share the same proactive photo flow.
+Model reasoning uses the user's locally installed and configured Hermes Agent when it is available. The bundled OpenAI-compatible Internal Agent exists as the lightweight fallback. Image generation is adapter-based so Grok Imagine, GPT Image, OpenAI-compatible services, and future providers can share the same proactive photo flow.
 
 ## ✨ Features
 
@@ -54,7 +54,7 @@ Model reasoning is handled by the bundled OpenAI-compatible Internal Agent by de
 | Character system | Create, import, and edit personas, visual identity, emotion tags, voice references, and character bundles. |
 | Memory and asset folders | Choose where character memory and animation assets live, including external drives. |
 | Desktop chat | Dialog, sprite switching, TTS playback, microphone input, history save and restore. |
-| Agent backend | Choose Hermes Agent, Internal Agent, or automatic fallback from the main menu. |
+| Agent backend | Choose the user's local Hermes Agent, the bundled Internal Agent fallback, or automatic selection from the main menu. |
 | Proactive contact | Characters can reach out based on their own daily state through desktop chat or external delivery channels such as WeChat. |
 | Proactive photos | Proactive contact can attach a natural current-state photo generated from character identity, life state, and optional reference images. |
 | Configurable image APIs | Switch image-api, Grok Imagine, GPT Image, OpenAI-compatible endpoints, and future adapters without changing the scheduler. |
@@ -67,7 +67,7 @@ Model reasoning is handled by the bundled OpenAI-compatible Internal Agent by de
 | Environment manager | [uv](https://docs.astral.sh/uv/) is required for source installs and development. |
 | Desktop UI | PySide6 / Qt runtime. |
 | Optional native extras | Local ASR, video sprite import, and AI background removal are optional extras to keep default installs and release bundles smaller. |
-| Optional Hermes backend | Install with `bash scripts/install.sh --with-hermes` only if you want the legacy Hermes Agent backend. This extra is fetched from GitHub and requires Git/network access. |
+| Local Hermes Agent | If Hermes Agent is not already installed in this project environment, install it with `bash scripts/install.sh --with-hermes`. This helper extra is fetched from GitHub and requires Git/network access. |
 | ASR | Optional. Install with `bash scripts/install.sh --with-asr` before using Vosk, faster-whisper, or RealtimeSTT. |
 | TTS and image APIs | Optional. API keys can be entered in the UI or provided through environment variables. |
 | External delivery | Optional. WeChat and other delivery channels need their own local configuration. |
@@ -98,7 +98,7 @@ bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
 
-`--full` installs the native extras, but it intentionally does not install Hermes Agent because that backend depends on a GitHub source package. Use `--with-hermes` explicitly when you need it.
+`--full` installs the native extras, but it intentionally does not install Hermes Agent because that package is fetched from GitHub. Use `--with-hermes` only when you need here to install Hermes Agent into this environment.
 
 On macOS, ASR extras require Homebrew PortAudio. The installer checks Homebrew and installs `portaudio` before running `uv sync --extra asr`, so `pyaudio` can build from a clean environment.
 

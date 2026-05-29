@@ -29,7 +29,7 @@
 
 here 是一個常駐桌面的 AI 伴侶。它負責角色設定、長期記憶、日常狀態、立繪動畫、語音、輸入、聊天呈現、主動聯絡，以及可選的目前狀態照片。
 
-模型推理預設由內建 OpenAI-compatible Internal Agent 承擔，Hermes Agent 作為可選相容後端提供。生圖能力採用適配器設計，因此 Grok Imagine、GPT Image、OpenAI-compatible 服務和未來新增的生圖 API 都可以共用同一套主動聯絡附圖流程。
+模型推理會優先使用使用者本機已安裝並設定好的 Hermes Agent；專案內建的 OpenAI-compatible Internal Agent 主要作為輕量兜底。生圖能力採用適配器設計，因此 Grok Imagine、GPT Image、OpenAI-compatible 服務和未來新增的生圖 API 都可以共用同一套主動聯絡附圖流程。
 
 ## ✨ 主要功能
 
@@ -38,7 +38,7 @@ here 是一個常駐桌面的 AI 伴侶。它負責角色設定、長期記憶�
 | 角色系統 | 建立、匯入、編輯角色；維護人設、視覺身份、情緒標籤、語音引用和角色包。 |
 | 記憶與素材目錄 | 在設定中選擇角色長期記憶和動畫素材目錄，方便遷移或放到外接磁碟。 |
 | 桌面聊天 | 對話、立繪切換、TTS 播放、麥克風輸入、歷史保存與恢復。 |
-| Agent 後端 | 在主視窗選單中選擇 Hermes Agent、Internal Agent 或自動兜底。 |
+| Agent 後端 | 在主視窗選單中選擇使用者本機 Hermes Agent、專案內建 Internal Agent 兜底，或自動選擇。 |
 | 主動聯絡 | 角色可依自己的日程狀態主動聯絡使用者，並可選擇桌面、微信等送達渠道。 |
 | 主動附圖 | 主動聯絡可附帶根據角色身份、生活狀態和可選參考圖生成的自然狀態照片。 |
 | 可配置生圖 API | image-api、Grok Imagine、GPT Image、OpenAI-compatible endpoint 和未來適配器都可以在不改調度器的情況下切換。 |
@@ -51,7 +51,7 @@ here 是一個常駐桌面的 AI 伴侶。它負責角色設定、長期記憶�
 | 環境管理 | 原始碼安裝和開發統一使用 [uv](https://docs.astral.sh/uv/)。 |
 | 桌面 UI | PySide6 / Qt runtime。 |
 | 可選原生能力 | 本機 ASR、影片立繪匯入、AI 去背都作為可選 extras，預設安裝和發行包會更輕。 |
-| 可選 Hermes 後端 | 只有需要舊 Hermes Agent 後端時才執行 `bash scripts/install.sh --with-hermes`。這個 extra 來自 GitHub，需要 Git 和網路存取。 |
+| 本機 Hermes Agent | 如果目前專案環境還沒有安裝 Hermes Agent，可執行 `bash scripts/install.sh --with-hermes` 輔助安裝。這個 extra 來自 GitHub，需要 Git 和網路存取。 |
 | ASR | 可選。使用 Vosk、faster-whisper 或 RealtimeSTT 前，請先執行 `bash scripts/install.sh --with-asr`。 |
 | TTS 和生圖 API | 可選，可在 UI 填寫 API Key，也可以透過環境變數提供。 |
 | 外部送達 | 可選。微信等渠道需要各自的本機設定。 |
@@ -82,7 +82,7 @@ bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
 
-`--full` 只安裝原生能力 extras，刻意不包含 Hermes Agent，因為它依賴 GitHub 原始碼包。需要 Hermes 時請明確使用 `--with-hermes`。
+`--full` 只安裝原生能力 extras，刻意不自動安裝 Hermes Agent，因為它來自 GitHub 原始碼包。需要 here 幫目前環境安裝 Hermes Agent 時，請明確使用 `--with-hermes`。
 
 macOS 上 ASR extras 需要 Homebrew PortAudio。安裝腳本會先檢查 Homebrew，並在執行 `uv sync --extra asr` 前安裝 `portaudio`，避免全新環境裡 `pyaudio` 編譯失敗。
 

@@ -117,7 +117,7 @@ if [ "$NEEDS_AUDIO" -eq 1 ]; then
 fi
 
 if [ "$NEEDS_GIT" -eq 1 ] && ! command -v git >/dev/null 2>&1; then
-    echo "Error: Git is required only when installing the optional Hermes Agent backend."
+    echo "Error: Git is required only when installing the local Hermes Agent package into this environment."
     echo "Install Git first, then rerun scripts/install.sh --with-hermes."
     exit 1
 fi

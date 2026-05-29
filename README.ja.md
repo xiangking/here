@@ -29,7 +29,7 @@
 
 here はデスクトップに常駐する AI コンパニオンです。キャラクター設定、長期記憶、日常状態、スプライトアニメーション、音声、入力、チャット表示、主动連絡、任意の現在状態写真を扱います。
 
-モデル推論は標準では同梱の OpenAI-compatible Internal Agent が担当し、Hermes Agent は任意の互換バックエンドとして利用できます。画像生成はアダプター方式なので、Grok Imagine、GPT Image、OpenAI-compatible サービス、今後追加される画像 API を同じ主动写真フローで利用できます。
+モデル推論は、ユーザー環境にインストール済みで設定済みの Hermes Agent を優先して使います。同梱の OpenAI-compatible Internal Agent は軽量フォールバックです。画像生成はアダプター方式なので、Grok Imagine、GPT Image、OpenAI-compatible サービス、今後追加される画像 API を同じ主动写真フローで利用できます。
 
 ## ✨ 主な機能
 
@@ -38,7 +38,7 @@ here はデスクトップに常駐する AI コンパニオンです。キャ�
 | キャラクターシステム | ペルソナ、視覚的アイデンティティ、感情タグ、音声参照、キャラクターパックを作成・インポート・編集できます。 |
 | 記憶と素材フォルダー | キャラクターの長期記憶とアニメーション素材の保存場所を選択できます。外部ドライブにも配置できます。 |
 | デスクトップチャット | 会話、立ち絵切り替え、TTS 再生、マイク入力、履歴の保存と復元を行います。 |
-| Agent バックエンド | メインメニューから Hermes Agent、Internal Agent、自動フォールバックを選択できます。 |
+| Agent バックエンド | メインメニューからユーザー環境の Hermes Agent、同梱 Internal Agent フォールバック、自動選択を選べます。 |
 | 主动連絡 | キャラクターが自分の日常状態に基づいて、デスクトップチャットや WeChat などの外部チャンネルへ自然に連絡できます。 |
 | 主动写真 | キャラクターの見た目、生活状態、任意の参照画像から自然な現在状態写真を添付できます。 |
 | 設定可能な画像 API | image-api、Grok Imagine、GPT Image、OpenAI-compatible endpoint、今後のアダプターをスケジューラー変更なしで切り替えられます。 |
@@ -51,7 +51,7 @@ here はデスクトップに常駐する AI コンパニオンです。キャ�
 | 環境管理 | ソース実行と開発には [uv](https://docs.astral.sh/uv/) を使用します。 |
 | デスクトップ UI | PySide6 / Qt runtime。 |
 | 任意のネイティブ機能 | ローカル ASR、動画スプライト取り込み、AI 背景削除は任意 extras です。標準インストールとリリースパッケージを軽く保ちます。 |
-| 任意の Hermes バックエンド | 旧 Hermes Agent バックエンドが必要な場合のみ `bash scripts/install.sh --with-hermes` を実行してください。この extra は GitHub から取得され、Git とネットワークアクセスが必要です。 |
+| ローカル Hermes Agent | 現在のプロジェクト環境に Hermes Agent がまだ入っていない場合は、`bash scripts/install.sh --with-hermes` で補助インストールできます。この extra は GitHub から取得され、Git とネットワークアクセスが必要です。 |
 | ASR | 任意。Vosk、faster-whisper、RealtimeSTT を使う前に `bash scripts/install.sh --with-asr` を実行してください。 |
 | TTS と画像 API | 任意。API Key は UI または環境変数で設定できます。 |
 | 外部配信 | 任意。WeChat などのチャンネルは個別のローカル設定が必要です。 |
@@ -82,7 +82,7 @@ bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
 
-`--full` はネイティブ extras のみをインストールし、Hermes Agent は意図的に含めません。Hermes は GitHub のソースパッケージに依存するため、必要なときだけ `--with-hermes` を指定してください。
+`--full` はネイティブ extras のみをインストールし、Hermes Agent は自動では入れません。Hermes Agent は GitHub のソースパッケージから取得するため、この環境へ here からインストールしたい場合だけ `--with-hermes` を指定してください。
 
 macOS で ASR extras を使うには Homebrew PortAudio が必要です。インストーラは Homebrew を確認し、`uv sync --extra asr` の前に `portaudio` をインストールするため、クリーン環境でも `pyaudio` をビルドできます。
 

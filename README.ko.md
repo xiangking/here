@@ -29,7 +29,7 @@
 
 here는 데스크톱에 상주하는 AI 컴패니언입니다. 캐릭터 프로필, 장기 기억, 일상 상태, 스프라이트 애니메이션, 음성, 입력, 채팅 표현, 선제 연락, 선택적인 현재 상태 사진을 다룹니다.
 
-모델 추론은 기본적으로 내장 OpenAI-compatible Internal Agent가 담당하며, Hermes Agent는 선택형 호환 백엔드로 사용할 수 있습니다. 이미지 생성은 어댑터 기반이므로 Grok Imagine, GPT Image, OpenAI-compatible 서비스, 향후 추가될 이미지 API를 같은 선제 사진 흐름에서 사용할 수 있습니다.
+모델 추론은 사용자의 로컬 환경에 설치되고 설정된 Hermes Agent를 우선 사용합니다. 내장 OpenAI-compatible Internal Agent는 가벼운 폴백입니다. 이미지 생성은 어댑터 기반이므로 Grok Imagine, GPT Image, OpenAI-compatible 서비스, 향후 추가될 이미지 API를 같은 선제 사진 흐름에서 사용할 수 있습니다.
 
 ## ✨ 주요 기능
 
@@ -38,7 +38,7 @@ here는 데스크톱에 상주하는 AI 컴패니언입니다. 캐릭터 프로�
 | 캐릭터 시스템 | 페르소나, 시각 정체성, 감정 태그, 음성 참조, 캐릭터 패키지를 만들고 가져오고 편집합니다. |
 | 기억과 소재 폴더 | 캐릭터 장기 기억과 애니메이션 소재의 저장 위치를 선택할 수 있으며 외장 디스크도 사용할 수 있습니다. |
 | 데스크톱 채팅 | 대화, 스프라이트 전환, TTS 재생, 마이크 입력, 기록 저장과 복원을 지원합니다. |
-| Agent 백엔드 | 메인 메뉴에서 Hermes Agent, Internal Agent, 자동 폴백을 선택할 수 있습니다. |
+| Agent 백엔드 | 메인 메뉴에서 사용자 로컬 Hermes Agent, 내장 Internal Agent 폴백, 자동 선택을 고를 수 있습니다. |
 | 선제 연락 | 캐릭터가 자신의 일상 상태에 따라 데스크톱 채팅이나 WeChat 같은 외부 채널로 자연스럽게 연락할 수 있습니다. |
 | 선제 사진 | 캐릭터 정체성, 생활 상태, 선택적 참조 이미지를 바탕으로 자연스러운 현재 상태 사진을 첨부할 수 있습니다. |
 | 설정 가능한 이미지 API | image-api, Grok Imagine, GPT Image, OpenAI-compatible endpoint, 향후 어댑터를 스케줄러 변경 없이 전환할 수 있습니다. |
@@ -51,7 +51,7 @@ here는 데스크톱에 상주하는 AI 컴패니언입니다. 캐릭터 프로�
 | 환경 관리 | 소스 실행과 개발에는 [uv](https://docs.astral.sh/uv/)를 사용합니다. |
 | 데스크톱 UI | PySide6 / Qt runtime. |
 | 선택형 네이티브 기능 | 로컬 ASR, 동영상 스프라이트 가져오기, AI 배경 제거는 선택형 extras입니다. 기본 설치와 릴리스 번들을 가볍게 유지합니다. |
-| 선택형 Hermes 백엔드 | 기존 Hermes Agent 백엔드가 필요할 때만 `bash scripts/install.sh --with-hermes`를 실행하세요. 이 extra는 GitHub에서 가져오므로 Git과 네트워크 접근이 필요합니다. |
+| 로컬 Hermes Agent | 현재 프로젝트 환경에 Hermes Agent가 아직 없다면 `bash scripts/install.sh --with-hermes`로 보조 설치할 수 있습니다. 이 extra는 GitHub에서 가져오므로 Git과 네트워크 접근이 필요합니다. |
 | ASR | 선택 사항. Vosk, faster-whisper, RealtimeSTT를 사용하기 전에 `bash scripts/install.sh --with-asr`를 실행하세요. |
 | TTS 및 이미지 API | 선택 사항. API Key는 UI 또는 환경 변수로 설정할 수 있습니다. |
 | 외부 전달 | 선택 사항. WeChat 등 채널은 별도의 로컬 설정이 필요합니다. |
@@ -82,7 +82,7 @@ bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
 
-`--full`은 네이티브 extras만 설치하며 Hermes Agent는 의도적으로 포함하지 않습니다. Hermes는 GitHub 소스 패키지에 의존하므로 필요할 때만 `--with-hermes`를 사용하세요.
+`--full`은 네이티브 extras만 설치하며 Hermes Agent는 자동으로 포함하지 않습니다. Hermes Agent는 GitHub 소스 패키지에서 가져오므로, 이 환경에 here가 설치해 주길 원할 때만 `--with-hermes`를 사용하세요.
 
 macOS에서 ASR extras를 사용하려면 Homebrew PortAudio가 필요합니다. 설치 스크립트는 Homebrew를 확인하고 `uv sync --extra asr` 전에 `portaudio`를 설치하므로, 깨끗한 환경에서도 `pyaudio`를 빌드할 수 있습니다.
 
