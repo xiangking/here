@@ -1,6 +1,18 @@
 #!/bin/bash
 set -e
 
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+        echo "This script is for macOS/Linux."
+        echo "On Windows, run .\\install.bat from the project root instead."
+        exit 1
+        ;;
+esac
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${PROJECT_DIR}"
+
 find_brew() {
     if command -v brew >/dev/null 2>&1; then
         command -v brew

@@ -1,5 +1,11 @@
 @echo off
 chcp 65001 > nul
+
+cd /d "%~dp0"
+
+call :ensure_ascii_path
+if %errorlevel% neq 0 exit /b %errorlevel%
+
 echo ========================================
 echo   Installing...
 echo ========================================
@@ -130,6 +136,23 @@ where uv > nul 2>&1
 if %errorlevel% neq 0 (
     echo Error: uv installation finished, but uv is still not available in PATH.
     echo Try opening a new terminal, or add %%USERPROFILE%%\.local\bin to PATH.
+    pause
+    exit /b 1
+)
+exit /b 0
+
+:ensure_ascii_path
+powershell -NoProfile -ExecutionPolicy Bypass -Command "if ((Get-Location).Path -match '[^\x20-\x7E]') { exit 1 } else { exit 0 }" > nul 2>&1
+if %errorlevel% neq 0 (
+    echo.
+    echo ========================================
+    echo   Path contains non-ASCII characters!
+    echo   Please move this folder to a path
+    echo   with only English letters and numbers.
+    echo   e.g. D:\here
+    echo ========================================
+    echo   Current: %cd%
+    echo ========================================
     pause
     exit /b 1
 )

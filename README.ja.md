@@ -51,8 +51,8 @@ here はデスクトップに常駐する AI コンパニオンです。キャ�
 | 環境管理 | ソース実行と開発には [uv](https://docs.astral.sh/uv/) を使用します。 |
 | デスクトップ UI | PySide6 / Qt runtime。 |
 | 任意のネイティブ機能 | ローカル ASR、動画スプライト取り込み、AI 背景削除は任意 extras です。標準インストールとリリースパッケージを軽く保ちます。 |
-| ローカル Hermes Agent | 現在のプロジェクト環境に Hermes Agent がまだ入っていない場合は、`bash scripts/install.sh --with-hermes` で補助インストールできます。この extra は GitHub から取得され、Git とネットワークアクセスが必要です。 |
-| ASR | 任意。Vosk、faster-whisper、RealtimeSTT を使う前に `bash scripts/install.sh --with-asr` を実行してください。 |
+| ローカル Hermes Agent | 現在のプロジェクト環境に Hermes Agent がまだ入っていない場合は、`--with-hermes` で補助インストールできます。この extra は GitHub から取得され、Git とネットワークアクセスが必要です。 |
+| ASR | 任意。Vosk、faster-whisper、RealtimeSTT を使う前に `--with-asr` でインストールしてください。 |
 | TTS と画像 API | 任意。API Key は UI または環境変数で設定できます。 |
 | 外部配信 | 任意。WeChat などのチャンネルは個別のローカル設定が必要です。 |
 
@@ -67,12 +67,31 @@ Apple Silicon macOS では、任意 ASR インストール時に `vosk` をス�
 ソース実行と開発は uv で管理します。システム Python や手動の `pip install` で環境を管理しないでください。
 uv がまだ使えない環境では、インストール/起動スクリプトが Astral 公式インストーラで自動インストールします。
 
-```bash
-bash scripts/install.sh
-uv run python -m app.desktop.main
+Windows では PowerShell または Command Prompt から batch script を実行してください:
+
+```powershell
+.\install.bat
+.\start.bat
 ```
 
-必要に応じて任意機能を追加できます:
+Windows の Git Bash から `.sh` script を実行しないでください。`.sh` script は macOS/Linux 用です。
+
+macOS と Linux では shell script を実行してください:
+
+```bash
+bash scripts/install.sh
+bash scripts/start.sh
+```
+
+必要に応じて任意機能を追加できます。各プラットフォームで同じオプション名を使います:
+
+```powershell
+.\install.bat --with-asr
+.\install.bat --with-video
+.\install.bat --with-background-removal
+.\install.bat --with-hermes
+.\install.bat --full
+```
 
 ```bash
 bash scripts/install.sh --with-asr
@@ -96,14 +115,18 @@ Release パッケージには起動スクリプトが含まれています。ソ
 python3 scripts/build_bundle.py --target macos-arm64 --name here-local-macos-arm64-lite
 ```
 
-GitHub Releases は `.github/workflows/release.yml` で macOS arm64 と Windows x64 のパッケージを作成します。
+GitHub Releases は `.github/workflows/release.yml` で macOS arm64 と Windows x64 のパッケージを作成します。環境に合う起動スクリプトを使ってください。
+
+macOS/Linux:
 
 ```bash
 bash scripts/start.sh
 ```
 
-```bat
-start.bat
+Windows:
+
+```powershell
+.\start.bat
 ```
 
 Release bundles are intentionally lightweight and do not include local ASR, video import, or AI background-removal dependencies by default.

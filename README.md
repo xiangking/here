@@ -67,8 +67,8 @@ Model reasoning uses the user's locally installed and configured Hermes Agent wh
 | Environment manager | [uv](https://docs.astral.sh/uv/) is required for source installs and development. |
 | Desktop UI | PySide6 / Qt runtime. |
 | Optional native extras | Local ASR, video sprite import, and AI background removal are optional extras to keep default installs and release bundles smaller. |
-| Local Hermes Agent | If Hermes Agent is not already installed in this project environment, install it with `bash scripts/install.sh --with-hermes`. This helper extra is fetched from GitHub and requires Git/network access. |
-| ASR | Optional. Install with `bash scripts/install.sh --with-asr` before using Vosk, faster-whisper, or RealtimeSTT. |
+| Local Hermes Agent | If Hermes Agent is not already installed in this project environment, install it with `--with-hermes`. This helper extra is fetched from GitHub and requires Git/network access. |
+| ASR | Optional. Install with `--with-asr` before using Vosk, faster-whisper, or RealtimeSTT. |
 | TTS and image APIs | Optional. API keys can be entered in the UI or provided through environment variables. |
 | External delivery | Optional. WeChat and other delivery channels need their own local configuration. |
 
@@ -83,12 +83,31 @@ On Apple Silicon macOS, the optional ASR install skips `vosk` because the curren
 Source development and runtime are managed with uv. Do not manage the project environment with a system Python or manual `pip install`.
 If uv is not already available, the install and start scripts will install it automatically through Astral's official installer.
 
-```bash
-bash scripts/install.sh
-uv run python -m app.desktop.main
+Windows users should run the batch scripts from PowerShell or Command Prompt:
+
+```powershell
+.\install.bat
+.\start.bat
 ```
 
-Optional native capabilities can be added when needed:
+Do not run the `.sh` scripts from Git Bash on Windows; they are for macOS/Linux only.
+
+macOS and Linux users should run the shell scripts:
+
+```bash
+bash scripts/install.sh
+bash scripts/start.sh
+```
+
+Optional native capabilities can be added when needed. Use the same option names on each platform:
+
+```powershell
+.\install.bat --with-asr
+.\install.bat --with-video
+.\install.bat --with-background-removal
+.\install.bat --with-hermes
+.\install.bat --full
+```
 
 ```bash
 bash scripts/install.sh --with-asr
@@ -112,14 +131,18 @@ Build a local macOS bundle from the source tree:
 python3 scripts/build_bundle.py --target macos-arm64 --name here-local-macos-arm64-lite
 ```
 
-GitHub Releases are built by `.github/workflows/release.yml` for macOS arm64 and Windows x64.
+GitHub Releases are built by `.github/workflows/release.yml` for macOS arm64 and Windows x64. Use the launcher for your platform.
+
+macOS/Linux:
 
 ```bash
 bash scripts/start.sh
 ```
 
-```bat
-start.bat
+Windows:
+
+```powershell
+.\start.bat
 ```
 
 Release bundles are intentionally lightweight and do not include local ASR, video import, or AI background-removal dependencies by default.

@@ -51,8 +51,8 @@ here 是一個常駐桌面的 AI 伴侶。它負責角色設定、長期記憶�
 | 環境管理 | 原始碼安裝和開發統一使用 [uv](https://docs.astral.sh/uv/)。 |
 | 桌面 UI | PySide6 / Qt runtime。 |
 | 可選原生能力 | 本機 ASR、影片立繪匯入、AI 去背都作為可選 extras，預設安裝和發行包會更輕。 |
-| 本機 Hermes Agent | 如果目前專案環境還沒有安裝 Hermes Agent，可執行 `bash scripts/install.sh --with-hermes` 輔助安裝。這個 extra 來自 GitHub，需要 Git 和網路存取。 |
-| ASR | 可選。使用 Vosk、faster-whisper 或 RealtimeSTT 前，請先執行 `bash scripts/install.sh --with-asr`。 |
+| 本機 Hermes Agent | 如果目前專案環境還沒有安裝 Hermes Agent，可透過 `--with-hermes` 輔助安裝。這個 extra 來自 GitHub，需要 Git 和網路存取。 |
+| ASR | 可選。使用 Vosk、faster-whisper 或 RealtimeSTT 前，請先透過 `--with-asr` 安裝。 |
 | TTS 和生圖 API | 可選，可在 UI 填寫 API Key，也可以透過環境變數提供。 |
 | 外部送達 | 可選。微信等渠道需要各自的本機設定。 |
 
@@ -67,12 +67,31 @@ Apple Silicon macOS 上，可選 ASR 安裝會跳過 `vosk`，因為目前官方
 原始碼開發和執行統一使用 uv。不要直接用系統 Python 或手動 `pip install` 管理專案環境。
 如果目前環境沒有 uv，安裝和啟動腳本會透過 Astral 官方安裝器自動安裝。
 
-```bash
-bash scripts/install.sh
-uv run python -m app.desktop.main
+Windows 使用者請在 PowerShell 或命令提示字元中執行批次腳本：
+
+```powershell
+.\install.bat
+.\start.bat
 ```
 
-按需安裝可選原生能力：
+不要在 Windows 的 Git Bash 裡執行 `.sh` 腳本；這些腳本只用於 macOS/Linux。
+
+macOS 和 Linux 使用者請執行 shell 腳本：
+
+```bash
+bash scripts/install.sh
+bash scripts/start.sh
+```
+
+按需安裝可選原生能力。不同平台使用相同參數名：
+
+```powershell
+.\install.bat --with-asr
+.\install.bat --with-video
+.\install.bat --with-background-removal
+.\install.bat --with-hermes
+.\install.bat --full
+```
 
 ```bash
 bash scripts/install.sh --with-asr
@@ -96,14 +115,18 @@ Release 包內包含啟動腳本。原始碼開發仍建議使用 uv；打包包
 python3 scripts/build_bundle.py --target macos-arm64 --name here-local-macos-arm64-lite
 ```
 
-GitHub Release 會透過 `.github/workflows/release.yml` 建立 macOS arm64 和 Windows x64 包。
+GitHub Release 會透過 `.github/workflows/release.yml` 建立 macOS arm64 和 Windows x64 包。請使用對應平台的啟動腳本。
+
+macOS/Linux：
 
 ```bash
 bash scripts/start.sh
 ```
 
-```bat
-start.bat
+Windows：
+
+```powershell
+.\start.bat
 ```
 
 發行包預設採用輕量依賴，不內建本機 ASR、影片匯入或 AI 去背依賴。
