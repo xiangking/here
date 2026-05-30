@@ -1,4 +1,5 @@
 import os
+import signal
 from pathlib import Path
 
 from infrastructure.paths import get_app_paths, seed_defaults
@@ -44,6 +45,7 @@ from core.runtime.workers import AgentWorker, TTSWorker, UIWorker
 from core.runtime.app_runtime import ActiveCharacterState, AppRuntime, set_app_runtime
 from core.runtime.ui_update_manager import UIUpdateManager, connect_to_desktop_window
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QIcon
 from services.tts.tts_manager import TTSManager, TTSAdapterFactory
 from ui.desktop import ChatUIWindow, character_entry_line, character_entry_sprite
@@ -73,6 +75,35 @@ from core.messaging.messages import TTSOutputMessage, UserInputMessage
 
 voice_lang = "ja"
 cc = OpenCC("t2s")  # 繁体到简体转换器
+
+
+def _install_sigint_handler(app: QApplication) -> QTimer | None:
+    """Let Ctrl+C in a console request the normal Qt shutdown path."""
+    previous_handler = signal.getsignal(signal.SIGINT)
+
+    def _handle_sigint(_signum, _frame) -> None:
+        print("收到 Ctrl+C，正在退出 here…")
+        try:
+            app.quit()
+        except RuntimeError:
+            pass
+        if callable(previous_handler) and previous_handler not in (
+            signal.default_int_handler,
+            signal.SIG_DFL,
+            signal.SIG_IGN,
+        ):
+            previous_handler(_signum, _frame)
+
+    try:
+        signal.signal(signal.SIGINT, _handle_sigint)
+    except (ValueError, RuntimeError):
+        return None
+
+    timer = QTimer(app)
+    timer.setTimerType(Qt.TimerType.CoarseTimer)
+    timer.timeout.connect(lambda: None)
+    timer.start(100)
+    return timer
 
 
 def _default_sprite_scale(config: ConfigManager) -> float:
@@ -230,6 +261,7 @@ def run_desktop_app():
 
     # Init UI and connect to runtime
     app = QApplication([])
+    sigint_timer = _install_sigint_handler(app)
     ensure_fusion_style(app)
     install_combo_popup_style(app)
     ui_updates = UIUpdateManager(chat_history=chat_history, bg_group=bg_group or [], t2i_manager=t2i_manager)
@@ -409,12 +441,15 @@ def run_desktop_app():
     app.aboutToQuit.connect(agent_worker.stop)
     app.aboutToQuit.connect(tts_worker.stop)
     app.aboutToQuit.connect(ui_worker.stop)
+    app.aboutToQuit.connect(window.stop_runtime_activity)
     app.aboutToQuit.connect(
         lambda: save_bg(
             bg_path=window.current_background_path,
             bgm_path=ui_updates.current_bgm_path,
         )
     )
+    if sigint_timer is not None:
+        app.aboutToQuit.connect(sigint_timer.stop)
 
     window.show()
 

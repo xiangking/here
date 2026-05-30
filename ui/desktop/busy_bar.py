@@ -153,3 +153,7 @@ class BusyBar(QWidget):
         self._timer.stop()
         self._breathe_timer.stop()
         self.hide()
+
+    def stop_runtime_activity(self) -> None:
+        """Stop timers used by the busy indicator during application shutdown."""
+        self.hide_bar()

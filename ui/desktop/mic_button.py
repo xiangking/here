@@ -548,16 +548,18 @@ class MicButton(QPushButton):
         self._is_asr_paused = False
         self._apply_mic_stylesheet(self._mic_palette_inactive)
         self.asr_state_changed.emit(False)
-    
-    def closeEvent(self, event):
-        """关闭控件时释放 ASR（RealtimeSTT 子进程须 shutdown，否则会刷 BrokenPipe）。"""
+
+    def stop_runtime_activity(self) -> None:
+        """Cancel ASR work and stop timers during application shutdown."""
         self._mic_closed = True
         self._lazy_init_cancel_requested = True
         self._lazy_init_generation += 1
         self._lazy_init_running = False
-        self._start_generation += 1
         self._start_cancel_requested = True
+        self._start_generation += 1
         self._start_worker_busy = False
+        self._hide_loading_ring()
+        self._mic_busy_hide()
         try:
             if self.asr_adapter is None:
                 pass
@@ -566,6 +568,12 @@ class MicButton(QPushButton):
             else:
                 self.asr_adapter.stop()
         except Exception:
-            _log.exception("mic closeEvent cleanup")
-        finally:
-            super().closeEvent(event)
+            _log.exception("mic shutdown cleanup")
+        self.asr_adapter = None
+        self._is_asr_running = False
+        self._is_asr_paused = False
+
+    def closeEvent(self, event):
+        """关闭控件时释放 ASR（RealtimeSTT 子进程须 shutdown，否则会刷 BrokenPipe）。"""
+        self.stop_runtime_activity()
+        super().closeEvent(event)

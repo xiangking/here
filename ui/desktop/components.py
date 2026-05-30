@@ -199,6 +199,11 @@ class CrossFadeSprite(QWidget):
             group.stop()
         self.is_animating = False
 
+    def stop_runtime_activity(self) -> None:
+        """Stop timers/animations before the Qt event loop exits."""
+        self._stop_frame_animation()
+        self._stop_transition_animation()
+
     def _set_pixmap_without_fade(self, image: np.ndarray, character_rate=None):
         scaled_pixmap = self._get_scaled_pixmap(image, character_rate)
         if scaled_pixmap.isNull():
@@ -388,6 +393,7 @@ class CrossFadeSprite(QWidget):
     def clear(self):
         """清除立绘"""
         self._stop_frame_animation()
+        self._stop_transition_animation()
         self._last_source_image = None
         self._last_character_rate = None
         self._visible_bounds = QRect()
@@ -450,6 +456,11 @@ class SpritePanel(QWidget):
             
             self.sprite_slots.append(sprite)
             sprite.hide()
+
+    def stop_runtime_activity(self) -> None:
+        """Stop all sprite timers/animations while preserving current pixmaps."""
+        for sprite in self.sprite_slots:
+            sprite.stop_runtime_activity()
 
     def active_sprite_size(self) -> QSize:
         active = self._active_scale_sprite()
@@ -1213,6 +1224,11 @@ class TypingLabel(QTextBrowser):
             self.setText(self._final_html_text or self._full_text)
             self._is_typing = False
             self.typingFinished.emit()
+
+    def stop_runtime_activity(self) -> None:
+        """Stop the typewriter timer without emitting completion signals."""
+        self.typing_timer.stop()
+        self._is_typing = False
             
     # 重新实现 ClickableLabel 基类的内部跳过方法，防止重复连接或冲突
     def _skip_typing_internal(self):

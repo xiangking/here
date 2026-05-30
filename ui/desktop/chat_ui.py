@@ -162,6 +162,7 @@ class ChatUIWindow(DesktopToolbarMixin, DesktopMenuMixin, QWidget):
             self.HORIZONTAL_MARGIN_PERCENT = 0
         self.image_queue = image_queue
         self.display_thread = None
+        self._closing = False
         self.max_sprite_slots = max_sprite_slots
         self.agent_backend = agent_backend
         self.emotion_queue = emotion_queue
@@ -2160,22 +2161,48 @@ class ChatUIWindow(DesktopToolbarMixin, DesktopMenuMixin, QWidget):
 
     def closeEvent(self, event):
         """关闭窗口时停止线程"""
-        if self._resizing:
-            self._end_resize()
-        if self._dialog_resizing:
-            self._end_dialog_resize()
+        self._closing = True
+        self.stop_runtime_activity()
         self._persist_chat_window_geometry()
-        self.mic_button.close()
-        if self.display_thread:
-            self.display_thread.stop()
-            self.display_thread.wait()
+        if getattr(self, "mic_button", None) is not None:
+            self.mic_button.close()
         super().closeEvent(event)
         self.close_window.emit()
         from ui.desktop.signal_bridge import detach_chat_ui_window
 
         detach_chat_ui_window()
 
+    def stop_runtime_activity(self) -> None:
+        """Stop UI timers and animations before shutdown tears down Qt objects."""
+        self._closing = True
+        if self._resizing:
+            self._end_resize()
+        if self._dialog_resizing:
+            self._end_dialog_resize()
+        self.drag_position = None
+        self._clear_hover_resize_cursor()
+        for widget_name in ("dialog_label", "sprite_panel", "_busy_bar"):
+            widget = getattr(self, widget_name, None)
+            stop = getattr(widget, "stop_runtime_activity", None)
+            if callable(stop):
+                stop()
+        mic = getattr(self, "mic_button", None)
+        if mic is not None:
+            stop_mic = getattr(mic, "stop_runtime_activity", None)
+            if callable(stop_mic):
+                stop_mic()
+            else:
+                hide_loading = getattr(mic, "_hide_loading_ring", None)
+                if callable(hide_loading):
+                    hide_loading()
+        if self.display_thread:
+            self.display_thread.stop()
+            self.display_thread.wait()
+            self.display_thread = None
+
     def eventFilter(self, obj, event):
+        if getattr(self, "_closing", False):
+            return False
         et = event.type()
         if et == QEvent.Type.HoverMove and isinstance(event, QHoverEvent):
             if not self._resizing:
