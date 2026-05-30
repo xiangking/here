@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import threading
+import importlib
+import os
+import shutil
+import subprocess
+import sys
 import urllib.request
 import zipfile
-from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, Signal, Qt
+from PySide6.QtCore import QObject, QTimer, Signal, Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -29,7 +33,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from services.asr.asr_adapter import VOSK_MODEL_PATH, normalize_asr_provider_storage_key
+from services.asr.asr_adapter import (
+    VOSK_SMALL_CN_MODEL_DIRNAME,
+    default_vosk_model_path,
+    is_vosk_model_dir,
+    missing_asr_requirements,
+    normalize_asr_provider_storage_key,
+)
 from services.asr.asr_manager import ASRAdapterFactory
 from services.config.config_manager import ConfigManager
 from services.i18n import tr
@@ -90,9 +100,9 @@ ASR_PROVIDER_LABELS = {
     "realtime_stt": "RealtimeSTT",
 }
 
-ASR_PROVIDER_REQUIREMENTS = {
+ASR_PROVIDER_INSTALL_PACKAGES = {
     "vosk": ("pyaudio", "vosk"),
-    "faster_whisper": ("pyaudio", "faster_whisper"),
+    "faster_whisper": ("pyaudio", "faster-whisper"),
     "realtime_stt": ("RealtimeSTT",),
 }
 
@@ -112,7 +122,7 @@ ASR_WHISPER_MODEL_SIZE_LABELS = {
     "large-v3": "3.1 GB",
 }
 
-VOSK_SMALL_CN_URL = "https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip"
+VOSK_SMALL_CN_URL = f"https://alphacephei.com/vosk/models/{VOSK_SMALL_CN_MODEL_DIRNAME}.zip"
 WHISPER_CACHE_DIR = Path.home() / ".cache" / "whisper"
 
 
@@ -240,6 +250,11 @@ class _AsrPreloadSignals(QObject):
     finished = Signal(bool, str)
 
 
+class _AsrDependencyInstallSignals(QObject):
+    status = Signal(str)
+    finished = Signal(bool, str)
+
+
 class ASRSettingsDialog(QDialog):
     def __init__(
         self,
@@ -248,23 +263,31 @@ class ASRSettingsDialog(QDialog):
         config_manager: ConfigManager | None = None,
         reset_adapter_callback=None,
         notify_callback=None,
+        auto_prepare: bool = False,
     ) -> None:
         super().__init__(parent)
         self._config_manager = config_manager or ConfigManager()
         self._reset_adapter_callback = reset_adapter_callback
         self._notify_callback = notify_callback
+        self._auto_prepare = auto_prepare
         self._extra_editors: dict[str, QWidget] = {}
         self._extra_schema: dict[str, dict] = {}
         self._preload_running = False
         self._preload_signals = _AsrPreloadSignals(self)
         self._preload_signals.status.connect(self._set_status)
         self._preload_signals.finished.connect(self._on_preload_finished)
+        self._install_running = False
+        self._install_signals = _AsrDependencyInstallSignals(self)
+        self._install_signals.status.connect(self._set_status)
+        self._install_signals.finished.connect(self._on_dependency_install_finished)
         self.setWindowTitle(tr("desktop.settings_dialog.asr_title"))
         self.setModal(True)
         self.resize(560, 620)
         self._build_ui()
         self._load_from_config()
         self._on_provider_changed()
+        if self._auto_prepare:
+            QTimer.singleShot(0, self._auto_prepare_if_possible)
 
     def _build_ui(self) -> None:
         self.setStyleSheet(
@@ -384,7 +407,7 @@ class ASRSettingsDialog(QDialog):
         vosk_layout.setContentsMargins(0, 0, 0, 0)
         vosk_layout.setSpacing(8)
         self.vosk_path_edit = QLineEdit(self.vosk_row)
-        self.vosk_path_edit.setPlaceholderText(VOSK_MODEL_PATH)
+        self.vosk_path_edit.setPlaceholderText(default_vosk_model_path())
         browse_btn = QPushButton(tr("desktop.settings_dialog.choose_directory"), self.vosk_row)
         browse_btn.clicked.connect(self._choose_vosk_model_dir)
         vosk_layout.addWidget(self.vosk_path_edit, 1)
@@ -449,12 +472,15 @@ class ASRSettingsDialog(QDialog):
         root.addWidget(scroll, 1)
 
         buttons = QHBoxLayout()
+        self.install_deps_btn = QPushButton(tr("desktop.settings_dialog.install_asr_deps"), self)
+        self.install_deps_btn.clicked.connect(self._install_current_dependencies)
         self.preload_btn = QPushButton(tr("desktop.settings_dialog.preload_model"), self)
         self.preload_btn.clicked.connect(self._preload_current_model)
         cancel_btn = QPushButton(tr("desktop.settings_dialog.cancel"), self)
         cancel_btn.clicked.connect(self.reject)
         save_btn = QPushButton(tr("desktop.settings_dialog.save_reset_mic"), self)
         save_btn.clicked.connect(self._save_and_accept)
+        buttons.addWidget(self.install_deps_btn)
         buttons.addWidget(self.preload_btn)
         buttons.addStretch(1)
         buttons.addWidget(cancel_btn)
@@ -500,11 +526,18 @@ class ASRSettingsDialog(QDialog):
         )
 
     def _missing_requirements(self, provider: str) -> list[str]:
-        missing: list[str] = []
-        for module_name in ASR_PROVIDER_REQUIREMENTS.get(provider, ()):
-            if find_spec(module_name) is None:
-                missing.append(module_name)
-        return missing
+        return missing_asr_requirements(provider)
+
+    def _install_command_label(self, provider: str) -> str:
+        if self._can_install_dependencies():
+            return ".\\install.bat --with-asr" if sys.platform.startswith("win") else "bash scripts/install.sh --with-asr"
+        return self._pip_install_command(provider)
+
+    def _pip_install_command(self, provider: str) -> str:
+        packages = ASR_PROVIDER_INSTALL_PACKAGES.get(provider, ())
+        if not packages:
+            packages = ("pyaudio", "vosk")
+        return f"{Path(sys.executable).name} -m pip install " + " ".join(packages)
 
     def _current_model(self) -> str:
         data = self.model_combo.currentData()
@@ -518,20 +551,27 @@ class ASRSettingsDialog(QDialog):
     def _on_provider_changed(self) -> None:
         provider = self._current_provider()
         is_vosk = provider == "vosk"
+        missing = self._missing_requirements(provider)
         self.vosk_row.setVisible(is_vosk)
         self.model_row.setVisible(not is_vosk)
         self.device_combo.setVisible(not is_vosk)
         self.compute_combo.setVisible(not is_vosk)
+        self.install_deps_btn.setVisible(bool(missing))
+        self.preload_btn.setEnabled(not bool(missing))
         self._rebuild_extra_panel(provider)
         self._set_status(self._status_for_provider(provider))
 
     def _status_for_provider(self, provider: str) -> str:
+        missing = self._missing_requirements(provider)
+        if missing:
+            return tr(
+                "desktop.settings_dialog.asr_deps_missing",
+                modules=", ".join(missing),
+                command=self._install_command_label(provider),
+            )
         if provider == "vosk":
             path = self._vosk_model_path()
             ok = self._is_vosk_model_dir(path)
-            missing = self._missing_requirements(provider)
-            if missing:
-                return "ASR optional dependencies missing: " + ", ".join(missing) + ". Install with: uv sync --extra asr"
             if ok:
                 return tr("desktop.settings_dialog.vosk_status_ok", path=path)
             whisper_models = _installed_whisper_models()
@@ -543,9 +583,6 @@ class ASRSettingsDialog(QDialog):
                 )
             return tr("desktop.settings_dialog.vosk_status_missing", path=path, suffix=suffix)
         model = self._current_model()
-        missing = self._missing_requirements(provider)
-        if missing:
-            return "ASR optional dependencies missing: " + ", ".join(missing) + ". Install with: uv sync --extra asr"
         size = ASR_WHISPER_MODEL_SIZE_LABELS.get(model, tr("desktop.settings_dialog.custom_size"))
         cached = model in _installed_whisper_models()
         cache_text = (
@@ -588,10 +625,10 @@ class ASRSettingsDialog(QDialog):
             if isinstance(editor, QLineEdit):
                 editor.textChanged.connect(self.vosk_path_edit.setText)
                 if not self.vosk_path_edit.text().strip():
-                    self.vosk_path_edit.setText(editor.text().strip() or VOSK_MODEL_PATH)
+                    self.vosk_path_edit.setText(editor.text().strip() or default_vosk_model_path())
 
     def _choose_vosk_model_dir(self) -> None:
-        start = self.vosk_path_edit.text().strip() or VOSK_MODEL_PATH
+        start = self.vosk_path_edit.text().strip() or default_vosk_model_path()
         path = QFileDialog.getExistingDirectory(
             self,
             tr("desktop.settings_dialog.choose_vosk_dir_title"),
@@ -609,17 +646,26 @@ class ASRSettingsDialog(QDialog):
         if self.vosk_path_edit.text().strip():
             return self.vosk_path_edit.text().strip()
         values = self._config_manager.get_adapter_extra_config("asr", "vosk")
-        return str(values.get("model_path") or VOSK_MODEL_PATH)
+        configured = str(values.get("model_path") or "").strip()
+        if configured and Path(configured).expanduser().is_absolute():
+            return configured
+        return default_vosk_model_path()
 
     def _is_vosk_model_dir(self, path: str) -> bool:
-        p = Path(path).expanduser()
-        return p.is_dir() and any(p.iterdir())
+        return is_vosk_model_dir(path)
 
     def _schema_values(self, provider: str) -> dict[str, Any]:
         values = _read_schema_values(self._extra_schema, self._extra_editors)
         if provider == "vosk":
             values["model_path"] = self._vosk_model_path()
         return values
+
+    def _set_vosk_model_path(self, path: str | Path) -> None:
+        text = Path(path).expanduser().as_posix()
+        self.vosk_path_edit.setText(text)
+        editor = self._extra_editors.get("model_path")
+        if isinstance(editor, QLineEdit):
+            editor.setText(text)
 
     def _save_to_config(self, *, reset_adapter: bool) -> None:
         provider = self._current_provider()
@@ -640,6 +686,118 @@ class ASRSettingsDialog(QDialog):
         if reset_adapter and callable(self._reset_adapter_callback):
             self._reset_adapter_callback()
 
+    def _project_root(self) -> Path:
+        return Path(__file__).resolve().parents[2]
+
+    def _venv_python(self) -> Path:
+        root = self._project_root()
+        if sys.platform.startswith("win"):
+            return root / ".venv" / "Scripts" / "python.exe"
+        return root / ".venv" / "bin" / "python"
+
+    def _can_install_dependencies(self) -> bool:
+        if getattr(sys, "frozen", False):
+            return False
+        root = self._project_root()
+        return (root / "pyproject.toml").is_file()
+
+    def _install_current_dependencies(self) -> None:
+        if self._install_running:
+            return
+        provider = self._current_provider()
+        missing = self._missing_requirements(provider)
+        if not missing:
+            self._set_status(self._status_for_provider(provider))
+            return
+        self._save_to_config(reset_adapter=False)
+        self._install_running = True
+        self.install_deps_btn.setEnabled(False)
+        self.preload_btn.setEnabled(False)
+        self._set_status(tr("desktop.settings_dialog.asr_deps_install_start"))
+        threading.Thread(
+            target=self._dependency_install_worker,
+            args=(provider,),
+            daemon=True,
+            name="here_asr_dependency_install",
+        ).start()
+
+    def _dependency_install_worker(self, provider: str) -> None:
+        try:
+            command, cwd, env = self._dependency_install_command(provider)
+            self._install_signals.status.emit(
+                tr("desktop.settings_dialog.asr_deps_install_running", command=" ".join(command))
+            )
+            proc = subprocess.run(
+                command,
+                cwd=str(cwd) if cwd else None,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=900,
+                check=False,
+            )
+            if proc.returncode != 0:
+                tail = (proc.stdout or "").strip().splitlines()[-12:]
+                detail = "\n".join(tail).strip()
+                raise RuntimeError(
+                    tr("desktop.settings_dialog.asr_deps_install_failed_detail", detail=detail or proc.returncode)
+                )
+            importlib.invalidate_caches()
+            missing = self._missing_requirements(provider)
+            if missing:
+                raise RuntimeError(
+                    tr(
+                        "desktop.settings_dialog.asr_deps_still_missing",
+                        modules=", ".join(missing),
+                    )
+                )
+        except BaseException as exc:
+            self._install_signals.finished.emit(False, str(exc))
+            return
+        self._install_signals.finished.emit(True, tr("desktop.settings_dialog.asr_deps_ready"))
+
+    def _dependency_install_command(self, provider: str) -> tuple[list[str], Path | None, dict[str, str] | None]:
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        root = self._project_root()
+        if self._can_install_dependencies():
+            if not sys.platform.startswith("win"):
+                script = root / "scripts" / "install.sh"
+                if script.is_file():
+                    return ["bash", str(script), "--with-asr"], root, env
+            uv = shutil.which("uv")
+            if uv:
+                return [uv, "sync", "--python", "3.11", "--extra", "asr"], root, env
+
+        py = self._venv_python()
+        if not py.is_file():
+            py = Path(sys.executable)
+        packages = list(ASR_PROVIDER_INSTALL_PACKAGES.get(provider, ()) or ("pyaudio", "vosk"))
+        return [str(py), "-m", "pip", "install", *packages], None, env
+
+    def _on_dependency_install_finished(self, ok: bool, message: str) -> None:
+        self._install_running = False
+        self.install_deps_btn.setEnabled(True)
+        self.preload_btn.setEnabled(not bool(self._missing_requirements(self._current_provider())))
+        self._set_status(message if not ok else self._status_for_provider(self._current_provider()))
+        if not ok:
+            QMessageBox.warning(self, tr("desktop.settings_dialog.asr_deps_install_failed"), message)
+            return
+        if callable(self._notify_callback):
+            self._notify_callback(message)
+        if self._auto_prepare:
+            self._auto_prepare = False
+            QTimer.singleShot(0, self._auto_prepare_if_possible)
+
+    def _auto_prepare_if_possible(self) -> None:
+        provider = self._current_provider()
+        if self._missing_requirements(provider):
+            self._install_current_dependencies()
+            return
+        if provider == "vosk" and not self._is_vosk_model_dir(self._vosk_model_path()):
+            self._preload_current_model()
+
     def _save_and_accept(self) -> None:
         self._save_to_config(reset_adapter=True)
         if callable(self._notify_callback):
@@ -649,6 +807,9 @@ class ASRSettingsDialog(QDialog):
 
     def _preload_current_model(self) -> None:
         if self._preload_running:
+            return
+        if self._missing_requirements(self._current_provider()):
+            self._set_status(self._status_for_provider(self._current_provider()))
             return
         self._save_to_config(reset_adapter=False)
         provider = self._current_provider()
@@ -661,6 +822,7 @@ class ASRSettingsDialog(QDialog):
         }
         self._preload_running = True
         self.preload_btn.setEnabled(False)
+        self.install_deps_btn.setEnabled(False)
         self._set_status(tr("desktop.settings_dialog.model_prepare_start"))
         threading.Thread(
             target=self._preload_worker,
@@ -682,9 +844,11 @@ class ASRSettingsDialog(QDialog):
             missing = self._missing_requirements(provider)
             if missing:
                 raise RuntimeError(
-                    "ASR optional dependencies missing: "
-                    + ", ".join(missing)
-                    + ". Install with: uv sync --extra asr"
+                    tr(
+                        "desktop.settings_dialog.asr_deps_missing",
+                        modules=", ".join(missing),
+                        command=self._install_command_label(provider),
+                    )
                 )
             if provider == "vosk":
                 self._download_vosk_model(vosk_path)
@@ -701,14 +865,23 @@ class ASRSettingsDialog(QDialog):
             self._preload_signals.status.emit(tr("desktop.settings_dialog.vosk_exists", path=target))
             return
         target.parent.mkdir(parents=True, exist_ok=True)
-        zip_path = target.parent / "vosk-model-small-cn-0.22.zip"
+        zip_path = target.parent / f"{VOSK_SMALL_CN_MODEL_DIRNAME}.zip"
         self._preload_signals.status.emit(tr("desktop.settings_dialog.download_vosk"))
         urllib.request.urlretrieve(VOSK_SMALL_CN_URL, zip_path)
         self._preload_signals.status.emit(tr("desktop.settings_dialog.extract_vosk"))
         with zipfile.ZipFile(zip_path) as zf:
             zf.extractall(target.parent)
+        extracted_default = target.parent / VOSK_SMALL_CN_MODEL_DIRNAME
+        if not self._is_vosk_model_dir(str(target)) and self._is_vosk_model_dir(str(extracted_default)):
+            if target.exists():
+                shutil.rmtree(target)
+            shutil.move(str(extracted_default), str(target))
         if not self._is_vosk_model_dir(str(target)):
             raise RuntimeError(tr("desktop.settings_dialog.vosk_extract_missing", path=target))
+        try:
+            zip_path.unlink()
+        except OSError:
+            pass
         self._preload_signals.status.emit(tr("desktop.settings_dialog.vosk_ready", path=target))
 
     def _preload_whisper_model(self, model: str, device: str, compute: str) -> None:
@@ -727,11 +900,14 @@ class ASRSettingsDialog(QDialog):
     def _on_preload_finished(self, ok: bool, message: str) -> None:
         self._preload_running = False
         self.preload_btn.setEnabled(True)
+        self.install_deps_btn.setEnabled(not bool(self._missing_requirements(self._current_provider())))
         self._set_status(message)
         if ok:
-            if callable(self._reset_adapter_callback):
-                self._reset_adapter_callback()
+            if self._current_provider() == "vosk":
+                self._set_vosk_model_path(self._vosk_model_path())
+            self._save_to_config(reset_adapter=True)
             if callable(self._notify_callback):
                 self._notify_callback(message)
+            self._set_status(self._status_for_provider(self._current_provider()))
         else:
             QMessageBox.warning(self, tr("desktop.settings_dialog.model_prepare_failed"), message)

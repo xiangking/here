@@ -4,6 +4,10 @@ import pytest
 
 from services.asr.asr_manager import ASRAdapterFactory
 from services.asr.asr_adapter import (
+    ASRSetupStatus,
+    build_asr_setup_status,
+    is_vosk_model_dir,
+    missing_asr_requirements,
     _pcm16_rms,
     voice_ui_to_asr_lang,
     ui_lang_to_asr_lang,
@@ -152,6 +156,69 @@ class TestNormalizeAsrProviderKey:
 
     def test_unknown_defaults_to_vosk(self):
         assert normalize_asr_provider_storage_key("unknown_xyz") == "vosk"
+
+
+class TestASRSetupHelpers:
+    def test_vosk_model_dir_rejects_empty_dir(self, tmp_path):
+        assert not is_vosk_model_dir(tmp_path)
+
+    def test_vosk_model_dir_accepts_expected_layout(self, tmp_path):
+        (tmp_path / "am").mkdir()
+        (tmp_path / "am" / "final.mdl").write_text("fake", encoding="utf-8")
+        (tmp_path / "conf").mkdir()
+        (tmp_path / "conf" / "model.conf").write_text("fake", encoding="utf-8")
+        (tmp_path / "graph").mkdir()
+
+        assert is_vosk_model_dir(tmp_path)
+
+    def test_setup_status_reports_missing_vosk_model(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "services.asr.asr_adapter.missing_asr_requirements",
+            lambda _provider: [],
+        )
+
+        status = build_asr_setup_status("vosk", model_path=str(tmp_path / "missing"))
+
+        assert not status.ready
+        assert status.needs_model
+        assert status.missing_model_path.endswith("missing")
+
+    def test_setup_status_ready_for_valid_vosk_model(self, tmp_path, monkeypatch):
+        (tmp_path / "am").mkdir()
+        (tmp_path / "am" / "final.mdl").write_text("fake", encoding="utf-8")
+        (tmp_path / "conf").mkdir()
+        (tmp_path / "conf" / "model.conf").write_text("fake", encoding="utf-8")
+        (tmp_path / "graph").mkdir()
+        monkeypatch.setattr(
+            "services.asr.asr_adapter.missing_asr_requirements",
+            lambda _provider: [],
+        )
+
+        status = build_asr_setup_status("vosk", model_path=str(tmp_path))
+
+        assert status.ready
+        assert not status.needs_dependencies
+        assert not status.needs_model
+
+    def test_missing_requirements_accepts_realtimestt_alternative(self, monkeypatch):
+        def fake_find_spec(name):
+            return object() if name == "realtimestt" else None
+
+        monkeypatch.setattr("services.asr.asr_adapter.find_spec", fake_find_spec)
+
+        assert missing_asr_requirements("realtime_stt") == []
+
+    def test_setup_status_user_message_describes_actions(self):
+        status = ASRSetupStatus(
+            provider="vosk",
+            missing_modules=("pyaudio",),
+            missing_model_path="/tmp/model",
+        )
+
+        message = status.user_message()
+
+        assert "pyaudio" in message
+        assert "/tmp/model" in message
 
 
 class TestWhisperTriplet:

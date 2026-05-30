@@ -8,7 +8,7 @@ from PySide6.QtCore import QRectF, QSize, Qt, Signal, QObject, QTimer
 
 # 导入您提供的适配器文件 (假设文件名为 asr_adapter.py 并在同一目录下)
 # 实际项目中，您可能需要确保 asr_adapter.py 中的所有依赖（如 RealtimeSTT, vosk, pyaudio）已安装。
-from services.asr.asr_adapter import create_default_asr_adapter, get_asr_log
+from services.asr.asr_adapter import ASRSetupRequired, create_default_asr_adapter, get_asr_log
 from services.asr.macos_microphone_permission import request_macos_microphone_permission
 from services.i18n import tr
 from ui.desktop.rounded_chrome_button import parse_chrome_paint
@@ -53,6 +53,7 @@ class MicButton(QPushButton):
     asr_pause_requested = Signal()
     asr_resume_requested = Signal()
     send_final_transcription = Signal()
+    asr_setup_requested = Signal()
 
     def __init__(self, asr_adapter = None, parent=None):
         super().__init__(parent)
@@ -161,6 +162,12 @@ class MicButton(QPushButton):
         if gen != self._lazy_init_generation:
             return
         self._lazy_init_running = False
+        if isinstance(exc, ASRSetupRequired):
+            _log.warning("mic: ASR setup required: %s", exc)
+            self._mic_notify("麦克风需要先准备 ASR 依赖/模型，已打开语音识别设置。")
+            self._mic_busy_hide()
+            self.asr_setup_requested.emit()
+            return
         _log.error(
             "mic: background ASR init failed: %s",
             exc,

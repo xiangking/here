@@ -577,7 +577,15 @@
       "schema_reference_id": "참조 ID",
       "schema_mp3_bitrate": "MP3 비트레이트",
       "schema_latency": "지연",
-      "compute_type": "Compute type"
+      "compute_type": "Compute type",
+      "asr_deps_missing": "ASR 의존성이 없습니다: {modules}. “ASR 의존성 설치”를 누르면 다음 명령을 실행합니다: {command}. 설치 후 앱 재시작이 필요할 수 있습니다.",
+      "install_asr_deps": "ASR 의존성 설치",
+      "asr_deps_install_start": "ASR 의존성 설치 중…",
+      "asr_deps_install_running": "ASR 의존성 설치 중: {command}",
+      "asr_deps_install_failed": "ASR 의존성 설치 실패",
+      "asr_deps_install_failed_detail": "설치 명령이 실패했습니다:\n{detail}",
+      "asr_deps_still_missing": "설치 후에도 다음 모듈이 없습니다: {modules}. 앱을 다시 시작한 뒤 다시 시도하세요.",
+      "asr_deps_ready": "ASR 의존성이 설치되었습니다. 마이크가 아직 동작하지 않으면 앱을 다시 시작하세요."
     }
   },
   "toolbar": {

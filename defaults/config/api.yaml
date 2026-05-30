@@ -33,7 +33,7 @@ tts_extra_configs:
     pitch: +0Hz
 asr_extra_configs:
   vosk:
-    model_path: ./assets/system/models/vosk-model-small-cn-0.22
+    model_path: ''
     sample_rate: 16000
     chunk_size: 8192
 t2i_extra_configs: {}

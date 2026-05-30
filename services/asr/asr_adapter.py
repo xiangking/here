@@ -7,6 +7,8 @@ import os
 import sys
 import threading
 import time
+from dataclasses import dataclass
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any, Optional
 import queue
@@ -14,8 +16,97 @@ import queue
 from services.i18n.lang import normalize_lang
 from services.asr.protocols import ASRAdapter, TranscriptionCallback
 
-# Vosk 模型默认路径（可按本机下载模型修改）
+# Legacy project-relative fallback. New first-use downloads use app_home/models.
 VOSK_MODEL_PATH = "./assets/system/models/vosk-model-small-cn-0.22"
+VOSK_SMALL_CN_MODEL_DIRNAME = "vosk-model-small-cn-0.22"
+
+ASR_PROVIDER_REQUIREMENTS: dict[str, tuple[str | tuple[str, ...], ...]] = {
+    "vosk": ("pyaudio", "vosk"),
+    "faster_whisper": ("pyaudio", "faster_whisper"),
+    "realtime_stt": (("RealtimeSTT", "realtimestt"),),
+}
+
+
+@dataclass(frozen=True)
+class ASRSetupStatus:
+    provider: str
+    missing_modules: tuple[str, ...] = ()
+    missing_model_path: str = ""
+
+    @property
+    def ready(self) -> bool:
+        return not self.missing_modules and not self.missing_model_path
+
+    @property
+    def needs_dependencies(self) -> bool:
+        return bool(self.missing_modules)
+
+    @property
+    def needs_model(self) -> bool:
+        return bool(self.missing_model_path)
+
+    def user_message(self) -> str:
+        parts: list[str] = []
+        if self.missing_modules:
+            parts.append("缺少 ASR 运行依赖：" + "、".join(self.missing_modules))
+        if self.missing_model_path:
+            parts.append(f"缺少 ASR 模型：{self.missing_model_path}")
+        return "；".join(parts) or "ASR 已准备好"
+
+
+class ASRSetupRequired(RuntimeError):
+    """Raised when the selected ASR backend needs dependency/model setup first."""
+
+    def __init__(self, status: ASRSetupStatus):
+        self.status = status
+        super().__init__(status.user_message())
+
+
+def missing_asr_requirements(provider: str) -> list[str]:
+    """Return import names that are unavailable for the selected ASR provider."""
+    storage_key = normalize_asr_provider_storage_key(provider)
+    missing: list[str] = []
+    for requirement in ASR_PROVIDER_REQUIREMENTS.get(storage_key, ()):
+        alternatives = (requirement,) if isinstance(requirement, str) else requirement
+        if not any(find_spec(name) is not None for name in alternatives):
+            missing.append("/".join(alternatives))
+    return missing
+
+
+def is_vosk_model_dir(path: str | Path) -> bool:
+    """Validate the minimal file layout expected by a Vosk model directory."""
+    p = Path(path).expanduser()
+    if not p.is_dir():
+        return False
+    return (
+        (p / "am" / "final.mdl").is_file()
+        and (p / "conf" / "model.conf").is_file()
+        and (p / "graph").is_dir()
+    )
+
+
+def build_asr_setup_status(provider: str, *, model_path: str | None = None) -> ASRSetupStatus:
+    storage_key = normalize_asr_provider_storage_key(provider)
+    missing_modules = tuple(missing_asr_requirements(storage_key))
+    missing_model_path = ""
+    resolved_model_path = str(model_path or default_vosk_model_path())
+    if storage_key == "vosk" and not is_vosk_model_dir(resolved_model_path):
+        missing_model_path = resolved_model_path
+    return ASRSetupStatus(
+        provider=storage_key,
+        missing_modules=missing_modules,
+        missing_model_path=missing_model_path,
+    )
+
+
+def default_vosk_model_path() -> str:
+    """Return the user-data Vosk model path used for first-use downloads."""
+    try:
+        from infrastructure.paths import get_app_paths
+
+        return (get_app_paths().models_dir / VOSK_SMALL_CN_MODEL_DIRNAME).as_posix()
+    except Exception:
+        return VOSK_MODEL_PATH
 
 
 def get_asr_log() -> logging.Logger:
@@ -173,7 +264,7 @@ class VoskAdapter(ASRAdapter):
             "model_path": {
                 "type": "str",
                 "label": "Vosk model path",
-                "default": VOSK_MODEL_PATH,
+                "default": default_vosk_model_path(),
             },
             "sample_rate": {
                 "type": "int",
@@ -197,7 +288,7 @@ class VoskAdapter(ASRAdapter):
         self,
         language: str,
         callback: TranscriptionCallback,
-        model_path: str = VOSK_MODEL_PATH,
+        model_path: str | None = None,
         sample_rate: int = 16000,
         chunk_size: int = 8192,
     ):
@@ -208,7 +299,7 @@ class VoskAdapter(ASRAdapter):
 
         self._pyaudio = pyaudio
         self._KaldiRecognizer = KaldiRecognizer
-        self.model_path = Path(model_path).absolute().as_posix()
+        self.model_path = Path(model_path or default_vosk_model_path()).expanduser().absolute().as_posix()
         self._is_running = False
         self._thread: Optional[threading.Thread] = None
 
@@ -655,12 +746,18 @@ def create_default_asr_adapter(callback: TranscriptionCallback) -> ASRAdapter:
 
     if adapter_cls is VoskAdapter:
         _kw = filter_kwargs_for_ctor(VoskAdapter, extras)
-        model_path = str(_kw.get("model_path") or VOSK_MODEL_PATH)
+        model_path = str(_kw.get("model_path") or default_vosk_model_path())
+        status = build_asr_setup_status(storage_key, model_path=model_path)
+        if not status.ready:
+            raise ASRSetupRequired(status)
         return VoskAdapter(language=lang, callback=callback, model_path=model_path, **{
             k: v for k, v in _kw.items() if k != "model_path"
         })
 
     _kw = filter_kwargs_for_ctor(adapter_cls, extras)
+    status = build_asr_setup_status(storage_key)
+    if not status.ready:
+        raise ASRSetupRequired(status)
     if storage_key == "faster_whisper":
         _kw.update(model_size=model_sz, device=dev, compute_type=ct)
     elif storage_key == "realtime_stt":

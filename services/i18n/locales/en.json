@@ -584,7 +584,15 @@
       "schema_reference_id": "Reference ID",
       "schema_mp3_bitrate": "MP3 bitrate",
       "schema_latency": "Latency",
-      "compute_type": "Compute type"
+      "compute_type": "Compute type",
+      "asr_deps_missing": "ASR dependencies are missing: {modules}. Click “Install ASR dependencies” to run: {command}. Restarting the app may be needed after installation.",
+      "install_asr_deps": "Install ASR dependencies",
+      "asr_deps_install_start": "Installing ASR dependencies…",
+      "asr_deps_install_running": "Installing ASR dependencies: {command}",
+      "asr_deps_install_failed": "ASR dependency installation failed",
+      "asr_deps_install_failed_detail": "Install command failed:\n{detail}",
+      "asr_deps_still_missing": "These modules are still missing after installation: {modules}. Restart the app and try again.",
+      "asr_deps_ready": "ASR dependencies are installed. Restart the app if the microphone is still unavailable."
     }
   },
   "toolbar": {

@@ -579,7 +579,15 @@
       "schema_reference_id": "参照 ID",
       "schema_mp3_bitrate": "MP3 ビットレート",
       "schema_latency": "レイテンシ",
-      "compute_type": "Compute type"
+      "compute_type": "Compute type",
+      "asr_deps_missing": "ASR 依存関係がありません：{modules}。「ASR 依存関係をインストール」を押すと次を実行します：{command}。完了後はアプリの再起動が必要な場合があります。",
+      "install_asr_deps": "ASR 依存関係をインストール",
+      "asr_deps_install_start": "ASR 依存関係をインストール中…",
+      "asr_deps_install_running": "ASR 依存関係をインストール中：{command}",
+      "asr_deps_install_failed": "ASR 依存関係のインストールに失敗しました",
+      "asr_deps_install_failed_detail": "インストールコマンドが失敗しました：\n{detail}",
+      "asr_deps_still_missing": "インストール後も次のモジュールがありません：{modules}。アプリを再起動してから再試行してください。",
+      "asr_deps_ready": "ASR 依存関係をインストールしました。マイクがまだ使えない場合はアプリを再起動してください。"
     }
   },
   "toolbar": {

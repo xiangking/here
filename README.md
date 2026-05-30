@@ -68,7 +68,7 @@ Model reasoning uses the user's locally installed and configured Hermes Agent wh
 | Desktop UI | PySide6 / Qt runtime. |
 | Optional native extras | Local ASR, video sprite import, and AI background removal are optional extras to keep default installs and release bundles smaller. |
 | Local Hermes Agent | If Hermes Agent is not already installed in this project environment, install it with `--with-hermes`. This helper extra is fetched from GitHub and requires Git/network access. |
-| ASR | Optional. Install with `--with-asr` before using Vosk, faster-whisper, or RealtimeSTT. |
+| ASR | Voice input does not ship model files. Windows installs the lightweight Vosk runtime by default; the first microphone use can download/configure the Vosk model from the ASR settings dialog. Install `--with-asr` for faster-whisper, RealtimeSTT, or source environments that need all ASR backends. |
 | TTS and image APIs | Optional. API keys can be entered in the UI or provided through environment variables. |
 | External delivery | Optional. WeChat and other delivery channels need their own local configuration. |
 
@@ -120,6 +120,8 @@ bash scripts/install.sh --full
 `--full` installs the native extras, but it intentionally does not install Hermes Agent because that package is fetched from GitHub. Use `--with-hermes` only when you need here to install Hermes Agent into this environment.
 
 On macOS, ASR extras require Homebrew PortAudio. The installer checks Homebrew and installs `portaudio` before running `uv sync --extra asr`, so `pyaudio` can build from a clean environment.
+
+ASR model files are intentionally not committed or bundled. When the microphone needs a missing Vosk model, here opens `Speech recognition ASR`, downloads the small Chinese model into the app data `models` folder, and saves the path automatically.
 
 ### Packaged Builds
 

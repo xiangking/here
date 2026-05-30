@@ -867,6 +867,7 @@ dependencies = [
     { name = "openai" },
     { name = "opencc-python-reimplemented" },
     { name = "py7zr" },
+    { name = "pyaudio", marker = "sys_platform == 'win32'" },
     { name = "pydantic" },
     { name = "pygame" },
     { name = "pyobjc-framework-avfoundation", marker = "sys_platform == 'darwin'" },
@@ -877,6 +878,7 @@ dependencies = [
     { name = "requests" },
     { name = "tiktoken" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
+    { name = "vosk", marker = "sys_platform == 'win32'" },
 ]
 
 [package.optional-dependencies]
@@ -928,6 +930,7 @@ requires-dist = [
     { name = "opencv-python", marker = "extra == 'full'" },
     { name = "opencv-python", marker = "extra == 'video'" },
     { name = "py7zr" },
+    { name = "pyaudio", marker = "sys_platform == 'win32'" },
     { name = "pyaudio", marker = "extra == 'asr'" },
     { name = "pyaudio", marker = "extra == 'full'" },
     { name = "pydantic" },
@@ -946,6 +949,7 @@ requires-dist = [
     { name = "tzdata", marker = "sys_platform == 'win32'" },
     { name = "vosk", marker = "(platform_machine != 'arm64' and extra == 'asr') or (sys_platform != 'darwin' and extra == 'asr')" },
     { name = "vosk", marker = "(platform_machine != 'arm64' and extra == 'full') or (sys_platform != 'darwin' and extra == 'full')" },
+    { name = "vosk", marker = "sys_platform == 'win32'" },
 ]
 provides-extras = ["hermes", "asr", "video", "background-removal", "full"]
 

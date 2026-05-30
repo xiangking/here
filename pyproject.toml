@@ -17,6 +17,8 @@ dependencies = [
   "cryptography",
   "pyobjc-framework-AVFoundation; sys_platform == 'darwin'",
   "tzdata; sys_platform == 'win32'",
+  "pyaudio; sys_platform == 'win32'",
+  "vosk; sys_platform == 'win32'",
   "QtPy>=2.4.1",
   "pyyaml",
   "fal-client",

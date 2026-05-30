@@ -52,7 +52,7 @@ here는 데스크톱에 상주하는 AI 컴패니언입니다. 캐릭터 프로�
 | 데스크톱 UI | PySide6 / Qt runtime. |
 | 선택형 네이티브 기능 | 로컬 ASR, 동영상 스프라이트 가져오기, AI 배경 제거는 선택형 extras입니다. 기본 설치와 릴리스 번들을 가볍게 유지합니다. |
 | 로컬 Hermes Agent | 현재 프로젝트 환경에 Hermes Agent가 아직 없다면 `--with-hermes`로 보조 설치할 수 있습니다. 이 extra는 GitHub에서 가져오므로 Git과 네트워크 접근이 필요합니다. |
-| ASR | 선택 사항. Vosk, faster-whisper, RealtimeSTT를 사용하기 전에 `--with-asr`로 설치하세요. |
+| ASR | 음성 입력은 모델 파일을 함께 제공하지 않습니다. Windows는 가벼운 Vosk 런타임을 기본 설치하며, 첫 마이크 사용 시 ASR 설정에서 Vosk 모델을 다운로드하고 자동으로 설정할 수 있습니다. faster-whisper, RealtimeSTT 또는 소스 환경에서 전체 ASR 백엔드가 필요할 때는 `--with-asr`를 사용하세요. |
 | TTS 및 이미지 API | 선택 사항. API Key는 UI 또는 환경 변수로 설정할 수 있습니다. |
 | 외부 전달 | 선택 사항. WeChat 등 채널은 별도의 로컬 설정이 필요합니다. |
 
@@ -104,6 +104,8 @@ bash scripts/install.sh --full
 `--full`은 네이티브 extras만 설치하며 Hermes Agent는 자동으로 포함하지 않습니다. Hermes Agent는 GitHub 소스 패키지에서 가져오므로, 이 환경에 here가 설치해 주길 원할 때만 `--with-hermes`를 사용하세요.
 
 macOS에서 ASR extras를 사용하려면 Homebrew PortAudio가 필요합니다. 설치 스크립트는 Homebrew를 확인하고 `uv sync --extra asr` 전에 `portaudio`를 설치하므로, 깨끗한 환경에서도 `pyaudio`를 빌드할 수 있습니다.
+
+ASR 모델 파일은 저장소나 기본 패키지에 포함하지 않습니다. 마이크가 Vosk 모델 누락을 감지하면 here가 `Speech recognition ASR`을 열고 중국어 small 모델을 앱 데이터 `models` 폴더에 다운로드한 뒤 경로를 자동 저장합니다.
 
 ### 패키지 빌드
 

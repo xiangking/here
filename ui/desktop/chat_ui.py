@@ -695,6 +695,9 @@ class ChatUIWindow(DesktopToolbarMixin, DesktopMenuMixin, QWidget):
         self.agent_reply_finished.connect(self.mic_button.resume_asr)
         self.pause_asr_signal.connect(self.mic_button.pause_asr)
         self.mic_button.send_final_transcription.connect(self.sendMessage)
+        self.mic_button.asr_setup_requested.connect(
+            lambda: self.show_asr_settings(auto_prepare=True)
+        )
         self.mic_button.apply_window_scale(0.48, ch0)
         self.send_btn.raise_()
         self.mic_button.raise_()

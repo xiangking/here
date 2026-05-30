@@ -596,13 +596,14 @@ class DesktopMenuMixin:
         if callable(reset):
             reset()
 
-    def show_asr_settings(self) -> None:
+    def show_asr_settings(self, *, auto_prepare: bool = False) -> None:
         self._sync_i18n_from_config()
         dialog = ASRSettingsDialog(
             self,
             config_manager=config_manager,
             reset_adapter_callback=self._reset_mic_adapter_after_asr_change,
             notify_callback=self.setNotification,
+            auto_prepare=auto_prepare,
         )
         dialog.exec()
 

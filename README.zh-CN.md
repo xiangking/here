@@ -68,7 +68,7 @@ here 是一个常驻桌面的 AI 伴侣。它负责角色人设、长期记忆�
 | 桌面 UI | PySide6 / Qt runtime。 |
 | 可选原生能力 | 本地 ASR、视频立绘导入、AI 抠图都作为可选 extras，默认安装和发行包会更轻。 |
 | 本机 Hermes Agent | 如果当前项目环境还没有安装 Hermes Agent，可通过 `--with-hermes` 辅助安装。这个 extra 来自 GitHub，需要 Git 和网络访问。 |
-| ASR | 可选。使用 Vosk、faster-whisper 或 RealtimeSTT 前，请先通过 `--with-asr` 安装。 |
+| ASR | 语音输入不随包携带模型文件。Windows 默认安装轻量 Vosk 运行时；第一次使用麦克风时可在 ASR 设置页自动下载并写入 Vosk 模型配置。需要 faster-whisper、RealtimeSTT，或源码环境要安装完整 ASR 后端时，再使用 `--with-asr`。 |
 | TTS 和生图 API | 可选，可在 UI 填写 API Key，也可以通过环境变量提供。 |
 | 外部送达 | 可选。微信等渠道需要各自的本地配置。 |
 
@@ -120,6 +120,8 @@ bash scripts/install.sh --full
 `--full` 只安装原生能力 extras，刻意不自动安装 Hermes Agent，因为它来自 GitHub 源码包。需要 here 帮当前环境安装 Hermes Agent 时，请显式使用 `--with-hermes`。
 
 macOS 上 ASR extras 需要 Homebrew PortAudio。安装脚本会先检查 Homebrew，并在运行 `uv sync --extra asr` 前安装 `portaudio`，避免全新环境里 `pyaudio` 编译失败。
+
+ASR 模型文件不会提交进仓库或打进默认包。麦克风发现缺少 Vosk 模型时，here 会打开「语音识别 ASR」，把中文小模型下载到应用数据目录的 `models` 文件夹，并自动保存模型路径。
 
 ### 打包版本
 

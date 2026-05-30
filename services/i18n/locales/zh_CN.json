@@ -581,7 +581,15 @@
       "schema_reference_id": "参考 ID",
       "schema_mp3_bitrate": "MP3 比特率",
       "schema_latency": "延迟",
-      "compute_type": "计算类型"
+      "compute_type": "计算类型",
+      "asr_deps_missing": "缺少 ASR 依赖：{modules}。点击“安装 ASR 依赖”会自动运行：{command}。安装完成后可能需要重启应用。",
+      "install_asr_deps": "安装 ASR 依赖",
+      "asr_deps_install_start": "开始安装 ASR 依赖…",
+      "asr_deps_install_running": "正在安装 ASR 依赖：{command}",
+      "asr_deps_install_failed": "ASR 依赖安装失败",
+      "asr_deps_install_failed_detail": "安装命令失败：\n{detail}",
+      "asr_deps_still_missing": "安装完成后仍缺少模块：{modules}。请重启应用后再试。",
+      "asr_deps_ready": "ASR 依赖已安装。若麦克风仍不可用，请重启应用。"
     }
   },
   "toolbar": {
