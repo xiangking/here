@@ -189,7 +189,10 @@ class AgentWorker(BaseWorker):
                 agent_backend = self.agent_backend
                 proactive_scheduler = getattr(get_app_runtime(), "proactive_contact_scheduler", None)
                 if proactive_scheduler is not None:
-                    proactive_scheduler.note_user_message()
+                    try:
+                        proactive_scheduler.note_user_message()
+                    except Exception as exc:
+                        print(f"AgentWorker: 主动联系状态记录失败，继续普通聊天: {exc}")
                 agent_user_message = build_hermes_user_message(message.text)
                 tracker.start_cross("e2e")
                 self.ui_update_manager.post_notification("发送成功，正在等待回复中...")

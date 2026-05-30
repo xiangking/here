@@ -4,8 +4,8 @@ import json
 import threading
 from datetime import datetime, time, timedelta
 from typing import Any, Callable
-from zoneinfo import ZoneInfo
 
+from core.timezone import now_in_timezone, resolve_timezone
 from internal_agent.context import AgentMemoryStore
 from core.delivery.models import DeliveryMessage
 from core.life import DEFAULT_TIMEZONE, DailyLifePlan, LifeEngine
@@ -77,7 +77,7 @@ class ProactiveContactScheduler:
             generate_thread.join(timeout=2)
 
     def note_user_message(self, when: datetime | None = None) -> None:
-        self.last_user_message_at = when or datetime.now(ZoneInfo(self.timezone))
+        self.last_user_message_at = when or now_in_timezone(self.timezone)
 
     def request_generate_today(self) -> None:
         if not self.enabled_getter():
@@ -85,7 +85,7 @@ class ProactiveContactScheduler:
         if self._generate_thread is not None and self._generate_thread.is_alive():
             return
         self._generate_thread = threading.Thread(
-            target=self.generate_today,
+            target=self._safe_generate_today,
             name="ProactiveContactPlanGenerate",
             daemon=True,
         )
@@ -94,8 +94,9 @@ class ProactiveContactScheduler:
     def generate_today(self, now: datetime | None = None) -> None:
         if not self.enabled_getter():
             return
-        now = now or datetime.now(ZoneInfo(self.timezone))
-        today = now.astimezone(ZoneInfo(self.timezone)).date().isoformat()
+        tz = resolve_timezone(self.timezone)
+        now = now or datetime.now(tz)
+        today = now.astimezone(tz).date().isoformat()
         if self._generated_date == today:
             return
         characters = list(getattr(self.config_manager.config, "characters", []) or [])
@@ -122,7 +123,7 @@ class ProactiveContactScheduler:
         self._generated_date = today
 
     def tick(self, now: datetime | None = None) -> bool:
-        now = now or datetime.now(ZoneInfo(self.timezone))
+        now = now or now_in_timezone(self.timezone)
         if not self.enabled_getter():
             return False
         self.generate_today(now)
@@ -199,7 +200,7 @@ class ProactiveContactScheduler:
         return self._fallback_dialog(active_name, item)
 
     def _run(self) -> None:
-        self.generate_today()
+        self._safe_generate_today()
         while not self._stop_event.is_set():
             try:
                 self.tick()
@@ -207,6 +208,12 @@ class ProactiveContactScheduler:
                 print(f"ProactiveContactScheduler: tick 失败: {exc}")
             if self._stop_event.wait(self.check_interval_seconds):
                 return
+
+    def _safe_generate_today(self) -> None:
+        try:
+            self.generate_today()
+        except Exception as exc:
+            print(f"ProactiveContactScheduler: 主动联系计划生成线程失败: {exc}")
 
     def _compose_prompt(
         self,

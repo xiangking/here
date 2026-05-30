@@ -33,6 +33,7 @@ from services.asr.asr_adapter import VOSK_MODEL_PATH, normalize_asr_provider_sto
 from services.asr.asr_manager import ASRAdapterFactory
 from services.config.config_manager import ConfigManager
 from services.i18n import tr
+from ui.desktop.combo_style import style_combo_popup
 from ui.desktop.edit_context_menu import install_readable_edit_menus
 
 SCHEMA_LABEL_TRANSLATION_KEYS = {
@@ -131,40 +132,6 @@ def _installed_whisper_models() -> list[str]:
     return models
 
 
-def _style_combo_popup(combo: QComboBox) -> None:
-    view = combo.view()
-    view.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-    view.setFrameShape(view.Shape.StyledPanel)
-    view.setUniformItemSizes(True)
-    view.setStyleSheet(
-        """
-        QAbstractItemView {
-            color: rgba(255, 255, 255, 230);
-            background: rgb(24, 26, 32);
-            selection-background-color: rgba(76, 175, 80, 190);
-            selection-color: rgb(255, 255, 255);
-            border: 1px solid rgba(255, 255, 255, 58);
-            border-radius: 6px;
-            outline: 0;
-            padding: 4px 0;
-        }
-        QAbstractItemView::item {
-            min-height: 28px;
-            padding: 5px 10px;
-            border: none;
-            background: transparent;
-        }
-        QAbstractItemView::item:selected {
-            background: rgba(76, 175, 80, 190);
-            color: rgb(255, 255, 255);
-        }
-        QAbstractItemView::item:hover {
-            background: rgba(255, 255, 255, 28);
-        }
-        """
-    )
-
-
 def _build_schema_widgets(
     schema: dict[str, dict],
     values: dict[str, Any],
@@ -191,7 +158,7 @@ def _build_schema_widgets(
         choices = meta.get("choices")
         if isinstance(choices, (list, tuple)) and choices:
             widget = QComboBox(wrap)
-            _style_combo_popup(widget)
+            style_combo_popup(widget)
             widget.setEditable(bool(meta.get("editable", False)))
             for choice in choices:
                 widget.addItem(str(choice), str(choice))
@@ -393,7 +360,7 @@ class ASRSettingsDialog(QDialog):
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         self.provider_combo = QComboBox(body)
-        _style_combo_popup(self.provider_combo)
+        style_combo_popup(self.provider_combo)
         self.provider_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.provider_combo.addItem("Vosk", "vosk")
         for slug in sorted(k for k in ASRAdapterFactory._adapters if k != "vosk"):
@@ -402,7 +369,7 @@ class ASRSettingsDialog(QDialog):
         form.addRow(tr("desktop.settings_dialog.backend"), self.provider_combo)
 
         self.language_combo = QComboBox(body)
-        _style_combo_popup(self.language_combo)
+        style_combo_popup(self.language_combo)
         self.language_combo.addItem(tr("desktop.settings_dialog.follow_ui"), "")
         self.language_combo.addItem(tr("desktop.settings_dialog.chinese"), "zh")
         self.language_combo.addItem(tr("desktop.settings_dialog.english"), "en")
@@ -425,7 +392,7 @@ class ASRSettingsDialog(QDialog):
         form.addRow(tr("desktop.settings_dialog.vosk_model_dir"), self.vosk_row)
 
         self.model_combo = QComboBox(body)
-        _style_combo_popup(self.model_combo)
+        style_combo_popup(self.model_combo)
         for mid in ASR_WHISPER_MODEL_PRESETS:
             size = ASR_WHISPER_MODEL_SIZE_LABELS.get(mid, "")
             label = f"{mid} ({tr('desktop.settings_dialog.size_about', size=size)})" if size else mid
@@ -446,14 +413,14 @@ class ASRSettingsDialog(QDialog):
         form.addRow(tr("desktop.settings_dialog.whisper_model"), self.model_row)
 
         self.device_combo = QComboBox(body)
-        _style_combo_popup(self.device_combo)
+        style_combo_popup(self.device_combo)
         self.device_combo.addItem(tr("desktop.settings_dialog.auto"), "auto")
         self.device_combo.addItem("CPU", "cpu")
         self.device_combo.addItem("CUDA", "cuda")
         form.addRow(tr("desktop.settings_dialog.device"), self.device_combo)
 
         self.compute_combo = QComboBox(body)
-        _style_combo_popup(self.compute_combo)
+        style_combo_popup(self.compute_combo)
         for label, value in (
             (tr("desktop.settings_dialog.auto"), ""),
             ("int8", "int8"),

@@ -5,9 +5,9 @@ from __future__ import annotations
 import threading
 from datetime import datetime, timedelta
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from core.life.engine import DEFAULT_TIMEZONE, LifeEngine
+from core.timezone import now_in_timezone, resolve_timezone
 
 
 class DailyLifeScheduler:
@@ -61,16 +61,27 @@ class DailyLifeScheduler:
                 print(f"DailyLifeScheduler: 生成 {name} 的日程失败: {exc}")
 
     def _run(self) -> None:
-        self.generate_today()
+        self._safe_generate_today()
         while not self._stop_event.is_set():
-            delay = self._seconds_until_next_midnight()
+            try:
+                delay = self._seconds_until_next_midnight()
+            except Exception as exc:
+                print(f"DailyLifeScheduler: 计算下次日程时间失败: {exc}")
+                delay = 60.0
             if self._stop_event.wait(delay):
                 return
+            self._safe_generate_today()
+
+    def _safe_generate_today(self) -> None:
+        try:
             self.generate_today()
+        except Exception as exc:
+            print(f"DailyLifeScheduler: 日程生成线程失败: {exc}")
 
     def _seconds_until_next_midnight(self) -> float:
-        now = datetime.now(ZoneInfo(self.timezone))
+        tz = resolve_timezone(self.timezone)
+        now = now_in_timezone(self.timezone)
         tomorrow = (now + timedelta(days=1)).date()
-        midnight = datetime.combine(tomorrow, datetime.min.time(), tzinfo=ZoneInfo(self.timezone))
+        midnight = datetime.combine(tomorrow, datetime.min.time(), tzinfo=tz)
         # Delay a little after midnight so date rollover is definitely settled.
         return max(1.0, (midnight - now).total_seconds() + 5.0)

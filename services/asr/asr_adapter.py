@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import sys
 import threading
 import time
-import audioop
 from pathlib import Path
 from typing import Any, Optional
 import queue
@@ -39,6 +39,19 @@ def get_asr_log() -> logging.Logger:
 
 
 _log = get_asr_log()
+
+
+def _pcm16_rms(fragment: bytes) -> int:
+    """Return RMS for little-endian signed 16-bit PCM audio."""
+    sample_count = len(fragment) // 2
+    if sample_count <= 0:
+        return 0
+
+    total = 0
+    for idx in range(0, sample_count * 2, 2):
+        sample = int.from_bytes(fragment[idx:idx + 2], "little", signed=True)
+        total += sample * sample
+    return math.isqrt(total // sample_count)
 
 
 def voice_ui_to_asr_lang(voice_ui: str) -> str:
@@ -241,7 +254,7 @@ class VoskAdapter(ASRAdapter):
             data = stream.read(self.chunk_size, exception_on_overflow=False)
             if not silence_probe_notified and silence_probe_count < 8:
                 try:
-                    silence_probe_rms_max = max(silence_probe_rms_max, audioop.rms(data, 2))
+                    silence_probe_rms_max = max(silence_probe_rms_max, _pcm16_rms(data))
                 except Exception:
                     pass
                 silence_probe_count += 1

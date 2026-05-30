@@ -25,8 +25,8 @@ from services.t2i.t2i_manager import T2IAdapterFactory
 from ui.desktop.asr_settings_dialog import (
     _build_schema_widgets,
     _read_schema_values,
-    _style_combo_popup,
 )
+from ui.desktop.combo_style import style_combo_popup
 from ui.desktop.edit_context_menu import install_readable_edit_menus
 
 T2I_PROVIDER_LABELS = {
@@ -167,7 +167,7 @@ class ProactivePhotoSettingsDialog(QDialog):
         form.addRow(tr("desktop.settings_dialog.enabled"), self.enabled_check)
 
         self.provider_combo = QComboBox(body)
-        _style_combo_popup(self.provider_combo)
+        style_combo_popup(self.provider_combo)
         for provider in T2IAdapterFactory._adapters:
             self.provider_combo.addItem(_t2i_provider_label(provider), provider)
         self.provider_combo.currentIndexChanged.connect(self._on_provider_changed)

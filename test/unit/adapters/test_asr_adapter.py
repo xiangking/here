@@ -4,6 +4,7 @@ import pytest
 
 from services.asr.asr_manager import ASRAdapterFactory
 from services.asr.asr_adapter import (
+    _pcm16_rms,
     voice_ui_to_asr_lang,
     ui_lang_to_asr_lang,
     system_config_to_asr_lang,
@@ -28,6 +29,28 @@ class TestASRAdapterFactory:
     def test_factory_values_are_adapter_subclasses(self):
         for key, cls in ASRAdapterFactory._adapters.items():
             assert issubclass(cls, ASRAdapter), f"{key} → {cls} is not an ASRAdapter subclass"
+
+
+class TestPcm16Rms:
+    def test_empty_audio_is_silent(self):
+        assert _pcm16_rms(b"") == 0
+
+    def test_all_zero_samples_are_silent(self):
+        assert _pcm16_rms((0).to_bytes(2, "little", signed=True) * 4) == 0
+
+    def test_known_samples(self):
+        samples = [3, 4]
+        data = b"".join(sample.to_bytes(2, "little", signed=True) for sample in samples)
+        assert _pcm16_rms(data) == 3
+
+    def test_negative_samples(self):
+        samples = [-3, -4]
+        data = b"".join(sample.to_bytes(2, "little", signed=True) for sample in samples)
+        assert _pcm16_rms(data) == 3
+
+    def test_ignores_incomplete_trailing_byte(self):
+        data = (256).to_bytes(2, "little", signed=True) + b"\xff"
+        assert _pcm16_rms(data) == 256
 
 
 class TestMockASRAdapter:

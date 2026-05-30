@@ -5,8 +5,8 @@ import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo
 
+from core.timezone import resolve_timezone
 from internal_agent.context import AgentMemoryStore
 from core.life import DEFAULT_TIMEZONE, DailyLifePlan, LifeBlock, LifeEngine
 from core.proactive.models import ContactPlanItem, DailyContactPlan
@@ -27,9 +27,8 @@ class ContactPlanEngine:
         self.timezone = timezone or DEFAULT_TIMEZONE
 
     def today(self, now: datetime | None = None) -> date:
-        return (now or datetime.now(ZoneInfo(self.timezone))).astimezone(
-            ZoneInfo(self.timezone)
-        ).date()
+        tz = resolve_timezone(self.timezone)
+        return (now or datetime.now(tz)).astimezone(tz).date()
 
     def plan_path(self, character_name: str, day: date | str) -> Path:
         day_s = day.isoformat() if isinstance(day, date) else str(day)

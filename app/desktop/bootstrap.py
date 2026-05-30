@@ -47,6 +47,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
 from services.tts.tts_manager import TTSManager, TTSAdapterFactory
 from ui.desktop import ChatUIWindow, character_entry_line, character_entry_sprite
+from ui.desktop.combo_style import install_combo_popup_style
 from ui.desktop.qss_fusion import ensure_fusion_style
 from services.config.config_manager import ConfigManager
 from services.t2i.t2i_manager import T2IAdapterFactory, T2IManager
@@ -230,6 +231,7 @@ def run_desktop_app():
     # Init UI and connect to runtime
     app = QApplication([])
     ensure_fusion_style(app)
+    install_combo_popup_style(app)
     ui_updates = UIUpdateManager(chat_history=chat_history, bg_group=bg_group or [], t2i_manager=t2i_manager)
     agent_backend = create_agent_backend(
         config,

@@ -6,8 +6,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo
 
+from core.timezone import now_in_timezone, resolve_timezone
 from internal_agent.context import AgentMemoryStore
 
 
@@ -120,9 +120,8 @@ class LifeEngine:
         self.timezone = timezone or DEFAULT_TIMEZONE
 
     def today(self, now: datetime | None = None) -> date:
-        return (now or datetime.now(ZoneInfo(self.timezone))).astimezone(
-            ZoneInfo(self.timezone)
-        ).date()
+        tz = resolve_timezone(self.timezone)
+        return (now or datetime.now(tz)).astimezone(tz).date()
 
     def plan_path(self, character_name: str, day: date | str) -> Path:
         day_s = day.isoformat() if isinstance(day, date) else str(day)
@@ -167,7 +166,7 @@ class LifeEngine:
             agent_backend=agent_backend,
             allow_llm_generate=allow_llm_generate,
         )
-        current = now or datetime.now(ZoneInfo(plan.timezone or self.timezone))
+        current = now or now_in_timezone(plan.timezone or self.timezone)
         block = self.block_at(plan, current)
         if block is None:
             return ""
@@ -193,7 +192,7 @@ class LifeEngine:
             return plan
         character_name = str(getattr(character, "name", "") or "角色").strip() or "角色"
         changed = False
-        observation = self._compact_observation(text, now or datetime.now(ZoneInfo(plan.timezone)))
+        observation = self._compact_observation(text, now or now_in_timezone(plan.timezone or self.timezone))
         if observation and observation not in plan.observations:
             plan.observations.append(observation)
             plan.observations = plan.observations[-20:]

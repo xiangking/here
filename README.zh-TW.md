@@ -47,7 +47,7 @@ here 是一個常駐桌面的 AI 伴侶。它負責角色設定、長期記憶�
 
 | 項目 | 需求 |
 | --- | --- |
-| Python | Python 3.11。專案約束為 `<3.13`，因為 ASR 程式碼仍使用 `audioop`。 |
+| Python | 已驗證 Python 3.11 到 3.13。 |
 | 環境管理 | 原始碼安裝和開發統一使用 [uv](https://docs.astral.sh/uv/)。 |
 | 桌面 UI | PySide6 / Qt runtime。 |
 | 可選原生能力 | 本機 ASR、影片立繪匯入、AI 去背都作為可選 extras，預設安裝和發行包會更輕。 |

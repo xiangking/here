@@ -62,6 +62,7 @@ from ui.desktop.components import (
     VolumeDialog,
 )
 from ui.desktop import styles
+from ui.desktop.combo_style import style_combo_popup
 
 config_manager = ConfigManager()
 
@@ -666,6 +667,7 @@ class DesktopMenuMixin:
         form.setSpacing(10)
 
         backend_combo = QComboBox(dialog)
+        style_combo_popup(backend_combo)
         backend_combo.addItem("Hermes Agent", "hermes-agent")
         backend_combo.addItem("Internal Agent", "internal-agent")
         backend_combo.addItem("Auto", "auto")
@@ -679,6 +681,7 @@ class DesktopMenuMixin:
         api_key_edit = QLineEdit(str(getattr(api, "internal_agent_api_key", "") or ""), dialog)
         api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
         model_combo = QComboBox(dialog)
+        style_combo_popup(model_combo)
         model_combo.setEditable(False)
         model_combo.setVisible(False)
         fetch_models_btn = QPushButton(tr("desktop.settings_dialog.fetch_models"), dialog)

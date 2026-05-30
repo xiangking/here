@@ -28,8 +28,8 @@ from services.tts.tts_manager import TTSAdapterFactory
 from ui.desktop.asr_settings_dialog import (
     _build_schema_widgets,
     _read_schema_values,
-    _style_combo_popup,
 )
+from ui.desktop.combo_style import style_combo_popup
 from ui.desktop.edit_context_menu import install_readable_edit_menus
 
 TTS_PROVIDER_LABELS = {
@@ -158,7 +158,7 @@ class TTSSettingsDialog(QDialog):
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         self.provider_combo = QComboBox(body)
-        _style_combo_popup(self.provider_combo)
+        style_combo_popup(self.provider_combo)
         self.provider_combo.addItem(_tts_provider_label("none"), "none")
         for provider in TTSAdapterFactory._adapters:
             self.provider_combo.addItem(_tts_provider_label(provider), provider)

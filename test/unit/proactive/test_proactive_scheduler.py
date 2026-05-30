@@ -5,6 +5,7 @@ from queue import Queue
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
+import core.timezone as timezone_helpers
 from services.config.schema import AppConfig
 from internal_agent.context import AgentMemoryStore
 from core.life import LifeEngine
@@ -143,6 +144,57 @@ def test_recent_user_message_suppresses_due_contact(tmp_path):
 
     assert scheduler.tick(now) is False
     assert out.empty()
+
+
+def test_note_user_message_survives_missing_tzdata(monkeypatch, tmp_path):
+    def missing_zoneinfo(_name: str):
+        raise timezone_helpers.ZoneInfoNotFoundError("missing tzdata")
+
+    monkeypatch.setattr(timezone_helpers, "ZoneInfo", missing_zoneinfo)
+    timezone_helpers.clear_timezone_cache()
+    alice = make_character(name="Alice")
+    app_config = make_app_config(characters=[alice])
+    cfg = _config(app_config)
+    store = AgentMemoryStore(tmp_path / "agent_memory")
+    life_engine = LifeEngine(store)
+    contact_engine = ContactPlanEngine(store, life_engine)
+    scheduler = ProactiveContactScheduler(
+        config_manager=cfg,
+        life_engine=life_engine,
+        contact_engine=contact_engine,
+        agent_backend=FakeBackend(),
+        active_character_name=lambda: "Alice",
+        emit_dialog=lambda _: None,
+        enabled_getter=lambda: True,
+        memory_store=store,
+    )
+
+    scheduler.note_user_message()
+
+    assert scheduler.last_user_message_at is not None
+    assert scheduler.last_user_message_at.utcoffset().total_seconds() == 8 * 60 * 60
+
+
+def test_proactive_scheduler_safe_generate_today_catches_unexpected_errors(tmp_path):
+    alice = make_character(name="Alice")
+    app_config = make_app_config(characters=[alice])
+    cfg = _config(app_config)
+    store = AgentMemoryStore(tmp_path / "agent_memory")
+    life_engine = LifeEngine(store)
+    contact_engine = ContactPlanEngine(store, life_engine)
+    scheduler = ProactiveContactScheduler(
+        config_manager=cfg,
+        life_engine=life_engine,
+        contact_engine=contact_engine,
+        agent_backend=FakeBackend(),
+        active_character_name=lambda: "Alice",
+        emit_dialog=lambda _: None,
+        enabled_getter=lambda: True,
+        memory_store=store,
+    )
+    scheduler.generate_today = MagicMock(side_effect=RuntimeError("boom"))
+
+    scheduler._safe_generate_today()
 
 
 def test_scheduler_uses_delivery_router_for_external_channel(tmp_path):

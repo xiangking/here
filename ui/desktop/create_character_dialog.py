@@ -43,6 +43,7 @@ from core.sprite.character_profile import (
 )
 from core.sprite.emotion_resolver import CORE_EMOTIONS
 from services.i18n import tr
+from ui.desktop.combo_style import style_combo_popup
 from ui.desktop.edit_context_menu import install_readable_edit_menus
 
 
@@ -343,6 +344,7 @@ class CreateCharacterDialog(QDialog):
 
     def _editable_combo(self, parent: QWidget, values: list[str], current: str = "") -> QComboBox:
         combo = QComboBox(parent)
+        style_combo_popup(combo)
         combo.setEditable(True)
         combo.addItems(values)
         combo.setCurrentText(current)

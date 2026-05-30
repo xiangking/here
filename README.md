@@ -63,7 +63,7 @@ Model reasoning uses the user's locally installed and configured Hermes Agent wh
 
 | Item | Requirement |
 | --- | --- |
-| Python | Python 3.11. The project is constrained to `<3.13` because `audioop` is still used by ASR code. |
+| Python | Validated on Python 3.11 to 3.13. |
 | Environment manager | [uv](https://docs.astral.sh/uv/) is required for source installs and development. |
 | Desktop UI | PySide6 / Qt runtime. |
 | Optional native extras | Local ASR, video sprite import, and AI background removal are optional extras to keep default installs and release bundles smaller. |
