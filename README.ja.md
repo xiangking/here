@@ -183,6 +183,10 @@ API Key は UI からも入力できます。UI が書き込む設定はロー�
 
 主动写真は主动連絡の添付機能であり、スケジューラー自体を駆動しません。有効にすると、キャラクターは適切な主动連絡タイミングで、日常状態、視覚的アイデンティティ、任意の参照画像から自然な現在状態写真を生成できます。
 
+<p align="center">
+  <img src="docs/assets/screenshot/feature-selfie-example-01.jpg" width="420" alt="主动写真の例">
+</p>
+
 | アダプター | 説明 |
 | --- | --- |
 | `image-api` | OpenAI-compatible `/v1/images/generations` またはシンプルな画像 API。 |

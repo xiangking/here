@@ -201,6 +201,10 @@ API keys can also be entered in the UI. UI-written config is local-only and shou
 
 Proactive photos are an attachment capability of proactive contact; they do not drive the proactive scheduler by themselves. When enabled, the character may generate a natural current-state photo from daily state, visual identity, and an optional reference image.
 
+<p align="center">
+  <img src="docs/assets/screenshot/feature-selfie-example-01.jpg" width="420" alt="Proactive selfie example">
+</p>
+
 Supported image adapters:
 
 | Adapter | Description |

@@ -183,6 +183,10 @@ API Key는 UI에서도 입력할 수 있습니다. UI가 저장한 설정은 로
 
 선제 사진은 선제 연락의 첨부 기능이며 스케줄러 자체를 구동하지 않습니다. 활성화하면 캐릭터가 적절한 선제 연락 타이밍에 일상 상태, 시각 정체성, 선택적 참조 이미지를 바탕으로 자연스러운 현재 상태 사진을 생성할 수 있습니다.
 
+<p align="center">
+  <img src="docs/assets/screenshot/feature-selfie-example-01.jpg" width="420" alt="선제 셀피 예시">
+</p>
+
 | 어댑터 | 설명 |
 | --- | --- |
 | `image-api` | OpenAI-compatible `/v1/images/generations` 또는 간단한 이미지 API. |

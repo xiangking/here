@@ -24,7 +24,7 @@
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11-blue?logo=python">
   <img alt="uv" src="https://img.shields.io/badge/uv-managed-6f42c1">
   <img alt="PySide6" src="https://img.shields.io/badge/PySide6-Qt-green?logo=qt">
-  <img alt="License" src="https://img.shields.io/badge/License-MIT-blue">
+  <img alt="License" src="https://img.shields.io/badge/License-PolyForm%20NC%201.0.0-blue">
 </p>
 
 <p align="center">
@@ -191,7 +191,9 @@ API Key 也可以直接在 UI 设置里填写。UI 写入的配置只保存在�
 
 主动联系附图是主动联系流程的附属能力，不会单独驱动主动联系。启用后，角色在合适的主动联系时机会根据当前日常状态、角色视觉身份和可选参考图生成一张自然的状态照片。
 
-
+<p align="center">
+  <img src="docs/assets/screenshot/feature-selfie-example-01.jpg" width="420" alt="主动联系自拍示例">
+</p>
 
 支持的生图适配器包括：
 
@@ -217,4 +219,4 @@ uv run python -m compileall app core infrastructure internal_agent services ui m
 
 ## License
 
-here 使用 [MIT License](LICENSE) 发布。
+here 使用 [PolyForm Noncommercial License 1.0.0](LICENSE) 发布。未经单独书面授权，不允许商业使用。

@@ -183,6 +183,10 @@ API Key 也可以直接在 UI 設定裡填寫。UI 寫入的設定只保存在�
 
 主動聯絡附圖是主動聯絡流程的附屬能力，不會單獨驅動主動聯絡。啟用後，角色在合適的主動聯絡時機會根據目前日常狀態、角色視覺身份和可選參考圖生成一張自然的狀態照片。
 
+<p align="center">
+  <img src="docs/assets/screenshot/feature-selfie-example-01.jpg" width="420" alt="主動聯絡自拍範例">
+</p>
+
 | 適配器 | 說明 |
 | --- | --- |
 | `image-api` | OpenAI-compatible `/v1/images/generations` 或簡易生圖接口。 |
