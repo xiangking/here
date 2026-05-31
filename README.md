@@ -43,9 +43,9 @@
   <a href="#license">License</a>
 </p>
 
-here is a desktop AI companion that stays with the user instead of behaving like a disposable chat box. It owns character profiles, long-term memory, daily state, animated sprites, speech, input, chat presentation, proactive contact, and optional current-state photos.
+here is an AI lover and companion who feels like they live on your desktop. With character profiles, long-term memory, voice, animated sprites, daily-life state, and proactive contact, here does not just wait for you to open a chat box; they can naturally think of you, reach out first, and share little moments from their day through optional current-state photos.
 
-Model reasoning uses the user's locally installed and configured Hermes Agent when it is available. The bundled OpenAI-compatible Internal Agent exists as the lightweight fallback. Image generation is adapter-based so Grok Imagine, GPT Image, OpenAI-compatible services, and future providers can share the same proactive photo flow.
+here can use the user's locally installed Hermes Agent for model reasoning, with a bundled OpenAI-compatible Internal Agent as a lightweight fallback. Image generation is provider-agnostic, so Grok Imagine, GPT Image, OpenAI-compatible services, and future adapters can all power the same proactive photo experience.
 
 ## ✨ Features
 
@@ -59,7 +59,7 @@ Model reasoning uses the user's locally installed and configured Hermes Agent wh
 | ASR and TTS | Support microphone voice input, ASR backend selection, TTS playback, and multi-provider voice settings. | <img src="docs/assets/screenshot/feature-voice-01.png" width="135" alt="ASR settings"> <img src="docs/assets/screenshot/feature-voice-02.png" width="135" alt="TTS settings"> <img src="docs/assets/screenshot/feature-voice-03.png" width="120" alt="Microphone permission prompt"> <img src="docs/assets/screenshot/feature-voice-04.png" width="120" alt="Voice synthesis status"> |
 | Desktop chat | Dialog, sprite switching, TTS playback, microphone input, history save and restore. | <img src="docs/assets/screenshot/feature-chat-01.png" width="150" alt="Desktop chat and call UI"> <img src="docs/assets/screenshot/feature-chat-02.png" width="150" alt="External delivery settings"> <img src="docs/assets/screenshot/feature-chat-03.png" width="160" alt="External chat preview"> |
 | Agent backend | Choose the user's local Hermes Agent, the bundled Internal Agent fallback, or automatic selection from the main menu. |  |
-| Proactive contact | Characters can reach out based on their own daily state through desktop chat or external delivery channels such as WeChat. | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="External conversation alert"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="External chat content"> |
+| Proactive contact | Characters can reach out based on their own daily state through desktop chat or external delivery channels such as WeChat. | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="External conversation alert"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="External chat content"> <img src="docs/assets/screenshot/feature-proactive-03.png" width="120" alt="Desktop proactive contact preview"> |
 | Proactive photos | Proactive contact can attach a natural current-state photo generated from character identity, life state, and optional reference images. | <img src="docs/assets/screenshot/feature-proactive-image-01.jpg" width="160" alt="Proactive photo preview"> |
 | Configurable image APIs | Switch image-api, Grok Imagine, GPT Image, OpenAI-compatible endpoints, and future adapters without changing the scheduler. | <img src="docs/assets/screenshot/feature-image-api-01.png" width="220" alt="Image API settings"> |
 

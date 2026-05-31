@@ -27,9 +27,9 @@
   <img alt="License" src="https://img.shields.io/badge/License-PolyForm%20NC%201.0.0-blue">
 </p>
 
-here はデスクトップに常駐する AI コンパニオンです。キャラクター設定、長期記憶、日常状態、スプライトアニメーション、音声、入力、チャット表示、主动連絡、任意の現在状態写真を扱います。
+here は、まるでデスクトップに住んでいるように感じられる AI の恋人でありコンパニオンです。キャラクター設定、長期記憶、音声、アニメーション立ち絵、日常生活状態、主动連絡によって、here はチャットボックスを開かれるのを待つだけではありません。自然にあなたのことを思い出し、自分から連絡し、任意の現在状態写真を通じて日常の小さな瞬間を共有できます。
 
-モデル推論は、ユーザー環境にインストール済みで設定済みの Hermes Agent を優先して使います。同梱の OpenAI-compatible Internal Agent は軽量フォールバックです。画像生成はアダプター方式なので、Grok Imagine、GPT Image、OpenAI-compatible サービス、今後追加される画像 API を同じ主动写真フローで利用できます。
+here はモデル推論にユーザー環境へインストール済みの Hermes Agent を利用でき、同梱の OpenAI-compatible Internal Agent を軽量フォールバックとして備えています。画像生成は特定プロバイダーに依存しないため、Grok Imagine、GPT Image、OpenAI-compatible サービス、今後のアダプターはいずれも同じ主动写真体験を支えることができます。
 
 ## ✨ 主な機能
 
@@ -43,7 +43,7 @@ here はデスクトップに常駐する AI コンパニオンです。キャ�
 | ASR と TTS | マイク音声入力、ASR バックエンド選択、TTS 再生、複数サービスの音声設定に対応します。 | <img src="docs/assets/screenshot/feature-voice-01.png" width="135" alt="音声認識設定"> <img src="docs/assets/screenshot/feature-voice-02.png" width="135" alt="音声合成設定"> <img src="docs/assets/screenshot/feature-voice-03.png" width="120" alt="マイク権限プロンプト"> <img src="docs/assets/screenshot/feature-voice-04.png" width="120" alt="音声合成ステータス"> |
 | デスクトップチャット | 会話、立ち絵切り替え、TTS 再生、マイク入力、履歴の保存と復元を行います。 | <img src="docs/assets/screenshot/feature-chat-01.png" width="150" alt="デスクトップチャットと通話 UI"> <img src="docs/assets/screenshot/feature-chat-02.png" width="150" alt="外部配信設定"> <img src="docs/assets/screenshot/feature-chat-03.png" width="160" alt="外部チャットプレビュー"> |
 | Agent バックエンド | メインメニューからユーザー環境の Hermes Agent、同梱 Internal Agent フォールバック、自動選択を選べます。 |  |
-| 主动連絡 | キャラクターが自分の日常状態に基づいて、デスクトップチャットや WeChat などの外部チャンネルへ自然に連絡できます。 | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="外部会話通知"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="外部チャット内容"> |
+| 主动連絡 | キャラクターが自分の日常状態に基づいて、デスクトップチャットや WeChat などの外部チャンネルへ自然に連絡できます。 | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="外部会話通知"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="外部チャット内容"> <img src="docs/assets/screenshot/feature-proactive-03.png" width="120" alt="デスクトップ主动連絡プレビュー"> |
 | 主动写真 | キャラクターの見た目、生活状態、任意の参照画像から自然な現在状態写真を添付できます。 | <img src="docs/assets/screenshot/feature-proactive-image-01.jpg" width="160" alt="主动写真プレビュー"> |
 | 設定可能な画像 API | image-api、Grok Imagine、GPT Image、OpenAI-compatible endpoint、今後のアダプターをスケジューラー変更なしで切り替えられます。 | <img src="docs/assets/screenshot/feature-image-api-01.png" width="220" alt="画像 API 設定"> |
 
@@ -143,7 +143,7 @@ Windows:
 .\start.bat
 ```
 
-Release bundles are intentionally lightweight and do not include local ASR, video import, or AI background-removal dependencies by default.
+リリースパッケージには、初回の音声入力に使える Vosk ASR runtime と中国語 small モデルが含まれています。動画取り込み、faster-whisper、RealtimeSTT、AI 背景削除の依存関係は引き続き任意です。
 
 ## ⚙️ 設定
 

@@ -43,9 +43,9 @@
   <a href="#license">License</a>
 </p>
 
-here 是一个常驻桌面的 AI 伴侣。它负责角色人设、长期记忆、日常状态、立绘动画、语音、输入、聊天演出、主动联系，以及可选的当前状态照片。
+here 是一个像住在你桌面上的 AI 恋人与伴侣。通过角色人设、长期记忆、语音、动态立绘、日常生活状态和主动联系，here 不只是等你打开聊天框；它可以自然地想起你、先来找你，并通过可选的当前状态照片分享日常里的小瞬间。
 
-模型推理由 Hermes Agent 或内置 OpenAI-compatible Internal Agent 承担。生图能力采用适配器设计，因此 Grok Imagine、GPT Image、OpenAI-compatible 服务和未来新增的生图 API 都可以复用同一套主动联系附图流程。
+here 可以使用用户本机已安装的 Hermes Agent 进行模型推理，并以内置 OpenAI-compatible Internal Agent 作为轻量兜底。生图能力不绑定特定服务商，因此 Grok Imagine、GPT Image、OpenAI-compatible 服务和未来适配器都可以驱动同一套主动联系照片体验。
 
 ## ✨ 主要功能
 
@@ -59,7 +59,7 @@ here 是一个常驻桌面的 AI 伴侣。它负责角色人设、长期记忆�
 | ASR 与 TTS | 支持麦克风语音输入、ASR 后端选择、TTS 播放和多服务语音配置。 | <img src="docs/assets/screenshot/feature-voice-01.png" width="135" alt="语音识别设置"> <img src="docs/assets/screenshot/feature-voice-02.png" width="135" alt="语音合成设置"> <img src="docs/assets/screenshot/feature-voice-03.png" width="120" alt="麦克风权限提示"> <img src="docs/assets/screenshot/feature-voice-04.png" width="120" alt="语音合成状态"> |
 | 桌面聊天 | 对话、立绘切换、TTS 播放、麦克风输入、历史保存与恢复。 | <img src="docs/assets/screenshot/feature-chat-01.png" width="150" alt="桌面聊天与通话界面"> <img src="docs/assets/screenshot/feature-chat-02.png" width="150" alt="外部发送渠道配置"> <img src="docs/assets/screenshot/feature-chat-03.png" width="160" alt="外部聊天效果"> |
 | Agent 后端 | 在主窗口菜单中选择 Hermes Agent、Internal Agent 或自动兜底。 |  |
-| 主动联系 | 角色可按自己的日程状态主动联系用户，并可选择桌面、微信等送达渠道。 | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="外部会话提醒"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="外部聊天内容"> |
+| 主动联系 | 角色可按自己的日程状态主动联系用户，并可选择桌面、微信等送达渠道。 | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="外部会话提醒"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="外部聊天内容"> <img src="docs/assets/screenshot/feature-proactive-03.png" width="120" alt="桌面主动联系预览"> |
 | 主动附图 | 主动联系可附带根据角色身份、生活状态和可选参考图生成的自然状态照片。 | <img src="docs/assets/screenshot/feature-proactive-image-01.jpg" width="160" alt="主动联系附图"> |
 | 可配置生图 API | image-api、Grok Imagine、GPT Image、OpenAI-compatible endpoint 和未来适配器都可以在不改调度器的情况下切换。 | <img src="docs/assets/screenshot/feature-image-api-01.png" width="220" alt="生图 API 设置"> |
 
@@ -71,7 +71,7 @@ here 是一个常驻桌面的 AI 伴侣。它负责角色人设、长期记忆�
 
 | 项目 | 要求 |
 | --- | --- |
-| Python | Python 3.11。项目约束为 `<3.13`，因为 ASR 代码仍使用 `audioop`。 |
+| Python | 已验证 Python 3.11 到 3.13。 |
 | 环境管理 | 源码安装和开发统一使用 [uv](https://docs.astral.sh/uv/)。 |
 | 桌面 UI | PySide6 / Qt runtime。 |
 | ASR | Windows 源码环境和打包版本默认提供轻量 Vosk 路线；`--with-asr` 用于安装完整 ASR extras，例如 faster-whisper、RealtimeSTT，以及非 Windows 源码环境需要的本地 ASR 依赖。 |

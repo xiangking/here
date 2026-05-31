@@ -27,9 +27,9 @@
   <img alt="License" src="https://img.shields.io/badge/License-PolyForm%20NC%201.0.0-blue">
 </p>
 
-here 是一個常駐桌面的 AI 伴侶。它負責角色設定、長期記憶、日常狀態、立繪動畫、語音、輸入、聊天呈現、主動聯絡，以及可選的目前狀態照片。
+here 是一個像住在你桌面上的 AI 戀人與伴侶。透過角色設定、長期記憶、語音、動態立繪、日常生活狀態和主動聯絡，here 不只是等你打開聊天框；它可以自然地想起你、先來找你，並透過可選的目前狀態照片分享日常裡的小瞬間。
 
-模型推理會優先使用使用者本機已安裝並設定好的 Hermes Agent；專案內建的 OpenAI-compatible Internal Agent 主要作為輕量兜底。生圖能力採用適配器設計，因此 Grok Imagine、GPT Image、OpenAI-compatible 服務和未來新增的生圖 API 都可以共用同一套主動聯絡附圖流程。
+here 可以使用使用者本機已安裝的 Hermes Agent 進行模型推理，並以內建 OpenAI-compatible Internal Agent 作為輕量兜底。生圖能力不綁定特定服務商，因此 Grok Imagine、GPT Image、OpenAI-compatible 服務和未來適配器都可以驅動同一套主動聯絡照片體驗。
 
 ## ✨ 主要功能
 
@@ -43,7 +43,7 @@ here 是一個常駐桌面的 AI 伴侶。它負責角色設定、長期記憶�
 | ASR 與 TTS | 支援麥克風語音輸入、ASR 後端選擇、TTS 播放和多服務語音設定。 | <img src="docs/assets/screenshot/feature-voice-01.png" width="135" alt="語音辨識設定"> <img src="docs/assets/screenshot/feature-voice-02.png" width="135" alt="語音合成設定"> <img src="docs/assets/screenshot/feature-voice-03.png" width="120" alt="麥克風權限提示"> <img src="docs/assets/screenshot/feature-voice-04.png" width="120" alt="語音合成狀態"> |
 | 桌面聊天 | 對話、立繪切換、TTS 播放、麥克風輸入、歷史保存與恢復。 | <img src="docs/assets/screenshot/feature-chat-01.png" width="150" alt="桌面聊天與通話介面"> <img src="docs/assets/screenshot/feature-chat-02.png" width="150" alt="外部送達設定"> <img src="docs/assets/screenshot/feature-chat-03.png" width="160" alt="外部聊天效果"> |
 | Agent 後端 | 在主視窗選單中選擇使用者本機 Hermes Agent、專案內建 Internal Agent 兜底，或自動選擇。 |  |
-| 主動聯絡 | 角色可依自己的日程狀態主動聯絡使用者，並可選擇桌面、微信等送達渠道。 | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="外部會話提醒"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="外部聊天內容"> |
+| 主動聯絡 | 角色可依自己的日程狀態主動聯絡使用者，並可選擇桌面、微信等送達渠道。 | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="外部會話提醒"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="外部聊天內容"> <img src="docs/assets/screenshot/feature-proactive-03.png" width="120" alt="桌面主動聯絡預覽"> |
 | 主動附圖 | 主動聯絡可附帶根據角色身份、生活狀態和可選參考圖生成的自然狀態照片。 | <img src="docs/assets/screenshot/feature-proactive-image-01.jpg" width="160" alt="主動聯絡附圖"> |
 | 可配置生圖 API | image-api、Grok Imagine、GPT Image、OpenAI-compatible endpoint 和未來適配器都可以在不改調度器的情況下切換。 | <img src="docs/assets/screenshot/feature-image-api-01.png" width="220" alt="生圖 API 設定"> |
 
@@ -143,7 +143,7 @@ Windows：
 .\start.bat
 ```
 
-發行包預設採用輕量依賴，不內建本機 ASR、影片匯入或 AI 去背依賴。
+發行包內建 Vosk ASR runtime 和中文小模型，可支援首次語音輸入。影片匯入、faster-whisper、RealtimeSTT 和 AI 去背依賴仍為可選。
 
 ## ⚙️ 設定
 
