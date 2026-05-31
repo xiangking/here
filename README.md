@@ -72,7 +72,7 @@ Model reasoning uses the user's locally installed and configured Hermes Agent wh
 | Desktop UI | PySide6 / Qt runtime. |
 | Optional native extras | Video sprite import and AI background removal are optional extras to keep default installs and release bundles smaller. |
 | Local Hermes Agent | If Hermes Agent is not already installed in this project environment, install it with `--with-hermes`. This helper extra is fetched from GitHub and requires Git/network access. |
-| ASR | Release bundles include the lightweight Vosk runtime, but not model files. The first microphone use can download/configure the Vosk model from the ASR settings dialog. Install `--with-asr` in source environments for Vosk, faster-whisper, and RealtimeSTT. |
+| ASR | Windows source installs and release bundles provide the lightweight Vosk path by default. Use `--with-asr` for the full ASR extras, such as faster-whisper, RealtimeSTT, and local ASR dependencies needed by non-Windows source environments. |
 | TTS and image APIs | Optional. API keys can be entered in the UI or provided through environment variables. |
 | External delivery | Optional. WeChat and other delivery channels need their own local configuration. |
 
@@ -120,6 +120,14 @@ bash scripts/install.sh --with-background-removal
 bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
+
+| Option | Installs | Enables |
+| --- | --- | --- |
+| `--with-asr` | `pyaudio`, `vosk`, `faster-whisper`, `RealtimeSTT` | Full ASR extras: adds advanced/alternative backends such as faster-whisper and RealtimeSTT, plus local speech dependencies for non-Windows source environments. The basic Windows Vosk path does not require it. |
+| `--with-video` | `opencv_python` | Extracting frames from video files when creating or editing character sprite animations. Still images, multi-image frame imports, and Codex Pet imports do not need it. |
+| `--with-background-removal` | `rembg` | AI background removal for imported character images, useful for transparent sprite assets. |
+| `--with-hermes` | `hermes-agent` | Installs Hermes Agent into this project environment for the local Agent backend. Requires Git and network access. |
+| `--full` | ASR, video import, and AI background-removal native extras | Installs the local native capabilities in one pass; does not include Hermes Agent. |
 
 `--full` installs the native extras, but it intentionally does not install Hermes Agent because that package is fetched from GitHub. Use `--with-hermes` only when you need here to install Hermes Agent into this environment.
 

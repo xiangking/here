@@ -56,7 +56,7 @@ here는 데스크톱에 상주하는 AI 컴패니언입니다. 캐릭터 프로�
 | 데스크톱 UI | PySide6 / Qt runtime. |
 | 선택형 네이티브 기능 | 로컬 ASR, 동영상 스프라이트 가져오기, AI 배경 제거는 선택형 extras입니다. 기본 설치와 릴리스 번들을 가볍게 유지합니다. |
 | 로컬 Hermes Agent | 현재 프로젝트 환경에 Hermes Agent가 아직 없다면 `--with-hermes`로 보조 설치할 수 있습니다. 이 extra는 GitHub에서 가져오므로 Git과 네트워크 접근이 필요합니다. |
-| ASR | 음성 입력은 모델 파일을 함께 제공하지 않습니다. Windows는 가벼운 Vosk 런타임을 기본 설치하며, 첫 마이크 사용 시 ASR 설정에서 Vosk 모델을 다운로드하고 자동으로 설정할 수 있습니다. faster-whisper, RealtimeSTT 또는 소스 환경에서 전체 ASR 백엔드가 필요할 때는 `--with-asr`를 사용하세요. |
+| ASR | Windows 소스 환경과 릴리스 번들은 가벼운 Vosk 경로를 기본으로 제공합니다. `--with-asr`는 faster-whisper, RealtimeSTT, 비 Windows 소스 환경에 필요한 로컬 ASR 의존성 같은 전체 ASR extras를 설치할 때 사용합니다. |
 | TTS 및 이미지 API | 선택 사항. API Key는 UI 또는 환경 변수로 설정할 수 있습니다. |
 | 외부 전달 | 선택 사항. WeChat 등 채널은 별도의 로컬 설정이 필요합니다. |
 
@@ -104,6 +104,14 @@ bash scripts/install.sh --with-background-removal
 bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
+
+| 옵션 | 설치 내용 | 활성화되는 기능 |
+| --- | --- | --- |
+| `--with-asr` | `pyaudio`, `vosk`, `faster-whisper`, `RealtimeSTT` | 전체 ASR extras입니다. faster-whisper, RealtimeSTT 같은 고급/대체 백엔드와 비 Windows 소스 환경에 필요한 로컬 음성 의존성을 추가합니다. Windows 기본 Vosk 경로에는 필요하지 않습니다. |
+| `--with-video` | `opencv_python` | 캐릭터 생성/편집 시 동영상 파일에서 프레임을 추출해 스프라이트 애니메이션으로 가져옵니다. 일반 이미지, 여러 이미지 프레임, Codex Pet 가져오기는 필요하지 않습니다. |
+| `--with-background-removal` | `rembg` | 캐릭터 이미지 가져오기 시 AI 배경 제거를 사용해 투명 배경 스프라이트를 만들 수 있습니다. |
+| `--with-hermes` | `hermes-agent` | Hermes Agent를 현재 프로젝트 환경에 설치해 로컬 Agent 백엔드로 사용합니다. Git과 네트워크가 필요합니다. |
+| `--full` | ASR, 동영상 가져오기, AI 배경 제거 네이티브 extras | 로컬 네이티브 기능을 한 번에 설치합니다. Hermes Agent는 포함하지 않습니다. |
 
 `--full`은 네이티브 extras만 설치하며 Hermes Agent는 자동으로 포함하지 않습니다. Hermes Agent는 GitHub 소스 패키지에서 가져오므로, 이 환경에 here가 설치해 주길 원할 때만 `--with-hermes`를 사용하세요.
 

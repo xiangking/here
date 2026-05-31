@@ -56,7 +56,7 @@ here 是一個常駐桌面的 AI 伴侶。它負責角色設定、長期記憶�
 | 桌面 UI | PySide6 / Qt runtime。 |
 | 可選原生能力 | 本機 ASR、影片立繪匯入、AI 去背都作為可選 extras，預設安裝和發行包會更輕。 |
 | 本機 Hermes Agent | 如果目前專案環境還沒有安裝 Hermes Agent，可透過 `--with-hermes` 輔助安裝。這個 extra 來自 GitHub，需要 Git 和網路存取。 |
-| ASR | 語音輸入不隨包攜帶模型檔。Windows 預設安裝輕量 Vosk 執行時；第一次使用麥克風時可在 ASR 設定頁自動下載並寫入 Vosk 模型設定。需要 faster-whisper、RealtimeSTT，或原始碼環境要安裝完整 ASR 後端時，再使用 `--with-asr`。 |
+| ASR | Windows 原始碼環境和打包版本預設提供輕量 Vosk 路線；`--with-asr` 用於安裝完整 ASR extras，例如 faster-whisper、RealtimeSTT，以及非 Windows 原始碼環境需要的本機 ASR 依賴。 |
 | TTS 和生圖 API | 可選，可在 UI 填寫 API Key，也可以透過環境變數提供。 |
 | 外部送達 | 可選。微信等渠道需要各自的本機設定。 |
 
@@ -104,6 +104,14 @@ bash scripts/install.sh --with-background-removal
 bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
+
+| 參數 | 安裝內容 | 對應功能 |
+| --- | --- | --- |
+| `--with-asr` | `pyaudio`、`vosk`、`faster-whisper`、`RealtimeSTT` | 完整 ASR extras：補充 faster-whisper、RealtimeSTT 等進階/替代後端，以及非 Windows 原始碼環境所需的本機語音依賴。Windows 基礎 Vosk 路線不需要它。 |
+| `--with-video` | `opencv_python` | 建立或編輯角色時，從影片檔抽幀匯入為立繪動畫。一般圖片、多張圖片幀和 Codex Pet 匯入不需要它。 |
+| `--with-background-removal` | `rembg` | 匯入角色圖片時使用 AI 去背，方便製作透明背景立繪。 |
+| `--with-hermes` | `hermes-agent` | 把 Hermes Agent 安裝進目前專案環境，用作本機 Agent 後端。需要 Git 和網路。 |
+| `--full` | ASR、影片匯入、AI 去背這些原生 extras | 一次安裝本機原生能力；不包含 Hermes Agent。 |
 
 `--full` 只安裝原生能力 extras，刻意不自動安裝 Hermes Agent，因為它來自 GitHub 原始碼包。需要 here 幫目前環境安裝 Hermes Agent 時，請明確使用 `--with-hermes`。
 

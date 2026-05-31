@@ -74,7 +74,7 @@ here 是一个常驻桌面的 AI 伴侣。它负责角色人设、长期记忆�
 | Python | Python 3.11。项目约束为 `<3.13`，因为 ASR 代码仍使用 `audioop`。 |
 | 环境管理 | 源码安装和开发统一使用 [uv](https://docs.astral.sh/uv/)。 |
 | 桌面 UI | PySide6 / Qt runtime。 |
-| ASR | 打包版本内置轻量 Vosk 运行时和中文小模型；源码环境可用 `--with-asr` 安装 Vosk、faster-whisper 和 RealtimeSTT，缺模型时首次使用会下载。 |
+| ASR | Windows 源码环境和打包版本默认提供轻量 Vosk 路线；`--with-asr` 用于安装完整 ASR extras，例如 faster-whisper、RealtimeSTT，以及非 Windows 源码环境需要的本地 ASR 依赖。 |
 | TTS 和生图 API | 可选，可在 UI 填写 API Key，也可以通过环境变量提供。 |
 | 外部送达 | 可选。微信等渠道需要各自的本地配置。 |
 
@@ -122,6 +122,14 @@ bash scripts/install.sh --with-background-removal
 bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
+
+| 参数 | 安装内容 | 对应功能 |
+| --- | --- | --- |
+| `--with-asr` | `pyaudio`、`vosk`、`faster-whisper`、`RealtimeSTT` | 完整 ASR extras：补充 faster-whisper、RealtimeSTT 等高级/替代后端，以及非 Windows 源码环境所需的本地语音依赖。Windows 基础 Vosk 路线不需要它。 |
+| `--with-video` | `opencv_python` | 创建或编辑角色时，从视频文件抽帧导入为立绘动画。普通图片、多张图片帧和 Codex Pet 导入不需要它。 |
+| `--with-background-removal` | `rembg` | 导入角色图片时使用 AI 去背，方便制作透明背景立绘。 |
+| `--with-hermes` | `hermes-agent` | 把 Hermes Agent 安装进当前项目环境，用作本地 Agent 后端。需要 Git 和网络。 |
+| `--full` | ASR、视频导入、AI 去背这些原生 extras | 一次性安装本地原生能力；不包含 Hermes Agent。 |
 
 `--full` 只安装原生能力 extras，刻意不自动安装 Hermes Agent，因为它来自 GitHub 源码包。需要 here 帮当前环境安装 Hermes Agent 时，请显式使用 `--with-hermes`。
 

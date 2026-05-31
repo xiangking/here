@@ -56,7 +56,7 @@ here はデスクトップに常駐する AI コンパニオンです。キャ�
 | デスクトップ UI | PySide6 / Qt runtime。 |
 | 任意のネイティブ機能 | ローカル ASR、動画スプライト取り込み、AI 背景削除は任意 extras です。標準インストールとリリースパッケージを軽く保ちます。 |
 | ローカル Hermes Agent | 現在のプロジェクト環境に Hermes Agent がまだ入っていない場合は、`--with-hermes` で補助インストールできます。この extra は GitHub から取得され、Git とネットワークアクセスが必要です。 |
-| ASR | 音声入力にはモデルファイルを同梱しません。Windows では軽量な Vosk runtime を標準で入れ、初回マイク使用時に ASR 設定から Vosk モデルをダウンロードして自動設定できます。faster-whisper、RealtimeSTT、またはソース環境で全 ASR backend が必要な場合は `--with-asr` を使ってください。 |
+| ASR | Windows のソース環境とリリースパッケージでは、軽量な Vosk 経路を標準で利用できます。`--with-asr` は faster-whisper、RealtimeSTT、非 Windows ソース環境に必要なローカル ASR 依存関係など、完全な ASR extras を入れるためのものです。 |
 | TTS と画像 API | 任意。API Key は UI または環境変数で設定できます。 |
 | 外部配信 | 任意。WeChat などのチャンネルは個別のローカル設定が必要です。 |
 
@@ -104,6 +104,14 @@ bash scripts/install.sh --with-background-removal
 bash scripts/install.sh --with-hermes
 bash scripts/install.sh --full
 ```
+
+| オプション | インストール内容 | 有効になる機能 |
+| --- | --- | --- |
+| `--with-asr` | `pyaudio`、`vosk`、`faster-whisper`、`RealtimeSTT` | 完全な ASR extras。faster-whisper、RealtimeSTT などの高度/代替バックエンドと、非 Windows ソース環境に必要なローカル音声依存関係を追加します。Windows の基本 Vosk 経路には不要です。 |
+| `--with-video` | `opencv_python` | キャラクター作成/編集時に、動画ファイルからフレームを抽出して立ち絵アニメとして取り込めます。通常画像、複数画像フレーム、Codex Pet 取り込みには不要です。 |
+| `--with-background-removal` | `rembg` | キャラクター画像取り込み時の AI 背景削除。透明背景の立ち絵素材を作るときに使います。 |
+| `--with-hermes` | `hermes-agent` | Hermes Agent を現在のプロジェクト環境にインストールし、ローカル Agent バックエンドとして使います。Git とネットワークが必要です。 |
+| `--full` | ASR、動画取り込み、AI 背景削除のネイティブ extras | ローカルのネイティブ機能をまとめてインストールします。Hermes Agent は含みません。 |
 
 `--full` はネイティブ extras のみをインストールし、Hermes Agent は自動では入れません。Hermes Agent は GitHub のソースパッケージから取得するため、この環境へ here からインストールしたい場合だけ `--with-hermes` を指定してください。
 
