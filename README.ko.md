@@ -195,15 +195,9 @@ API Key는 UI에서도 입력할 수 있습니다. UI가 저장한 설정은 로
 
 각 어댑터의 URL, API Key, 모델, 크기, 품질 등은 `Proactive selfie image settings`에서 별도로 설정할 수 있습니다.
 
-## 🧰 개발
+## 🙏 감사의 말
 
-```bash
-uv sync --python 3.11 --group dev
-uv run pytest -q
-uv run python -m compileall app core infrastructure internal_agent services ui main.py
-```
-
-GitHub에 업로드하거나 PR을 만들기 전에 전체 테스트를 실행하고, 로컬 설정, API Key, 생성 미디어, `.local/` 데이터가 커밋에 포함되지 않았는지 확인하세요.
+here는 [openai/codex](https://github.com/openai/codex)의 pet, [RachelForster/Shinsekai](https://github.com/RachelForster/Shinsekai), [SumeLabs/clawra](https://github.com/SumeLabs/clawra), [xiangking/agent-pet](https://github.com/xiangking/agent-pet)에서 영감을 받았습니다. 오픈소스 커뮤니티에 공유와 기여를 해 주신 각 프로젝트의 제작자와 기여자들께 감사드립니다.
 
 ## License
 

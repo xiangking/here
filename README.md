@@ -38,7 +38,7 @@
   ·
   <a href="#-image-generation-and-selfies">Image Generation</a>
   ·
-  <a href="#-development">Development</a>
+  <a href="#-acknowledgements">Acknowledgements</a>
   ·
   <a href="#license">License</a>
 </p>
@@ -215,17 +215,9 @@ Supported image adapters:
 
 Each adapter exposes its own URL, API key, model, size, quality, and related options in `Proactive selfie image settings`.
 
-## 🧰 Development
+## 🙏 Acknowledgements
 
-Common development commands:
-
-```bash
-uv sync --python 3.11 --group dev
-uv run pytest -q
-uv run python -m compileall app core infrastructure internal_agent services ui main.py
-```
-
-Before opening a pull request or uploading to GitHub, run the test suite and make sure local config, API keys, generated media, and `.local/` data are not committed.
+here is inspired by [openai/codex](https://github.com/openai/codex)'s pet, [RachelForster/Shinsekai](https://github.com/RachelForster/Shinsekai), [SumeLabs/clawra](https://github.com/SumeLabs/clawra), and [xiangking/agent-pet](https://github.com/xiangking/agent-pet). Thank you to their creators and contributors for what they have shared with the open-source community.
 
 ## License
 

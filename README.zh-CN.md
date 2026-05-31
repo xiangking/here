@@ -38,7 +38,7 @@
   ·
   <a href="#-生图与自拍">生图与自拍</a>
   ·
-  <a href="#-开发">开发</a>
+  <a href="#-致谢">致谢</a>
   ·
   <a href="#license">License</a>
 </p>
@@ -205,17 +205,9 @@ API Key 也可以直接在 UI 设置里填写。UI 写入的配置只保存在�
 
 不同适配器的 URL、API Key、模型、尺寸、质量等参数可在「主动联系自拍生图设置」里单独配置。
 
-## 🧰 开发
+## 🙏 致谢
 
-常用开发命令：
-
-```bash
-uv sync --python 3.11 --group dev
-uv run pytest -q
-uv run python -m compileall app core infrastructure internal_agent services ui main.py
-```
-
-上传 GitHub 或提交 PR 前，请先跑完整测试，并确认本地配置、API Key、生成媒体和 `.local/` 数据没有进入提交。
+here 受到 [openai/codex](https://github.com/openai/codex) 的 pet、[RachelForster/Shinsekai](https://github.com/RachelForster/Shinsekai)、[SumeLabs/clawra](https://github.com/SumeLabs/clawra) 和 [xiangking/agent-pet](https://github.com/xiangking/agent-pet) 的启发。感谢这些项目的创作者和贡献者对开源社区的分享与贡献。
 
 ## License
 

@@ -195,15 +195,9 @@ API Key は UI からも入力できます。UI が書き込む設定はロー�
 
 各アダプターの URL、API Key、モデル、サイズ、品質などは `Proactive selfie image settings` で個別に設定できます。
 
-## 🧰 開発
+## 🙏 謝辞
 
-```bash
-uv sync --python 3.11 --group dev
-uv run pytest -q
-uv run python -m compileall app core infrastructure internal_agent services ui main.py
-```
-
-GitHub へアップロードまたは PR を作成する前に、テストを実行し、ローカル設定、API Key、生成メディア、`.local/` データがコミットに含まれていないことを確認してください。
+here は [openai/codex](https://github.com/openai/codex) の pet、[RachelForster/Shinsekai](https://github.com/RachelForster/Shinsekai)、[SumeLabs/clawra](https://github.com/SumeLabs/clawra)、[xiangking/agent-pet](https://github.com/xiangking/agent-pet) から着想を得ています。これらのプロジェクトの作者とコントリビューターの皆さまが、オープンソースコミュニティへ共有し貢献してくださったことに感謝します。
 
 ## License
 

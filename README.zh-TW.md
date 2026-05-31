@@ -195,15 +195,9 @@ API Key 也可以直接在 UI 設定裡填寫。UI 寫入的設定只保存在�
 
 不同適配器的 URL、API Key、模型、尺寸、品質等參數可在「主動聯絡自拍生圖設定」裡單獨配置。
 
-## 🧰 開發
+## 🙏 致謝
 
-```bash
-uv sync --python 3.11 --group dev
-uv run pytest -q
-uv run python -m compileall app core infrastructure internal_agent services ui main.py
-```
-
-上傳 GitHub 或提交 PR 前，請先跑完整測試，並確認本機設定、API Key、生成媒體和 `.local/` 資料沒有進入提交。
+here 受到 [openai/codex](https://github.com/openai/codex) 的 pet、[RachelForster/Shinsekai](https://github.com/RachelForster/Shinsekai)、[SumeLabs/clawra](https://github.com/SumeLabs/clawra) 和 [xiangking/agent-pet](https://github.com/xiangking/agent-pet) 的啟發。感謝這些專案的創作者和貢獻者對開源社群的分享與貢獻。
 
 ## License
 
