@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PY_STANDALONE_TAG = "20260510"
 PY_STANDALONE_VERSION = "3.11.15"
+VOSK_SMALL_CN_MODEL_DIRNAME = "vosk-model-small-cn-0.22"
 
 
 def run(cmd: list[str], *, cwd: Path = ROOT, env: dict[str, str] | None = None) -> None:
@@ -126,6 +127,15 @@ def prune_runtime(runtime: Path) -> None:
 
 
 def install_dependencies(runtime: Path, target: str) -> None:
+    env = os.environ.copy()
+    if target.startswith("macos"):
+        pa_prefix = macos_portaudio_prefix()
+        env["CPPFLAGS"] = f"-I{pa_prefix / 'include'} {env.get('CPPFLAGS', '')}".strip()
+        env["LDFLAGS"] = f"-L{pa_prefix / 'lib'} {env.get('LDFLAGS', '')}".strip()
+        pkg_config = pa_prefix / "lib" / "pkgconfig"
+        existing = env.get("PKG_CONFIG_PATH", "")
+        env["PKG_CONFIG_PATH"] = f"{pkg_config}{os.pathsep}{existing}".rstrip(os.pathsep)
+
     run(
         [
             "uv",
@@ -135,9 +145,61 @@ def install_dependencies(runtime: Path, target: str) -> None:
             str(runtime_python(runtime, target)),
             "-r",
             str(ROOT / "requirements.bundle.txt"),
-        ]
+        ],
+        env=env,
     )
     prune_runtime(runtime)
+
+
+def macos_portaudio_prefix() -> Path:
+    brew = shutil.which("brew")
+    if not brew:
+        raise SystemExit("Homebrew is required to build macOS ASR support. Install Homebrew, then run: brew install portaudio")
+
+    prefix = subprocess.run(
+        [brew, "--prefix", "portaudio"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if prefix.returncode != 0 or not prefix.stdout.strip():
+        run([brew, "install", "portaudio"])
+        prefix = subprocess.run(
+            [brew, "--prefix", "portaudio"],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    if prefix.returncode != 0 or not prefix.stdout.strip():
+        raise SystemExit("PortAudio is required to build macOS ASR support. Run: brew install portaudio")
+    return Path(prefix.stdout.strip())
+
+
+def bundle_macos_portaudio(bundle_root: Path) -> None:
+    if sys.platform != "darwin":
+        return
+    src = macos_portaudio_prefix() / "lib" / "libportaudio.2.dylib"
+    if not src.is_file():
+        raise SystemExit(f"PortAudio library not found: {src}")
+
+    dylib_dir = bundle_root / "runtime" / "lib"
+    dylib_dir.mkdir(parents=True, exist_ok=True)
+    dst = dylib_dir / "libportaudio.2.dylib"
+    shutil.copy2(src, dst)
+    dst.chmod(0o644)
+
+    site_packages = next((bundle_root / "runtime" / "lib").glob("python*/site-packages"), None)
+    if site_packages is None:
+        raise SystemExit("Could not locate runtime site-packages to relink PyAudio.")
+    for ext in site_packages.glob("pyaudio/_portaudio*.so"):
+        run(["install_name_tool", "-change", str(src), "@loader_path/../../../libportaudio.2.dylib", str(ext)])
+        run(["codesign", "--force", "--sign", "-", str(ext)])
+    run(["install_name_tool", "-id", "@rpath/libportaudio.2.dylib", str(dst)])
+    run(["codesign", "--force", "--sign", "-", str(dst)])
 
 
 def copy_project(bundle_root: Path, runtime: Path) -> None:
@@ -152,11 +214,14 @@ def copy_project(bundle_root: Path, runtime: Path) -> None:
         ".pytest_cache",
         "test",
         "tests",
-        "assets/system/models",
         "*.pyc",
     )
     shutil.copytree(ROOT, bundle_root, ignore=ignore)
-    shutil.rmtree(bundle_root / "assets" / "system" / "models", ignore_errors=True)
+    for archive in (bundle_root / "assets" / "system" / "models").glob("*.zip"):
+        archive.unlink()
+    model_dir = bundle_root / "assets" / "system" / "models" / VOSK_SMALL_CN_MODEL_DIRNAME
+    if not model_dir.is_dir():
+        raise SystemExit(f"Bundled Vosk model is missing: {model_dir}")
     shutil.rmtree(bundle_root / "test", ignore_errors=True)
     shutil.rmtree(bundle_root / "tests", ignore_errors=True)
     shutil.move(str(runtime), str(bundle_root / "runtime"))
@@ -176,7 +241,10 @@ def smoke_test(bundle_root: Path, target: str) -> None:
         [
             str(py),
             "-c",
-            "import PySide6, openai, yaml, pygame; import app.desktop.main; print('bundle imports ok')",
+            "import PySide6, openai, yaml, pygame; import pyaudio, vosk; "
+            "from services.asr.asr_adapter import default_vosk_model_path, is_vosk_model_dir; "
+            "assert is_vosk_model_dir(default_vosk_model_path()), default_vosk_model_path(); "
+            "import app.desktop.main; print('bundle imports ok')",
         ],
         cwd=bundle_root,
         env=env,
@@ -205,6 +273,8 @@ def main() -> None:
     runtime = prepare_runtime(build_dir, args.target)
     install_dependencies(runtime, args.target)
     copy_project(bundle_root, runtime)
+    if args.target.startswith("macos"):
+        bundle_macos_portaudio(bundle_root)
     if not args.skip_smoke:
         smoke_test(bundle_root, args.target)
     output = ROOT / "dist" / f"{name}.zip"

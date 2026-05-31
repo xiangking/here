@@ -18,6 +18,28 @@ def filter_emotion_tags_for_character(character: Any) -> str:
     )
 
 
+def available_state_names_for_character(character: Any) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for sprite in getattr(character, "sprites", []) or []:
+        name = str(_sprite_value(sprite, "state_name") or "").strip()
+        if not name:
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        names.append(name)
+    return names
+
+
+def render_available_state_names(character: Any) -> str:
+    names = available_state_names_for_character(character)
+    if not names:
+        return ""
+    return "可用状态名：" + " / ".join(names)
+
+
 def filter_emotion_tags(emotion_tags: str, available_sprites: int) -> str:
     text = str(emotion_tags or "").strip()
     if not text:
@@ -37,6 +59,12 @@ def filter_emotion_tags(emotion_tags: str, available_sprites: int) -> str:
             continue
         kept.append(raw)
     return "\n".join(_trim_blank_edges(kept)).strip()
+
+
+def _sprite_value(sprite: Any, key: str) -> Any:
+    if isinstance(sprite, dict):
+        return sprite.get(key)
+    return getattr(sprite, key, "")
 
 
 def _untagged_lines(text: str) -> list[str]:

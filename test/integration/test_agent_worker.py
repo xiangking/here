@@ -54,7 +54,7 @@ def test_agent_worker_streams_json_into_tts_queue(mock_app_runtime):
     assert call["context"] is not None
     assert call["context"].selected_characters == ["TestChar"]
     assert call["context"].character_souls[0].character_setting == "You are a test character."
-    assert "当前生活状态" in call["context"].life_state
+    assert "私有运行状态" in call["context"].life_state
     assert mock_app_runtime.agent_backend.oneshot_calls == []
 
 
@@ -182,7 +182,7 @@ def test_agent_worker_records_life_promise_in_memory(mock_app_runtime):
     memories = worker.memory_store.read_character_memories("TestChar")
     assert memories == ["用户近期约定/请求：今晚记得陪我聊一会儿"]
     call = mock_app_runtime.agent_backend.calls[-1]
-    assert "和用户相关的近期约定" in call["context"].life_state
+    assert "recent_user_promises=" in call["context"].life_state
 
 
 def test_agent_worker_falls_back_when_hermes_returns_plain_text(mock_app_runtime):

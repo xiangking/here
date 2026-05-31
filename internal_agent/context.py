@@ -8,7 +8,10 @@ from pathlib import Path
 from infrastructure.paths import get_app_paths
 from typing import Any
 
-from internal_agent.emotion_tags import filter_emotion_tags_for_character
+from internal_agent.emotion_tags import (
+    filter_emotion_tags_for_character,
+    render_available_state_names,
+)
 
 
 @dataclass(frozen=True)
@@ -145,6 +148,9 @@ class AgentMemoryStore:
         visual_identity = str(getattr(character, "visual_identity", "") or "").strip()
         if visual_identity:
             parts.extend(["", "## 视觉身份", visual_identity])
+        state_names = render_available_state_names(character).strip()
+        if state_names:
+            parts.extend(["", "## 本地可用状态名", state_names])
         emotion_tags = filter_emotion_tags_for_character(character).strip()
         if emotion_tags:
             parts.extend(["", "## 立绘与情绪标签", emotion_tags])
@@ -216,11 +222,14 @@ class AgentMemoryStore:
                 dst_path.write_text(joined + "\n", encoding="utf-8")
 
 def _character_soul(character: Any) -> CharacterSoul:
+    state_names = render_available_state_names(character).strip()
+    emotion_tags = filter_emotion_tags_for_character(character)
+    combined_tags = "\n".join(part for part in (state_names, emotion_tags) if part)
     return CharacterSoul(
         name=str(getattr(character, "name", "") or ""),
         character_setting=str(getattr(character, "character_setting", "") or ""),
         visual_identity=str(getattr(character, "visual_identity", "") or ""),
-        emotion_tags=filter_emotion_tags_for_character(character),
+        emotion_tags=combined_tags,
     )
 
 

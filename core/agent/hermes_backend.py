@@ -28,12 +28,13 @@ _MODEL_CONFIG_HERMES_HOME = os.environ.get("HERMES_HOME")
 DIALOG_PROTOCOL = """
 最终 assistant 正文必须只输出 here 角色对话 JSON，不要把工具状态、计划、记忆日志或调试信息写入正文。
 格式为 JSON 数组；每个角色元素必须包含 character_name、speech、emotion、system_action，可选 effect。
-emotion 必须使用当前角色已有状态名，优先从 neutral、happy、thinking、surprised、sad、angry 中选择；不要输出立绘编号。
+speech 只能包含角色实际说出口的话；禁止写动作描写、语气说明、舞台说明、括号旁白、Markdown 斜体动作或表情注释。
+emotion 必须使用当前角色本地可用状态名；状态名来自当前角色的 SOUL/聊天模板/立绘说明中的“可用状态名”和“立绘与情绪标签”。如果没有合适状态，使用当前角色默认状态或第一个可用状态；不要输出立绘编号。
 背景、BGM、CG 等系统资源如需编号，使用 asset_id；普通角色对话不要使用 asset_id。
 普通对话时 system_action 必须为 null，不要省略。
-示例：
+示例中的 STATE_NAME 是占位符，实际输出时必须替换为当前角色本地可用状态名：
 [
-  {"character_name": "角色名", "speech": "要说的话", "emotion": "neutral", "system_action": null}
+  {"character_name": "角色名", "speech": "要说的话", "emotion": "STATE_NAME", "system_action": null}
 ]
 当且仅当用户明确要求给当前角色取名/改名，并且当前角色在 speech 中接受这个名字时，可以在同一个角色 JSON 中附加：
 {"system_action": {"type": "rename_active_character", "name": "名字"}}
@@ -529,7 +530,8 @@ class HermesAgentBackend:
         if life_state:
             sections.append(
                 life_state
-                + "\n这是角色此刻正在经历的生活状态，只用于增加真实感；不要抢走用户当前话题。"
+                + "\n上述内容是私有运行上下文，只用于轻微调节回复节奏和在必要时提供背景。"
+                "不要复述、表演或展开它；不要把当前活动、姿势、地点、声线说明或动作描写写进 speech。"
             )
 
         if context.dialog_protocol and context.dialog_protocol.strip():

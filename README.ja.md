@@ -33,15 +33,19 @@ here はデスクトップに常駐する AI コンパニオンです。キャ�
 
 ## ✨ 主な機能
 
-| 機能 | 説明 |
-| --- | --- |
-| キャラクターシステム | ペルソナ、視覚的アイデンティティ、感情タグ、音声参照、キャラクターパックを作成・インポート・編集できます。 |
-| 記憶と素材フォルダー | キャラクターの長期記憶とアニメーション素材の保存場所を選択できます。外部ドライブにも配置できます。 |
-| デスクトップチャット | 会話、立ち絵切り替え、TTS 再生、マイク入力、履歴の保存と復元を行います。 |
-| Agent バックエンド | メインメニューからユーザー環境の Hermes Agent、同梱 Internal Agent フォールバック、自動選択を選べます。 |
-| 主动連絡 | キャラクターが自分の日常状態に基づいて、デスクトップチャットや WeChat などの外部チャンネルへ自然に連絡できます。 |
-| 主动写真 | キャラクターの見た目、生活状態、任意の参照画像から自然な現在状態写真を添付できます。 |
-| 設定可能な画像 API | image-api、Grok Imagine、GPT Image、OpenAI-compatible endpoint、今後のアダプターをスケジューラー変更なしで切り替えられます。 |
+<p align="center">
+  <img src="docs/assets/screenshot/feature-showcase-01.jpg" width="720" alt="here showcase">
+</p>
+
+| 機能 | 説明 | プレビュー |
+| --- | --- | --- |
+| キャラクターシステム | ペルソナ、視覚的アイデンティティ、感情タグ、音声参照、キャラクターパックを作成・インポート・編集できます。 | <img src="docs/assets/screenshot/feature-character-01.png" width="120" alt="キャラクターデスクトッププレビュー"> <img src="docs/assets/screenshot/feature-character-02.png" width="150" alt="キャラクターインポートメニュー"> <img src="docs/assets/screenshot/feature-character-03.png" width="150" alt="キャラクター作成ウィンドウ"> |
+| ASR と TTS | マイク音声入力、ASR バックエンド選択、TTS 再生、複数サービスの音声設定に対応します。 | <img src="docs/assets/screenshot/feature-voice-01.png" width="135" alt="音声認識設定"> <img src="docs/assets/screenshot/feature-voice-02.png" width="135" alt="音声合成設定"> <img src="docs/assets/screenshot/feature-voice-03.png" width="120" alt="マイク権限プロンプト"> <img src="docs/assets/screenshot/feature-voice-04.png" width="120" alt="音声合成ステータス"> |
+| デスクトップチャット | 会話、立ち絵切り替え、TTS 再生、マイク入力、履歴の保存と復元を行います。 | <img src="docs/assets/screenshot/feature-chat-01.png" width="150" alt="デスクトップチャットと通話 UI"> <img src="docs/assets/screenshot/feature-chat-02.png" width="150" alt="外部配信設定"> <img src="docs/assets/screenshot/feature-chat-03.png" width="160" alt="外部チャットプレビュー"> |
+| Agent バックエンド | メインメニューからユーザー環境の Hermes Agent、同梱 Internal Agent フォールバック、自動選択を選べます。 |  |
+| 主动連絡 | キャラクターが自分の日常状態に基づいて、デスクトップチャットや WeChat などの外部チャンネルへ自然に連絡できます。 | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="外部会話通知"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="外部チャット内容"> |
+| 主动写真 | キャラクターの見た目、生活状態、任意の参照画像から自然な現在状態写真を添付できます。 | <img src="docs/assets/screenshot/feature-proactive-image-01.jpg" width="160" alt="主动写真プレビュー"> |
+| 設定可能な画像 API | image-api、Grok Imagine、GPT Image、OpenAI-compatible endpoint、今後のアダプターをスケジューラー変更なしで切り替えられます。 | <img src="docs/assets/screenshot/feature-image-api-01.png" width="220" alt="画像 API 設定"> |
 
 ## 💻 要件
 

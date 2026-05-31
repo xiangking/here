@@ -316,7 +316,7 @@ def test_scheduler_attaches_photo_only_when_contact_has_photo_intent(tmp_path):
     assert scheduler.tick(datetime(2026, 5, 26, 20, 20, tzinfo=ZoneInfo("Asia/Shanghai"))) is True
 
     assert photo_calls
-    assert "当前生活状态" in photo_calls[0].life_state
+    assert "私有运行状态" in photo_calls[0].life_state
     assert adapters.messages[0].image_path == "/tmp/alice_selfie.png"
     plan = contact_engine.ensure_contact_plan(alice, now=datetime(2026, 5, 26, 20, 20, tzinfo=ZoneInfo("Asia/Shanghai")))
     assert plan.contacts[-1].photo_status == "generated"
@@ -412,3 +412,36 @@ def test_scheduler_falls_back_when_external_daily_limit_reached(tmp_path):
     plan = contact_engine.ensure_contact_plan(alice, now=now)
     assert plan.contacts[0].delivery_channel == "desktop_chat"
     assert plan.contacts[0].delivery_reason == "external_daily_limit_fallback"
+
+
+def test_proactive_prompt_uses_character_state_names_and_spoken_speech_only(tmp_path):
+    sprite = tmp_path / "sprite.png"
+    sprite.write_bytes(b"fake")
+    alice = make_character(
+        name="Alice",
+        sprites=[{"path": str(sprite), "state_name": "cozy"}],
+    )
+    app_config = make_app_config(characters=[alice])
+    cfg = _config(app_config)
+    store = AgentMemoryStore(tmp_path / "agent_memory")
+    life_engine = LifeEngine(store)
+    contact_engine = ContactPlanEngine(store, life_engine)
+    backend = FakeBackend()
+    scheduler = ProactiveContactScheduler(
+        config_manager=cfg,
+        life_engine=life_engine,
+        contact_engine=contact_engine,
+        agent_backend=backend,
+        active_character_name=lambda: "Alice",
+        emit_dialog=lambda _: None,
+        enabled_getter=lambda: True,
+        memory_store=store,
+    )
+    now = datetime(2026, 5, 26, 12, 20, tzinfo=ZoneInfo("Asia/Shanghai"))
+
+    scheduler.tick(now)
+
+    prompt = backend.oneshot_calls[-1]["prompt"]
+    assert "可用状态名：cozy" in prompt
+    assert "speech 只能写角色实际说出口的话" in prompt
+    assert "neutral|happy|thinking|surprised|sad|angry" not in prompt

@@ -12,8 +12,8 @@ qrcode[pil]
 cryptography
 pyobjc-framework-AVFoundation; sys_platform == "darwin"
 tzdata; sys_platform == "win32"
-pyaudio; sys_platform == "win32"
-vosk; sys_platform == "win32"
+pyaudio; sys_platform == "win32" or sys_platform == "darwin"
+vosk==0.3.44; sys_platform == "win32" or sys_platform == "darwin"
 QtPy>=2.4.1
 pyyaml
 fal-client

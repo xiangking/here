@@ -49,15 +49,19 @@ Model reasoning uses the user's locally installed and configured Hermes Agent wh
 
 ## ✨ Features
 
-| Feature | Description |
-| --- | --- |
-| Character system | Create, import, and edit personas, visual identity, emotion tags, voice references, and character bundles. |
-| Memory and asset folders | Choose where character memory and animation assets live, including external drives. |
-| Desktop chat | Dialog, sprite switching, TTS playback, microphone input, history save and restore. |
-| Agent backend | Choose the user's local Hermes Agent, the bundled Internal Agent fallback, or automatic selection from the main menu. |
-| Proactive contact | Characters can reach out based on their own daily state through desktop chat or external delivery channels such as WeChat. |
-| Proactive photos | Proactive contact can attach a natural current-state photo generated from character identity, life state, and optional reference images. |
-| Configurable image APIs | Switch image-api, Grok Imagine, GPT Image, OpenAI-compatible endpoints, and future adapters without changing the scheduler. |
+<p align="center">
+  <img src="docs/assets/screenshot/feature-showcase-01.jpg" width="720" alt="here showcase">
+</p>
+
+| Feature | Description | Preview |
+| --- | --- | --- |
+| Character system | Create, import, and edit personas, visual identity, emotion tags, voice references, and character bundles. | <img src="docs/assets/screenshot/feature-character-01.png" width="120" alt="Character desktop preview"> <img src="docs/assets/screenshot/feature-character-02.png" width="150" alt="Character import menu"> <img src="docs/assets/screenshot/feature-character-03.png" width="150" alt="Create character dialog"> |
+| ASR and TTS | Support microphone voice input, ASR backend selection, TTS playback, and multi-provider voice settings. | <img src="docs/assets/screenshot/feature-voice-01.png" width="135" alt="ASR settings"> <img src="docs/assets/screenshot/feature-voice-02.png" width="135" alt="TTS settings"> <img src="docs/assets/screenshot/feature-voice-03.png" width="120" alt="Microphone permission prompt"> <img src="docs/assets/screenshot/feature-voice-04.png" width="120" alt="Voice synthesis status"> |
+| Desktop chat | Dialog, sprite switching, TTS playback, microphone input, history save and restore. | <img src="docs/assets/screenshot/feature-chat-01.png" width="150" alt="Desktop chat and call UI"> <img src="docs/assets/screenshot/feature-chat-02.png" width="150" alt="External delivery settings"> <img src="docs/assets/screenshot/feature-chat-03.png" width="160" alt="External chat preview"> |
+| Agent backend | Choose the user's local Hermes Agent, the bundled Internal Agent fallback, or automatic selection from the main menu. |  |
+| Proactive contact | Characters can reach out based on their own daily state through desktop chat or external delivery channels such as WeChat. | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="External conversation alert"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="External chat content"> |
+| Proactive photos | Proactive contact can attach a natural current-state photo generated from character identity, life state, and optional reference images. | <img src="docs/assets/screenshot/feature-proactive-image-01.jpg" width="160" alt="Proactive photo preview"> |
+| Configurable image APIs | Switch image-api, Grok Imagine, GPT Image, OpenAI-compatible endpoints, and future adapters without changing the scheduler. | <img src="docs/assets/screenshot/feature-image-api-01.png" width="220" alt="Image API settings"> |
 
 ## 💻 Requirements
 
@@ -66,15 +70,15 @@ Model reasoning uses the user's locally installed and configured Hermes Agent wh
 | Python | Validated on Python 3.11 to 3.13. |
 | Environment manager | [uv](https://docs.astral.sh/uv/) is required for source installs and development. |
 | Desktop UI | PySide6 / Qt runtime. |
-| Optional native extras | Local ASR, video sprite import, and AI background removal are optional extras to keep default installs and release bundles smaller. |
+| Optional native extras | Video sprite import and AI background removal are optional extras to keep default installs and release bundles smaller. |
 | Local Hermes Agent | If Hermes Agent is not already installed in this project environment, install it with `--with-hermes`. This helper extra is fetched from GitHub and requires Git/network access. |
-| ASR | Voice input does not ship model files. Windows installs the lightweight Vosk runtime by default; the first microphone use can download/configure the Vosk model from the ASR settings dialog. Install `--with-asr` for faster-whisper, RealtimeSTT, or source environments that need all ASR backends. |
+| ASR | Release bundles include the lightweight Vosk runtime, but not model files. The first microphone use can download/configure the Vosk model from the ASR settings dialog. Install `--with-asr` in source environments for Vosk, faster-whisper, and RealtimeSTT. |
 | TTS and image APIs | Optional. API keys can be entered in the UI or provided through environment variables. |
 | External delivery | Optional. WeChat and other delivery channels need their own local configuration. |
 
 On Windows, keep the project in an ASCII-only path such as `D:\here` to avoid path issues in audio, Qt, or embedded Python components.
 
-On Apple Silicon macOS, the optional ASR install skips `vosk` because the current official Vosk wheels do not cover darwin arm64. Choose `faster-whisper` or `RealtimeSTT` in `Speech recognition ASR`; Vosk remains installable on Intel macOS, Windows, and Linux.
+On macOS source installs, ASR requires Homebrew PortAudio so `pyaudio` can build. Release bundles embed the PortAudio library used by Vosk.
 
 ## 📦 Installation
 
@@ -121,7 +125,7 @@ bash scripts/install.sh --full
 
 On macOS, ASR extras require Homebrew PortAudio. The installer checks Homebrew and installs `portaudio` before running `uv sync --extra asr`, so `pyaudio` can build from a clean environment.
 
-ASR model files are intentionally not committed or bundled. When the microphone needs a missing Vosk model, here opens `Speech recognition ASR`, downloads the small Chinese model into the app data `models` folder, and saves the path automatically.
+Source runs download the Vosk model on first use when it is missing. Release bundles include the small Chinese Vosk model, so the default Vosk backend can start without a model download.
 
 ### Packaged Builds
 
@@ -147,7 +151,7 @@ Windows:
 .\start.bat
 ```
 
-Release bundles are intentionally lightweight and do not include local ASR, video import, or AI background-removal dependencies by default.
+Release bundles include the Vosk ASR runtime and the small Chinese Vosk model for first-run voice input. Video import, faster-whisper, RealtimeSTT, and AI background-removal dependencies remain optional.
 
 ## ⚙️ Configuration
 

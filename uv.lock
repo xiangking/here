@@ -886,7 +886,7 @@ asr = [
     { name = "faster-whisper" },
     { name = "pyaudio" },
     { name = "realtimestt" },
-    { name = "vosk", marker = "platform_machine != 'arm64' or sys_platform != 'darwin'" },
+    { name = "vosk" },
 ]
 background-removal = [
     { name = "rembg" },
@@ -897,7 +897,7 @@ full = [
     { name = "pyaudio" },
     { name = "realtimestt" },
     { name = "rembg" },
-    { name = "vosk", marker = "platform_machine != 'arm64' or sys_platform != 'darwin'" },
+    { name = "vosk" },
 ]
 hermes = [
     { name = "hermes-agent" },
@@ -947,9 +947,9 @@ requires-dist = [
     { name = "requests" },
     { name = "tiktoken" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
-    { name = "vosk", marker = "(platform_machine != 'arm64' and extra == 'asr') or (sys_platform != 'darwin' and extra == 'asr')" },
-    { name = "vosk", marker = "(platform_machine != 'arm64' and extra == 'full') or (sys_platform != 'darwin' and extra == 'full')" },
-    { name = "vosk", marker = "sys_platform == 'win32'" },
+    { name = "vosk", marker = "sys_platform == 'win32'", specifier = "==0.3.44" },
+    { name = "vosk", marker = "extra == 'asr'", specifier = "==0.3.44" },
+    { name = "vosk", marker = "extra == 'full'", specifier = "==0.3.44" },
 ]
 provides-extras = ["hermes", "asr", "video", "background-removal", "full"]
 
@@ -3384,7 +3384,7 @@ wheels = [
 
 [[package]]
 name = "vosk"
-version = "0.3.45"
+version = "0.3.44"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cffi" },
@@ -3394,10 +3394,12 @@ dependencies = [
     { name = "websockets" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/6d/728d89a4fe8d0573193eb84761b6a55e25690bac91e5bbf30308c7f80051/vosk-0.3.45-py3-none-linux_armv7l.whl", hash = "sha256:4221f83287eefe5abbe54fc6f1da5774e9e3ffcbbdca1705a466b341093b072e", size = 2388263, upload-time = "2022-12-14T23:13:34.467Z" },
-    { url = "https://files.pythonhosted.org/packages/a4/23/3130a69fa0bf4f5566a52e415c18cd854bf561547bb6505666a6eb1bb625/vosk-0.3.45-py3-none-manylinux2014_aarch64.whl", hash = "sha256:54efb47dd890e544e9e20f0316413acec7f8680d04ec095c6140ab4e70262704", size = 2368543, upload-time = "2022-12-14T23:13:25.876Z" },
-    { url = "https://files.pythonhosted.org/packages/fc/ca/83398cfcd557360a3d7b2d732aee1c5f6999f68618d1645f38d53e14c9ff/vosk-0.3.45-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:25e025093c4399d7278f543568ed8cc5460ac3a4bf48c23673ace1e25d26619f", size = 7173758, upload-time = "2022-12-14T23:13:28.513Z" },
-    { url = "https://files.pythonhosted.org/packages/c0/4c/deb0861f7da9696f8a255f1731bb73e9412cca29c4b3888a3fcb2a930a59/vosk-0.3.45-py3-none-win_amd64.whl", hash = "sha256:6994ddc68556c7e5730c3b6f6bad13320e3519b13ce3ed2aa25a86724e7c10ac", size = 13997596, upload-time = "2022-12-14T23:13:31.15Z" },
+    { url = "https://files.pythonhosted.org/packages/85/12/d8d3e842c088853632db6432b9b045c7798a477d390a25b4af1a89e5c164/vosk-0.3.44-py3-none-linux_armv7l.whl", hash = "sha256:a0d4a2c384692d721d4cda58aa79aac22edb0c445759e9ca2df61f44a5d2fdda", size = 2387663, upload-time = "2022-09-25T19:03:13.071Z" },
+    { url = "https://files.pythonhosted.org/packages/44/19/5e8299237bc2005c3d155d3b48adba6fd6484465ad5c970302fc1d37947d/vosk-0.3.44-py3-none-macosx_10_6_universal2.whl", hash = "sha256:029d0b3d6a5cff874c575b8a5814a4cccfb37608cff52e846c02a8c67a882801", size = 4710953, upload-time = "2022-09-25T19:11:57.513Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/80/7170893ae9d0616a16fa9637fb07f5bc5e5e4d954f280fff7a8f9b72b863/vosk-0.3.44-py3-none-manylinux2014_aarch64.whl", hash = "sha256:9995b7fa5434b134b4bd09897e2490dbc56115c2ad2943c030621e10c7037b34", size = 2368650, upload-time = "2022-09-25T19:04:00.751Z" },
+    { url = "https://files.pythonhosted.org/packages/26/c7/ed8a6ee755e18708770335a6d38b1e86f4838cdeaa85e92748a4e7431816/vosk-0.3.44-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:2652ef213c4c7807dc40af1e7aa578dcccfc4dc4192822a26bc45a9591bcbf76", size = 7173366, upload-time = "2022-09-25T19:04:03.886Z" },
+    { url = "https://files.pythonhosted.org/packages/71/7c/8850af1556646e7ae10a468ddfc255943bae0760f7e1d4abfac5ca802831/vosk-0.3.44-py3-none-win32.whl", hash = "sha256:93895a51b8bd7b4c780eef05a3d99bf2af03f02fe5f4e4bba3da17bd0fd69138", size = 8594246, upload-time = "2022-09-25T19:04:06.509Z" },
+    { url = "https://files.pythonhosted.org/packages/73/11/4c967c41f482bb081d1b8c1e578ed5f28ae17939422de313ceb42d2523a4/vosk-0.3.44-py3-none-win_amd64.whl", hash = "sha256:45b1b1136a5cba6066c51da9f852dca7a855744db4ab72b23750c681d36f3202", size = 12191265, upload-time = "2022-09-25T19:04:09.365Z" },
 ]
 
 [[package]]

@@ -5,7 +5,10 @@ import pytest
 from services.asr.asr_manager import ASRAdapterFactory
 from services.asr.asr_adapter import (
     ASRSetupStatus,
+    VOSK_SMALL_CN_MODEL_DIRNAME,
     build_asr_setup_status,
+    bundled_vosk_model_path,
+    default_vosk_model_path,
     is_vosk_model_dir,
     missing_asr_requirements,
     _pcm16_rms,
@@ -159,17 +162,29 @@ class TestNormalizeAsrProviderKey:
 
 
 class TestASRSetupHelpers:
+    def _make_vosk_model(self, path):
+        (path / "am").mkdir(parents=True)
+        (path / "am" / "final.mdl").write_text("fake", encoding="utf-8")
+        (path / "conf").mkdir()
+        (path / "conf" / "model.conf").write_text("fake", encoding="utf-8")
+        (path / "graph").mkdir()
+
     def test_vosk_model_dir_rejects_empty_dir(self, tmp_path):
         assert not is_vosk_model_dir(tmp_path)
 
     def test_vosk_model_dir_accepts_expected_layout(self, tmp_path):
-        (tmp_path / "am").mkdir()
-        (tmp_path / "am" / "final.mdl").write_text("fake", encoding="utf-8")
-        (tmp_path / "conf").mkdir()
-        (tmp_path / "conf" / "model.conf").write_text("fake", encoding="utf-8")
-        (tmp_path / "graph").mkdir()
+        self._make_vosk_model(tmp_path)
 
         assert is_vosk_model_dir(tmp_path)
+
+    def test_default_vosk_model_prefers_bundled_model(self, tmp_path, monkeypatch):
+        project_root = tmp_path / "project"
+        model = project_root / "assets" / "system" / "models" / VOSK_SMALL_CN_MODEL_DIRNAME
+        self._make_vosk_model(model)
+        monkeypatch.setattr("infrastructure.paths.project_root", lambda: project_root)
+
+        assert bundled_vosk_model_path() == model.as_posix()
+        assert default_vosk_model_path() == model.as_posix()
 
     def test_setup_status_reports_missing_vosk_model(self, tmp_path, monkeypatch):
         monkeypatch.setattr(
@@ -184,11 +199,7 @@ class TestASRSetupHelpers:
         assert status.missing_model_path.endswith("missing")
 
     def test_setup_status_ready_for_valid_vosk_model(self, tmp_path, monkeypatch):
-        (tmp_path / "am").mkdir()
-        (tmp_path / "am" / "final.mdl").write_text("fake", encoding="utf-8")
-        (tmp_path / "conf").mkdir()
-        (tmp_path / "conf" / "model.conf").write_text("fake", encoding="utf-8")
-        (tmp_path / "graph").mkdir()
+        self._make_vosk_model(tmp_path)
         monkeypatch.setattr(
             "services.asr.asr_adapter.missing_asr_requirements",
             lambda _provider: [],

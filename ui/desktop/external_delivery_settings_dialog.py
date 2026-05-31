@@ -23,6 +23,17 @@ from core.delivery.messaging.wechat_openclaw.models import WeChatAccount
 from ui.desktop.wechat_login_dialog import WeChatLoginDialog
 
 
+def _set_dynamic_label_text(label: QLabel | None, text: str) -> None:
+    if label is None:
+        return
+    label.setText(text)
+    label.updateGeometry()
+    parent = label.parentWidget()
+    if parent is not None and parent.layout() is not None:
+        parent.layout().invalidate()
+        parent.updateGeometry()
+
+
 CHANNEL_FORMS = {
     "telegram": ("Telegram", ("token", "target")),
     "discord": ("Discord", ("bot_token", "target")),
@@ -241,6 +252,7 @@ class ExternalDeliverySettingsDialog(QDialog):
         help_label.setObjectName("externalDeliveryHelp")
         layout.addWidget(help_label)
         form = QFormLayout()
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         enabled = QCheckBox("启用")
         enabled.setChecked(_as_bool(cfg.get("enabled", False)))
         self._enabled[channel] = enabled
@@ -293,6 +305,7 @@ class ExternalDeliverySettingsDialog(QDialog):
             status_label = QLabel("")
             status_label.setWordWrap(True)
             status_label.setObjectName("externalDeliveryHelp")
+            status_label.setMinimumHeight(status_label.fontMetrics().lineSpacing() + 8)
             self._telegram_status_label = status_label
             discover_btn = QPushButton("自动识别 chat_id")
             discover_btn.clicked.connect(self._start_telegram_discovery)
@@ -344,20 +357,15 @@ class ExternalDeliverySettingsDialog(QDialog):
         self._telegram_discovery_worker = None
 
     def _set_telegram_status(self, text: str) -> None:
-        if self._telegram_status_label is not None:
-            self._telegram_status_label.setText(text)
+        _set_dynamic_label_text(self._telegram_status_label, text)
 
     def _apply_wechat_account(self, account: WeChatAccount) -> None:
-        if self._wechat_account_label is not None:
-            self._wechat_account_label.setText(self._wechat_account_text())
-        if self._wechat_recipients_label is not None:
-            self._wechat_recipients_label.setText(self._wechat_recipients_text())
+        _set_dynamic_label_text(self._wechat_account_label, self._wechat_account_text())
+        _set_dynamic_label_text(self._wechat_recipients_label, self._wechat_recipients_text())
 
     def _refresh_wechat_labels(self) -> None:
-        if self._wechat_account_label is not None:
-            self._wechat_account_label.setText(self._wechat_account_text())
-        if self._wechat_recipients_label is not None:
-            self._wechat_recipients_label.setText(self._wechat_recipients_text())
+        _set_dynamic_label_text(self._wechat_account_label, self._wechat_account_text())
+        _set_dynamic_label_text(self._wechat_recipients_label, self._wechat_recipients_text())
         self._maybe_fill_wechat_target()
 
     def _on_current_tab_changed(self, index: int) -> None:

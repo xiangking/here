@@ -99,8 +99,24 @@ def build_asr_setup_status(provider: str, *, model_path: str | None = None) -> A
     )
 
 
+def bundled_vosk_model_path() -> str:
+    """Return the bundled Vosk model path when the release package includes it."""
+    try:
+        from infrastructure.paths import project_root
+
+        candidate = project_root() / "assets" / "system" / "models" / VOSK_SMALL_CN_MODEL_DIRNAME
+        if is_vosk_model_dir(candidate):
+            return candidate.as_posix()
+    except Exception:
+        pass
+    return ""
+
+
 def default_vosk_model_path() -> str:
-    """Return the user-data Vosk model path used for first-use downloads."""
+    """Return the bundled Vosk model path, falling back to app-data downloads."""
+    bundled = bundled_vosk_model_path()
+    if bundled:
+        return bundled
     try:
         from infrastructure.paths import get_app_paths
 

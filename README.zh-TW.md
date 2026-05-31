@@ -33,15 +33,19 @@ here 是一個常駐桌面的 AI 伴侶。它負責角色設定、長期記憶�
 
 ## ✨ 主要功能
 
-| 功能 | 說明 |
-| --- | --- |
-| 角色系統 | 建立、匯入、編輯角色；維護人設、視覺身份、情緒標籤、語音引用和角色包。 |
-| 記憶與素材目錄 | 在設定中選擇角色長期記憶和動畫素材目錄，方便遷移或放到外接磁碟。 |
-| 桌面聊天 | 對話、立繪切換、TTS 播放、麥克風輸入、歷史保存與恢復。 |
-| Agent 後端 | 在主視窗選單中選擇使用者本機 Hermes Agent、專案內建 Internal Agent 兜底，或自動選擇。 |
-| 主動聯絡 | 角色可依自己的日程狀態主動聯絡使用者，並可選擇桌面、微信等送達渠道。 |
-| 主動附圖 | 主動聯絡可附帶根據角色身份、生活狀態和可選參考圖生成的自然狀態照片。 |
-| 可配置生圖 API | image-api、Grok Imagine、GPT Image、OpenAI-compatible endpoint 和未來適配器都可以在不改調度器的情況下切換。 |
+<p align="center">
+  <img src="docs/assets/screenshot/feature-showcase-01.jpg" width="720" alt="here 主打展示圖">
+</p>
+
+| 功能 | 說明 | 展示 |
+| --- | --- | --- |
+| 角色系統 | 建立、匯入、編輯角色；維護人設、視覺身份、情緒標籤、語音引用和角色包。 | <img src="docs/assets/screenshot/feature-character-01.png" width="120" alt="角色桌面預覽"> <img src="docs/assets/screenshot/feature-character-02.png" width="150" alt="角色匯入選單"> <img src="docs/assets/screenshot/feature-character-03.png" width="150" alt="建立角色視窗"> |
+| ASR 與 TTS | 支援麥克風語音輸入、ASR 後端選擇、TTS 播放和多服務語音設定。 | <img src="docs/assets/screenshot/feature-voice-01.png" width="135" alt="語音辨識設定"> <img src="docs/assets/screenshot/feature-voice-02.png" width="135" alt="語音合成設定"> <img src="docs/assets/screenshot/feature-voice-03.png" width="120" alt="麥克風權限提示"> <img src="docs/assets/screenshot/feature-voice-04.png" width="120" alt="語音合成狀態"> |
+| 桌面聊天 | 對話、立繪切換、TTS 播放、麥克風輸入、歷史保存與恢復。 | <img src="docs/assets/screenshot/feature-chat-01.png" width="150" alt="桌面聊天與通話介面"> <img src="docs/assets/screenshot/feature-chat-02.png" width="150" alt="外部送達設定"> <img src="docs/assets/screenshot/feature-chat-03.png" width="160" alt="外部聊天效果"> |
+| Agent 後端 | 在主視窗選單中選擇使用者本機 Hermes Agent、專案內建 Internal Agent 兜底，或自動選擇。 |  |
+| 主動聯絡 | 角色可依自己的日程狀態主動聯絡使用者，並可選擇桌面、微信等送達渠道。 | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="外部會話提醒"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="外部聊天內容"> |
+| 主動附圖 | 主動聯絡可附帶根據角色身份、生活狀態和可選參考圖生成的自然狀態照片。 | <img src="docs/assets/screenshot/feature-proactive-image-01.jpg" width="160" alt="主動聯絡附圖"> |
+| 可配置生圖 API | image-api、Grok Imagine、GPT Image、OpenAI-compatible endpoint 和未來適配器都可以在不改調度器的情況下切換。 | <img src="docs/assets/screenshot/feature-image-api-01.png" width="220" alt="生圖 API 設定"> |
 
 ## 💻 系統需求
 

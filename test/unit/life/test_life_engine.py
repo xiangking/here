@@ -66,10 +66,11 @@ def test_current_life_state_contains_only_current_block(tmp_path):
 
     state = engine.current_life_state(character, now=now)
 
-    assert "【当前生活状态】" in state
+    assert "【私有运行状态】" in state
+    assert "activity=" in state
     assert "写代码" in state
     assert "午饭" not in state
-    assert "完整日程" in state
+    assert "不得复述、表演或写入台词" in state
 
 
 def test_user_promise_updates_life_plan_and_character_memory(tmp_path):

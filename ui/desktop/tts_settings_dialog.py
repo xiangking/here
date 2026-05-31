@@ -27,7 +27,9 @@ from services.i18n import tr
 from services.tts.tts_manager import TTSAdapterFactory
 from ui.desktop.asr_settings_dialog import (
     _build_schema_widgets,
+    _make_status_label,
     _read_schema_values,
+    _set_status_label_text,
 )
 from ui.desktop.combo_style import style_combo_popup
 from ui.desktop.edit_context_menu import install_readable_edit_menus
@@ -155,6 +157,7 @@ class TTSSettingsDialog(QDialog):
         form = QFormLayout(body)
         form.setContentsMargins(0, 0, 0, 0)
         form.setSpacing(10)
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         self.provider_combo = QComboBox(body)
@@ -188,9 +191,7 @@ class TTSSettingsDialog(QDialog):
         self.extra_layout.setSpacing(8)
         form.addRow(tr("desktop.settings_dialog.advanced"), self.extra_holder)
 
-        self.status_label = QLabel("", body)
-        self.status_label.setWordWrap(True)
-        self.status_label.setStyleSheet("color: rgba(255,255,255,175);")
+        self.status_label = _make_status_label(body)
         form.addRow(tr("desktop.settings_dialog.status"), self.status_label)
 
         scroll.setWidget(body)
@@ -253,7 +254,7 @@ class TTSSettingsDialog(QDialog):
             self.extra_layout.addWidget(panel)
             self._extra_editors = editors
             self.extra_holder.setVisible(True)
-        self.status_label.setText(self._status_for_provider(provider))
+        _set_status_label_text(self.status_label, self._status_for_provider(provider))
 
     def _status_for_provider(self, provider: str) -> str:
         if provider == "none":

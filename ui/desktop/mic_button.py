@@ -452,7 +452,6 @@ class MicButton(QPushButton):
             self._is_asr_running = True
             self._is_asr_paused = False
             self.asr_state_changed.emit(True)
-            self._mic_notify(tr("desktop.mic_listening"))
             _log.info("mic start_asr ok adapter=%s", type(self.asr_adapter).__name__)
         finally:
             self._mic_busy_hide()
@@ -519,7 +518,6 @@ class MicButton(QPushButton):
             self._is_asr_running = False
             self._is_asr_paused = False
             self.asr_state_changed.emit(False)
-            self._mic_notify(tr("desktop.mic_stopped"))
             _log.info("mic stop_asr ok")
         except Exception:
             _log.exception("mic stop_asr failed")

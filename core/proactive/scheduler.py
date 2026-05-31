@@ -6,6 +6,7 @@ from datetime import datetime, time, timedelta
 from typing import Any, Callable
 
 from core.timezone import now_in_timezone, resolve_timezone
+from core.sprite.emotion_tags import render_available_state_names
 from internal_agent.context import AgentMemoryStore
 from core.delivery.models import DeliveryMessage
 from core.life import DEFAULT_TIMEZONE, DailyLifePlan, LifeEngine
@@ -181,7 +182,7 @@ class ProactiveContactScheduler:
     ) -> AgentDialogMessage | None:
         active_name = str(getattr(character, "name", "") or "角色").strip() or "角色"
         life_state = life_state or self.life_engine.render_life_state(life_plan, block)
-        prompt = self._compose_prompt(active_name, contact_plan, item, life_state)
+        prompt = self._compose_prompt(active_name, contact_plan, item, life_state, character=character)
         try:
             raw = self.agent_backend.oneshot(
                 prompt,
@@ -221,21 +222,26 @@ class ProactiveContactScheduler:
         contact_plan: DailyContactPlan,
         item: ContactPlanItem,
         life_state: str,
+        *,
+        character: Any | None = None,
     ) -> str:
         basis = "；".join(item.memory_basis[-2:])
+        state_names = render_available_state_names(character) if character is not None else ""
+        state_line = state_names or "可用状态名：使用当前角色配置中的默认状态名"
         return (
             "这是角色主动联系用户，不是回复用户消息。\n"
             "请只输出一个 here 角色对话 JSON 对象，且只输出一条当前角色消息。\n"
             f"当前角色：{active_name}\n"
+            f"{state_line}\n"
             f"{life_state}\n"
             f"主动联系风格：{contact_plan.contact_style}\n"
             f"主动联系类型：{item.type}\n"
             f"主动联系原因：{item.intent}\n"
             f"相关记忆依据：{basis}\n"
             f"消息种子：{item.message_seed}\n"
-            "表达要求：一句自然短消息；不要提系统、计划、触发、日程表；不要连续追问；不要替用户安排。\n"
+            "表达要求：一句自然短消息；speech 只能写角色实际说出口的话，禁止动作描写、括号旁白和语气说明；不要提系统、计划、触发、日程表；不要连续追问；不要替用户安排。\n"
             "JSON 形如："
-            "{\"character_name\":\"角色名\",\"speech\":\"一句自然短消息\",\"emotion\":\"neutral|happy|thinking|surprised|sad|angry\",\"system_action\":null}"
+            "{\"character_name\":\"角色名\",\"speech\":\"一句自然短消息\",\"emotion\":\"当前角色可用状态名\",\"system_action\":null}"
         )
 
     def _fallback_dialog(self, active_name: str, item: ContactPlanItem) -> AgentDialogMessage:

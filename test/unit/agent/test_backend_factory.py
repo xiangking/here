@@ -137,6 +137,31 @@ def test_internal_agent_backend_uses_independent_agent(monkeypatch):
     assert calls[-1]["api_key"] == "secret"
 
 
+def test_internal_agent_backend_inherits_default_dialog_protocol(monkeypatch):
+    calls = []
+
+    class FakeInternalAgent:
+        def __init__(self, **kwargs):
+            calls.append({"init": kwargs, "run": None})
+
+        def run_conversation(self, *args, **kwargs):
+            calls[-1]["run"] = kwargs
+            return {"final_response": "ok", "messages": []}
+
+    mod = types.ModuleType("internal_agent")
+    mod.InternalAgent = FakeInternalAgent
+    monkeypatch.setitem(sys.modules, "internal_agent", mod)
+
+    backend = InternalAgentBackend.from_config_manager(_ConfigManager("internal-agent"))
+    assert backend.chat("hi", stream=False) == "ok"
+
+    system_prompt = calls[-1]["run"]["system_message"]
+    assert "speech 只能包含角色实际说出口的话" in system_prompt
+    assert "当前角色本地可用状态名" in system_prompt
+    assert "neutral、happy、thinking、surprised、sad、angry" not in system_prompt
+    assert "neutral|happy|thinking|surprised|sad|angry" not in system_prompt
+
+
 def test_internal_agent_backend_does_not_touch_hermes_home(monkeypatch, tmp_path):
     calls = []
 

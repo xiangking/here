@@ -133,11 +133,13 @@ class TestNormalizeLang:
 
 
 class TestAllLocaleKeysExist:
-    """Verify every key in zh_CN has a corresponding entry in en and ja."""
+    """Verify every key in zh_CN has a corresponding entry in every locale."""
     import json
     from pathlib import Path
 
-    _LOCALES = Path(__file__).resolve().parent.parent.parent / "i18n" / "locales"
+    _LOCALES = (
+        Path(__file__).resolve().parents[2] / "services" / "i18n" / "locales"
+    )
 
     @pytest.fixture(autouse=True)
     def _init_bundles(self):
@@ -158,26 +160,16 @@ class TestAllLocaleKeysExist:
                 return self.json.load(f)
         return {}
 
-    def test_zh_keys_exist_in_en(self):
+    @pytest.mark.parametrize("code", ["en", "ja", "ko"])
+    def test_zh_keys_exist_in_supported_locale(self, code):
         zh = self._load("zh_CN")
-        en = self._load("en")
+        target = self._load(code)
+        assert target, f"{code}.json was not loaded"
         for key in self._walk_keys(zh):
             path = key.split(".")
-            cur = en
+            cur = target
             for part in path:
                 cur = cur.get(part, None)
                 if cur is None:
                     break
-            assert cur is not None, f"Key '{key}' missing in en.json"
-
-    def test_zh_keys_exist_in_ja(self):
-        zh = self._load("zh_CN")
-        ja = self._load("ja")
-        for key in self._walk_keys(zh):
-            path = key.split(".")
-            cur = ja
-            for part in path:
-                cur = cur.get(part, None)
-                if cur is None:
-                    break
-            assert cur is not None, f"Key '{key}' missing in ja.json"
+            assert cur is not None, f"Key '{key}' missing in {code}.json"

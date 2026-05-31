@@ -317,7 +317,7 @@ def test_life_state_is_injected_without_memory_dump(monkeypatch):
     context = AgentContext(
         selected_characters=["Alice"],
         long_term_memories={"Alice": ["likes tea"]},
-        life_state="【当前生活状态】\n现在她正在：写代码和处理项目",
+        life_state="【私有运行状态】\nactivity=写代码和处理项目",
         memory_home=Path("/tmp/internal-agent-memory-home"),
     )
 
@@ -326,9 +326,23 @@ def test_life_state_is_injected_without_memory_dump(monkeypatch):
     agent = FakeAIAgent.instances[-1]
     assert agent.kwargs["ephemeral_system_prompt"] == ""
     system_prompt = agent.run_conversation_system_message
-    assert "现在她正在：写代码和处理项目" in system_prompt
-    assert "不要抢走用户当前话题" in system_prompt
+    assert "activity=写代码和处理项目" in system_prompt
+    assert "私有运行上下文" in system_prompt
+    assert "不要复述、表演或展开它" in system_prompt
     assert "likes tea" not in system_prompt
+
+
+def test_default_dialog_protocol_uses_local_state_names(monkeypatch):
+    install_fake_run_agent(monkeypatch)
+    backend = HermesAgentBackend(HermesBackendConfig())
+
+    backend.chat("hi", stream=False)
+
+    system_prompt = FakeAIAgent.instances[-1].run_conversation_system_message
+    assert "当前角色本地可用状态名" in system_prompt
+    assert "speech 只能包含角色实际说出口的话" in system_prompt
+    assert "neutral、happy、thinking、surprised、sad、angry" not in system_prompt
+    assert "neutral|happy|thinking|surprised|sad|angry" not in system_prompt
 
 
 def test_image_input_unsupported_error_retries_as_text(monkeypatch):

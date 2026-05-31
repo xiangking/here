@@ -4,7 +4,10 @@ from services.i18n import tr as tr_i18n
 from services.i18n.lang import normalize_lang
 from services.config.config_manager import ConfigManager
 from core.messaging.dialog_tokens import BGM, CG, CHOICE, COT, SCENE, STAT
-from core.sprite.emotion_tags import filter_emotion_tags_for_character
+from core.sprite.emotion_tags import (
+    filter_emotion_tags_for_character,
+    render_available_state_names,
+)
 
 config_manager = ConfigManager()
 
@@ -108,6 +111,9 @@ class TemplateGenerator:
         for char_name in selected_characters:
             char_detail = config_manager.get_character_by_name(char_name)
             template += _T("sprites_count", name=char_name, n=len(char_detail.sprites))
+            state_names = render_available_state_names(char_detail)
+            if state_names:
+                template += f"{state_names}\n"
             template += f"{filter_emotion_tags_for_character(char_detail)}\n\n"
 
         template += _T("profile_header")

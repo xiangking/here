@@ -24,7 +24,7 @@ class AgentDialogMessage(BaseModel):
 
     name: str = Field(..., alias="character_name", description="实体名称（角色名 / 系统关键字如 bgm/NARR 等）")
     text: Optional[str] = Field("", alias="speech", description="文本内容（台词 / 系统提示）")
-    emotion: str = Field("neutral", description="角色情绪状态，例如 neutral/happy/thinking/surprised/sad/angry")
+    emotion: str = Field("neutral", description="角色情绪状态名，优先使用当前角色本地可用状态")
     asset_id: Optional[Union[str, int]] = Field("-1", description="系统资源编号（BGM / 背景 / CG 等），-1 表示无需变化")
     translate: Optional[str] = Field("", description="可选的翻译文本，如果存在则用于 TTS")
     effect: Optional[str] = Field("", description="特效名称")

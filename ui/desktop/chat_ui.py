@@ -30,7 +30,6 @@ from PySide6.QtWidgets import (
     QMenu,
     QTextEdit,
     QSizePolicy,
-    QToolTip,
 )
 import os
 
@@ -1290,19 +1289,6 @@ class ChatUIWindow(DesktopToolbarMixin, DesktopMenuMixin, QWidget):
         if edges != Qt.Edge(0):
             QGuiApplication.setOverrideCursor(self._cursor_for_edges(edges))
             self._resize_cursor_override_active = True
-            le, ri = Qt.Edge.LeftEdge, Qt.Edge.RightEdge
-            bt = Qt.Edge.BottomEdge
-            if edges in (le | bt, ri | bt) and not getattr(
-                self, "_resize_corner_hint_shown", False
-            ):
-                self._resize_corner_hint_shown = True
-                QToolTip.showText(
-                    QCursor.pos() + QPoint(0, 18),
-                    "拖动可调整窗口大小",
-                    self,
-                    QRect(),
-                    3500,
-                )
 
     def _begin_resize(self, edges: Qt.Edge, global_pos: QPoint) -> None:
         self._clear_hover_resize_cursor()
@@ -1572,8 +1558,7 @@ class ChatUIWindow(DesktopToolbarMixin, DesktopMenuMixin, QWidget):
             self.notification_changed.emit(message)
             return
         self.input_box.setPlaceholderText(text)
-        if text:
-            self.input_box.setToolTip(text)
+        self.input_box.setToolTip("")
         self.notification_changed.emit(message)
 
     def _chat_delivery_channel_is_external(self) -> bool:

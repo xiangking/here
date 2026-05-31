@@ -33,15 +33,19 @@ here는 데스크톱에 상주하는 AI 컴패니언입니다. 캐릭터 프로�
 
 ## ✨ 주요 기능
 
-| 기능 | 설명 |
-| --- | --- |
-| 캐릭터 시스템 | 페르소나, 시각 정체성, 감정 태그, 음성 참조, 캐릭터 패키지를 만들고 가져오고 편집합니다. |
-| 기억과 소재 폴더 | 캐릭터 장기 기억과 애니메이션 소재의 저장 위치를 선택할 수 있으며 외장 디스크도 사용할 수 있습니다. |
-| 데스크톱 채팅 | 대화, 스프라이트 전환, TTS 재생, 마이크 입력, 기록 저장과 복원을 지원합니다. |
-| Agent 백엔드 | 메인 메뉴에서 사용자 로컬 Hermes Agent, 내장 Internal Agent 폴백, 자동 선택을 고를 수 있습니다. |
-| 선제 연락 | 캐릭터가 자신의 일상 상태에 따라 데스크톱 채팅이나 WeChat 같은 외부 채널로 자연스럽게 연락할 수 있습니다. |
-| 선제 사진 | 캐릭터 정체성, 생활 상태, 선택적 참조 이미지를 바탕으로 자연스러운 현재 상태 사진을 첨부할 수 있습니다. |
-| 설정 가능한 이미지 API | image-api, Grok Imagine, GPT Image, OpenAI-compatible endpoint, 향후 어댑터를 스케줄러 변경 없이 전환할 수 있습니다. |
+<p align="center">
+  <img src="docs/assets/screenshot/feature-showcase-01.jpg" width="720" alt="here showcase">
+</p>
+
+| 기능 | 설명 | 미리보기 |
+| --- | --- | --- |
+| 캐릭터 시스템 | 페르소나, 시각 정체성, 감정 태그, 음성 참조, 캐릭터 패키지를 만들고 가져오고 편집합니다. | <img src="docs/assets/screenshot/feature-character-01.png" width="120" alt="캐릭터 데스크톱 미리보기"> <img src="docs/assets/screenshot/feature-character-02.png" width="150" alt="캐릭터 가져오기 메뉴"> <img src="docs/assets/screenshot/feature-character-03.png" width="150" alt="캐릭터 만들기 창"> |
+| ASR 및 TTS | 마이크 음성 입력, ASR 백엔드 선택, TTS 재생, 여러 음성 서비스 설정을 지원합니다. | <img src="docs/assets/screenshot/feature-voice-01.png" width="135" alt="음성 인식 설정"> <img src="docs/assets/screenshot/feature-voice-02.png" width="135" alt="음성 합성 설정"> <img src="docs/assets/screenshot/feature-voice-03.png" width="120" alt="마이크 권한 안내"> <img src="docs/assets/screenshot/feature-voice-04.png" width="120" alt="음성 합성 상태"> |
+| 데스크톱 채팅 | 대화, 스프라이트 전환, TTS 재생, 마이크 입력, 기록 저장과 복원을 지원합니다. | <img src="docs/assets/screenshot/feature-chat-01.png" width="150" alt="데스크톱 채팅 및 통화 UI"> <img src="docs/assets/screenshot/feature-chat-02.png" width="150" alt="외부 전달 설정"> <img src="docs/assets/screenshot/feature-chat-03.png" width="160" alt="외부 채팅 미리보기"> |
+| Agent 백엔드 | 메인 메뉴에서 사용자 로컬 Hermes Agent, 내장 Internal Agent 폴백, 자동 선택을 고를 수 있습니다. |  |
+| 선제 연락 | 캐릭터가 자신의 일상 상태에 따라 데스크톱 채팅이나 WeChat 같은 외부 채널로 자연스럽게 연락할 수 있습니다. | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="외부 대화 알림"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="외부 채팅 내용"> |
+| 선제 사진 | 캐릭터 정체성, 생활 상태, 선택적 참조 이미지를 바탕으로 자연스러운 현재 상태 사진을 첨부할 수 있습니다. | <img src="docs/assets/screenshot/feature-proactive-image-01.jpg" width="160" alt="선제 사진 미리보기"> |
+| 설정 가능한 이미지 API | image-api, Grok Imagine, GPT Image, OpenAI-compatible endpoint, 향후 어댑터를 스케줄러 변경 없이 전환할 수 있습니다. | <img src="docs/assets/screenshot/feature-image-api-01.png" width="220" alt="이미지 API 설정"> |
 
 ## 💻 요구 사항
 

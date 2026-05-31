@@ -2,7 +2,7 @@ import os
 import signal
 from pathlib import Path
 
-from infrastructure.paths import get_app_paths, seed_defaults
+from infrastructure.paths import get_app_paths, install_user_python_packages_path, seed_defaults
 import sys
 import numpy as np
 
@@ -150,6 +150,7 @@ def _t2i_base_kwargs(config: ConfigManager, provider: str) -> dict[str, str]:
 
 def run_desktop_app():
     app_paths = get_app_paths()
+    install_user_python_packages_path(app_paths)
     seed_defaults(app_paths)
     config = ConfigManager()
     from services.i18n import init_i18n, tr as tr_i18n

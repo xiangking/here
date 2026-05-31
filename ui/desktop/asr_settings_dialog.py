@@ -43,6 +43,7 @@ from services.asr.asr_adapter import (
 from services.asr.asr_manager import ASRAdapterFactory
 from services.config.config_manager import ConfigManager
 from services.i18n import tr
+from infrastructure.paths import install_user_python_packages_path
 from ui.desktop.combo_style import style_combo_popup
 from ui.desktop.edit_context_menu import install_readable_edit_menus
 
@@ -140,6 +141,26 @@ def _installed_whisper_models() -> list[str]:
         if path.is_file():
             models.append(path.stem)
     return models
+
+
+def _make_status_label(parent: QWidget | None = None) -> QLabel:
+    label = QLabel("", parent)
+    label.setWordWrap(True)
+    label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+    label.setContentsMargins(0, 2, 0, 2)
+    label.setMinimumHeight(label.fontMetrics().lineSpacing() * 2 + 8)
+    label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding)
+    label.setStyleSheet("color: rgba(255,255,255,175);")
+    return label
+
+
+def _set_status_label_text(label: QLabel, text: str) -> None:
+    label.setText(text)
+    label.updateGeometry()
+    parent = label.parentWidget()
+    if parent is not None and parent.layout() is not None:
+        parent.layout().invalidate()
+        parent.updateGeometry()
 
 
 def _build_schema_widgets(
@@ -380,6 +401,7 @@ class ASRSettingsDialog(QDialog):
         form = QFormLayout(body)
         form.setContentsMargins(0, 0, 0, 0)
         form.setSpacing(10)
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         self.provider_combo = QComboBox(body)
@@ -463,9 +485,7 @@ class ASRSettingsDialog(QDialog):
         self.extra_layout.setSpacing(8)
         form.addRow(tr("desktop.settings_dialog.advanced"), self.extra_holder)
 
-        self.status_label = QLabel("", body)
-        self.status_label.setWordWrap(True)
-        self.status_label.setStyleSheet("color: rgba(255,255,255,175);")
+        self.status_label = _make_status_label(body)
         form.addRow(tr("desktop.settings_dialog.status"), self.status_label)
 
         scroll.setWidget(body)
@@ -529,8 +549,6 @@ class ASRSettingsDialog(QDialog):
         return missing_asr_requirements(provider)
 
     def _install_command_label(self, provider: str) -> str:
-        if self._can_install_dependencies():
-            return ".\\install.bat --with-asr" if sys.platform.startswith("win") else "bash scripts/install.sh --with-asr"
         return self._pip_install_command(provider)
 
     def _pip_install_command(self, provider: str) -> str:
@@ -612,7 +630,7 @@ class ASRSettingsDialog(QDialog):
         self._extra_schema = cls.get_config_schema() if cls else {}
         values = self._config_manager.get_adapter_extra_config("asr", provider)
         if provider == "vosk":
-            values = {"model_path": self._vosk_model_path(), **values}
+            values = {**values, "model_path": self._vosk_model_path()}
         if not self._extra_schema:
             self.extra_holder.setVisible(False)
             return
@@ -648,6 +666,11 @@ class ASRSettingsDialog(QDialog):
         values = self._config_manager.get_adapter_extra_config("asr", "vosk")
         configured = str(values.get("model_path") or "").strip()
         if configured and Path(configured).expanduser().is_absolute():
+            if self._is_vosk_model_dir(configured):
+                return configured
+            default_path = default_vosk_model_path()
+            if default_path != configured and self._is_vosk_model_dir(default_path):
+                return default_path
             return configured
         return default_vosk_model_path()
 
@@ -689,6 +712,10 @@ class ASRSettingsDialog(QDialog):
     def _project_root(self) -> Path:
         return Path(__file__).resolve().parents[2]
 
+    def _uses_embedded_runtime(self) -> bool:
+        py = Path(sys.executable).resolve()
+        return py.parent.name in {"bin", "Scripts"} and py.parent.parent.name == "runtime"
+
     def _venv_python(self) -> Path:
         root = self._project_root()
         if sys.platform.startswith("win"):
@@ -697,6 +724,8 @@ class ASRSettingsDialog(QDialog):
 
     def _can_install_dependencies(self) -> bool:
         if getattr(sys, "frozen", False):
+            return False
+        if self._uses_embedded_runtime():
             return False
         root = self._project_root()
         return (root / "pyproject.toml").is_file()
@@ -742,8 +771,9 @@ class ASRSettingsDialog(QDialog):
                 detail = "\n".join(tail).strip()
                 raise RuntimeError(
                     tr("desktop.settings_dialog.asr_deps_install_failed_detail", detail=detail or proc.returncode)
-                )
+            )
             importlib.invalidate_caches()
+            install_user_python_packages_path()
             missing = self._missing_requirements(provider)
             if missing:
                 raise RuntimeError(
@@ -762,19 +792,20 @@ class ASRSettingsDialog(QDialog):
         env["PYTHONIOENCODING"] = "utf-8"
         root = self._project_root()
         if self._can_install_dependencies():
-            if not sys.platform.startswith("win"):
-                script = root / "scripts" / "install.sh"
-                if script.is_file():
-                    return ["bash", str(script), "--with-asr"], root, env
             uv = shutil.which("uv")
             if uv:
                 return [uv, "sync", "--python", "3.11", "--extra", "asr"], root, env
 
-        py = self._venv_python()
+        py = self._venv_python() if self._can_install_dependencies() else Path(sys.executable)
         if not py.is_file():
             py = Path(sys.executable)
         packages = list(ASR_PROVIDER_INSTALL_PACKAGES.get(provider, ()) or ("pyaudio", "vosk"))
-        return [str(py), "-m", "pip", "install", *packages], None, env
+        command = [str(py), "-m", "pip", "install", *packages]
+        if not self._can_install_dependencies():
+            target = install_user_python_packages_path()
+            command.extend(["--target", str(target), "--upgrade"])
+            env["PYTHONPATH"] = f"{target}{os.pathsep}{env.get('PYTHONPATH', '')}".rstrip(os.pathsep)
+        return command, None, env
 
     def _on_dependency_install_finished(self, ok: bool, message: str) -> None:
         self._install_running = False
@@ -895,7 +926,7 @@ class ASRSettingsDialog(QDialog):
         self._preload_signals.status.emit(tr("desktop.settings_dialog.whisper_cached", model=model))
 
     def _set_status(self, text: str) -> None:
-        self.status_label.setText(text)
+        _set_status_label_text(self.status_label, text)
 
     def _on_preload_finished(self, ok: bool, message: str) -> None:
         self._preload_running = False

@@ -18,7 +18,7 @@ dependencies = [
   "pyobjc-framework-AVFoundation; sys_platform == 'darwin'",
   "tzdata; sys_platform == 'win32'",
   "pyaudio; sys_platform == 'win32'",
-  "vosk; sys_platform == 'win32'",
+  "vosk==0.3.44; sys_platform == 'win32'",
   "QtPy>=2.4.1",
   "pyyaml",
   "fal-client",
@@ -33,7 +33,7 @@ hermes = [
 ]
 asr = [
   "pyaudio",
-  "vosk; platform_system != 'Darwin' or platform_machine != 'arm64'",
+  "vosk==0.3.44",
   "faster-whisper",
   "RealtimeSTT",
 ]
@@ -45,7 +45,7 @@ background-removal = [
 ]
 full = [
   "pyaudio",
-  "vosk; platform_system != 'Darwin' or platform_machine != 'arm64'",
+  "vosk==0.3.44",
   "faster-whisper",
   "RealtimeSTT",
   "opencv_python",

@@ -227,19 +227,21 @@ class LifeEngine:
 
     def render_life_state(self, plan: DailyLifePlan, block: LifeBlock) -> str:
         lines = [
-            "【当前生活状态】",
-            f"现在她正在：{block.activity}",
+            "【私有运行状态】",
+            "用途：仅供模型判断当前回复节奏和可用精力；不得复述、表演或写入台词。",
+            f"activity={block.activity}",
         ]
         if block.location:
-            lines.append(f"地点：{block.location}")
+            lines.append(f"location={block.location}")
         if block.goal:
-            lines.append(f"这段时间的目标：{block.goal}")
-        lines.append(f"心情/精力：{block.mood}")
-        lines.append(f"可联系状态：{block.availability}；被打断程度：{block.interruptibility}")
-        lines.append(f"回复方式：{block.reply_style}")
+            lines.append(f"goal={block.goal}")
+        lines.append(f"mood_energy={block.mood}")
+        lines.append(f"availability={block.availability}")
+        lines.append(f"interruptibility={block.interruptibility}")
+        lines.append(f"reply_pacing={block.reply_style}")
         if plan.pending_promises:
-            lines.append("和用户相关的近期约定：" + "；".join(plan.pending_promises[-2:]))
-        lines.append("不要主动展开完整日程；只有当前对话需要时，才自然透露正在做的事。")
+            lines.append("recent_user_promises=" + "；".join(plan.pending_promises[-2:]))
+        lines.append("speech_rule=优先回答用户当前话题；只有用户询问或上下文需要时才简短提及当前状态，且只能作为说出口的话自然表达。")
         return "\n".join(lines)
 
     def render_daily_plan(self, plan: DailyLifePlan) -> str:
@@ -378,7 +380,7 @@ class LifeEngine:
             "输出形如：{\"day_theme\":\"...\",\"blocks\":[{\"start\":\"09:00\",\"end\":\"12:00\","
             "\"activity\":\"...\",\"location\":\"...\",\"goal\":\"...\",\"mood\":\"...\","
             "\"availability\":\"...\",\"interruptibility\":\"low|medium|high\","
-            "\"reply_style\":\"...\",\"emotion_hint\":\"neutral|happy|thinking|surprised|sad|angry\"}]}"
+            "\"reply_style\":\"...\",\"emotion_hint\":\"可选的角色状态名\"}]}"
         )
 
     def _parse_llm_plan(self, raw: str) -> dict[str, Any] | None:

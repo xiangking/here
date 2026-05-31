@@ -140,7 +140,10 @@ def test_build_agent_context_filters_emotion_tags_to_existing_sprites(tmp_path):
                 color="#fff",
                 sprite_prefix="alice",
                 character_profile=default_character_profile("Alice"),
-                sprites=[Sprite(path=str(sprite_1)), Sprite(path=str(sprite_2))],
+                sprites=[
+                    Sprite(path=str(sprite_1), state_name="neutral"),
+                    Sprite(path=str(sprite_2), state_name="smile"),
+                ],
                 emotion_tags=(
                     "核心情绪标准名：neutral/happy/thinking\n"
                     "立绘 1：neutral\n"
@@ -155,12 +158,15 @@ def test_build_agent_context_filters_emotion_tags_to_existing_sprites(tmp_path):
     ctx = build_agent_context(config_manager=cfg, memory_store=store)
 
     soul = ctx.character_souls[0].emotion_tags
+    assert "可用状态名：neutral / smile" in soul
     assert "核心情绪标准名" in soul
     assert "立绘 1：neutral" in soul
     assert "立绘 2：happy" in soul
     assert "立绘 3" not in soul
     assert "sprite 04" not in soul
     soul_file = store.soul_path("Alice").read_text(encoding="utf-8")
+    assert "## 本地可用状态名" in soul_file
+    assert "可用状态名：neutral / smile" in soul_file
     assert "立绘 3" not in soul_file
     assert "sprite 04" not in soul_file
 

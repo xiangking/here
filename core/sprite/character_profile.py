@@ -219,7 +219,7 @@ def build_character_setting_from_profile(name: str, profile: dict[str, Any]) -> 
     desc = MBTI_DESCRIPTIONS.get(mbti, "")
     pronoun = "她"
     lines = [
-        f"{display_name}是{identity.get('age', 22)}岁的{identity.get('gender', '女性')}，职业/身份是{identity.get('occupation', '自学中的程序员')}，当前生活状态是{identity.get('life_status', '独居')}。",
+        f"{display_name}是{identity.get('age', 22)}岁的{identity.get('gender', '女性')}，职业/身份是{identity.get('occupation', '自学中的程序员')}，居住/运行环境是{identity.get('life_status', '独居')}。",
         f"{pronoun}与用户的关系是{identity.get('relationship_to_user', '朋友')}，第一人称使用“{identity.get('first_person', '我')}”，称呼用户为“{identity.get('user_address', '你')}”。",
     ]
     birthday = str(identity.get("birthday") or "").strip()

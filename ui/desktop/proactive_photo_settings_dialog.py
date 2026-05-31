@@ -24,7 +24,9 @@ from services.i18n import tr
 from services.t2i.t2i_manager import T2IAdapterFactory
 from ui.desktop.asr_settings_dialog import (
     _build_schema_widgets,
+    _make_status_label,
     _read_schema_values,
+    _set_status_label_text,
 )
 from ui.desktop.combo_style import style_combo_popup
 from ui.desktop.edit_context_menu import install_readable_edit_menus
@@ -161,6 +163,7 @@ class ProactivePhotoSettingsDialog(QDialog):
         form = QFormLayout(body)
         form.setContentsMargins(0, 0, 0, 0)
         form.setSpacing(10)
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         self.enabled_check = QCheckBox(body)
@@ -195,9 +198,7 @@ class ProactivePhotoSettingsDialog(QDialog):
         self.extra_layout.setSpacing(8)
         form.addRow(tr("desktop.settings_dialog.image_api_params"), self.extra_holder)
 
-        self.status_label = QLabel("", body)
-        self.status_label.setWordWrap(True)
-        self.status_label.setStyleSheet("color: rgba(255,255,255,175);")
+        self.status_label = _make_status_label(body)
         form.addRow(tr("desktop.settings_dialog.status"), self.status_label)
 
         scroll.setWidget(body)
@@ -263,11 +264,12 @@ class ProactivePhotoSettingsDialog(QDialog):
             self.extra_layout.addWidget(panel)
             self._extra_editors = editors
             self.extra_holder.setVisible(True)
-        self.status_label.setText(
+        _set_status_label_text(
+            self.status_label,
             tr(
                 "desktop.settings_dialog.proactive_photo_status",
                 label=_t2i_provider_label(provider),
-            )
+            ),
         )
 
     def _save_and_accept(self) -> None:

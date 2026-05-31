@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 from infrastructure.paths import (
     default_character_assets_dir,
     default_character_memory_dir,
     get_app_paths,
+    install_user_python_packages_path,
     load_storage_paths,
     project_root,
     resolve_character_asset_path,
@@ -26,6 +28,20 @@ def test_default_storage_paths_follow_app_home(tmp_path, monkeypatch):
     assert paths.characters_dir == app_home / "characters"
     assert paths.memory_dir.is_dir()
     assert paths.characters_dir.is_dir()
+    py_tag = f"py{sys.version_info.major}.{sys.version_info.minor}"
+    assert paths.python_packages_dir == app_home / "cache" / "python-packages" / py_tag
+    assert paths.python_packages_dir.is_dir()
+
+
+def test_install_user_python_packages_path_prepends_sys_path(tmp_path, monkeypatch):
+    app_home = tmp_path / "here-home"
+    monkeypatch.setenv("HERE_APP_HOME", str(app_home))
+
+    path = install_user_python_packages_path()
+
+    py_tag = f"py{sys.version_info.major}.{sys.version_info.minor}"
+    assert path == app_home / "cache" / "python-packages" / py_tag
+    assert sys.path[0] == path.as_posix()
 
 
 def test_storage_path_overrides_can_be_absolute(tmp_path, monkeypatch):

@@ -211,6 +211,10 @@ class AppPaths:
     def tts_audio_dir(self) -> Path:
         return self.generated_dir / "tts_audio"
 
+    @property
+    def python_packages_dir(self) -> Path:
+        return self.cache_dir / "python-packages" / f"py{sys.version_info.major}.{sys.version_info.minor}"
+
     def ensure(self) -> "AppPaths":
         for path in (
             self.config_dir,
@@ -230,9 +234,19 @@ class AppPaths:
             self.sprite_cache_dir,
             self.messaging_state_dir,
             self.tts_audio_dir,
+            self.python_packages_dir,
         ):
             path.mkdir(parents=True, exist_ok=True)
         return self
+
+
+def install_user_python_packages_path(paths: AppPaths | None = None) -> Path:
+    paths = paths or get_app_paths()
+    package_dir = paths.python_packages_dir
+    package_text = package_dir.as_posix()
+    if package_text not in sys.path:
+        sys.path.insert(0, package_text)
+    return package_dir
 
 
 def get_app_paths() -> AppPaths:
