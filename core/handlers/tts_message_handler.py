@@ -115,6 +115,13 @@ class CgTtsHandler(MessageHandler):
         except Exception as e:
             print(f"生成CG失败，{e}")
             traceback.print_exc()
+            tts_emit_to_ui_queue(
+                msg.name,
+                msg.text or "CG 生成失败",
+                "-1",
+                "",
+                is_system_message=True,
+            )
         finally:
             _hide_tts_busy()
 

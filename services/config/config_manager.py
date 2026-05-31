@@ -128,6 +128,8 @@ class ConfigManager:
             # 对于 characters.yaml，它是一个列表，直接传递给 List[Character]
             if not isinstance(characters_data, list):
                 characters_data = [] # 处理文件为空或格式错误的情况
+            if not isinstance(background_data, list):
+                background_data = [] # 处理文件为空或格式错误的情况
                 
             character_list = [Character.model_validate(item) for item in characters_data]
             background = [Background.model_validate(item) for item in background_data]

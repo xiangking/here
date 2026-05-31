@@ -116,14 +116,25 @@ class WeChatChatBridge:
     def __init__(
         self,
         *,
+        config: MessagingConfig,
         emit_user_text: Callable[[str], None],
         notify: Callable[[str], None] | None = None,
     ) -> None:
+        self.config = config
         self.emit_user_text = emit_user_text
         self.notify = notify
         self._monitors: list[Any] = []
+        self._target = _first_config_value(
+            self.config.platform("wechat"),
+            "target",
+            "recipient",
+            "user_id",
+        )
 
     def start(self) -> None:
+        if not self._target:
+            self._notify("WeChat 聊天平台未配置目标联系人，已跳过入站监听。")
+            return
         try:
             self._monitors = monitor_manager.start_saved_accounts(
                 on_message=self._on_message,
@@ -140,6 +151,9 @@ class WeChatChatBridge:
         self._monitors = []
 
     def _on_message(self, message: Any) -> None:
+        sender = str(getattr(message, "from_user_id", "") or "").strip()
+        if sender != self._target:
+            return
         text = str(getattr(message, "text", "") or "").strip()
         if text:
             self.emit_user_text(text)
@@ -168,7 +182,11 @@ def start_chat_platform_bridge(
         bridge.start()
         return bridge
     if normalized == "wechat":
-        bridge = WeChatChatBridge(emit_user_text=emit_user_text, notify=notify)
+        bridge = WeChatChatBridge(
+            config=MessagingConfig.auto_load(),
+            emit_user_text=emit_user_text,
+            notify=notify,
+        )
         bridge.start()
         return bridge
     if normalized not in {"desktop_chat", "telegram", "wechat"} and notify is not None:

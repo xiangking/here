@@ -32,6 +32,23 @@ class TestSpecializedHandlers:
         msg = AgentDialogMessage(name="CG", text="...", asset_id="0")
         assert handler.can_handle(msg) is True
 
+    def test_cg_handler_marks_queue_done_on_generation_failure(self, mock_app_runtime):
+        handler = CgTtsHandler()
+        msg = AgentDialogMessage(name="CG", text="prompt", asset_id="-1")
+        mock_app_runtime.t2i_manager = MagicMock()
+        mock_app_runtime.t2i_manager.t2i.side_effect = RuntimeError("boom")
+        mock_app_runtime.tts_queue.put(msg)
+        mock_app_runtime.tts_queue.get_nowait()
+
+        handler.handle(msg)
+
+        assert mock_app_runtime.tts_queue.unfinished_tasks == 0
+        out = mock_app_runtime.audio_path_queue.get_nowait()
+        assert out.name == "CG"
+        assert out.text == "prompt"
+        assert out.audio_path == ""
+        assert out.is_system_message is True
+
     def test_handler_chain_has_default_last(self):
         handlers = list(get_tts_handlers())
         assert len(handlers) > 0

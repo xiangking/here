@@ -60,3 +60,16 @@ def test_config_manager_migrates_legacy_system_character_name(tmp_path, monkeypa
     saved_system = yaml.safe_load((app_home / "config" / "system_config.yaml").read_text(encoding="utf-8"))
     assert saved_characters[0]["name"] == SYSTEM_CHARACTER_NAME
     assert saved_system["active_character_name"] == SYSTEM_CHARACTER_NAME
+
+
+def test_config_manager_treats_empty_background_yaml_as_empty_list(tmp_path, monkeypatch):
+    app_home = tmp_path / "here-home"
+    monkeypatch.setenv("HERE_APP_HOME", str(app_home))
+    _write_config(app_home, character_name="here", active_name="here")
+    (app_home / "config" / "background.yaml").write_text("", encoding="utf-8")
+    ConfigManager._instance = None
+    ConfigManager._config = None
+
+    manager = ConfigManager()
+
+    assert manager.config.background_list == []

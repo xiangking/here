@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import time
 
-from core.delivery.chat_platform_bridge import TelegramChatBridge, stop_chat_platform_bridge
+from core.delivery.chat_platform_bridge import TelegramChatBridge, WeChatChatBridge, stop_chat_platform_bridge
 from core.delivery.messaging import MessagingConfig
 from core.delivery.messaging.telegram_discovery import discover_next_private_chat_id, private_chat_candidate
+from core.delivery.messaging.wechat_openclaw.models import WeChatInboundMessage
 
 
 class SlowBridge:
@@ -133,3 +134,41 @@ def test_telegram_private_chat_candidate_ignores_groups():
     })
 
     assert candidate is None
+
+
+def test_wechat_bridge_filters_inbound_messages_by_configured_target():
+    emitted = []
+    bridge = WeChatChatBridge(
+        config=MessagingConfig({"wechat": {"target": "user-b"}}),
+        emit_user_text=emitted.append,
+    )
+
+    bridge._on_message(WeChatInboundMessage(from_user_id="user-a", text="from A"))
+    bridge._on_message(WeChatInboundMessage(from_user_id="user-b", text="from B"))
+
+    assert emitted == ["from B"]
+
+
+def test_wechat_bridge_does_not_start_without_target(monkeypatch):
+    started = False
+    notices = []
+
+    def fake_start_saved_accounts(**_kwargs):
+        nonlocal started
+        started = True
+        return []
+
+    monkeypatch.setattr(
+        "core.delivery.chat_platform_bridge.monitor_manager.start_saved_accounts",
+        fake_start_saved_accounts,
+    )
+    bridge = WeChatChatBridge(
+        config=MessagingConfig({"wechat": {"enabled": True}}),
+        emit_user_text=lambda _: None,
+        notify=notices.append,
+    )
+
+    bridge.start()
+
+    assert started is False
+    assert notices
