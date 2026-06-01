@@ -19,11 +19,13 @@ class DailyLifeScheduler:
         config_manager: Any,
         life_engine: LifeEngine,
         agent_backend: Any,
+        allow_llm_generate_getter: Any | None = None,
         timezone: str = DEFAULT_TIMEZONE,
     ) -> None:
         self.config_manager = config_manager
         self.life_engine = life_engine
         self.agent_backend = agent_backend
+        self.allow_llm_generate_getter = allow_llm_generate_getter
         self.timezone = timezone or DEFAULT_TIMEZONE
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
@@ -47,6 +49,7 @@ class DailyLifeScheduler:
 
     def generate_today(self) -> None:
         characters = list(getattr(self.config_manager.config, "characters", []) or [])
+        allow_llm_generate = self._allow_llm_generate()
         for character in characters:
             if self._stop_event.is_set():
                 return
@@ -54,11 +57,20 @@ class DailyLifeScheduler:
                 self.life_engine.ensure_daily_plan(
                     character,
                     agent_backend=self.agent_backend,
-                    allow_llm_generate=True,
+                    allow_llm_generate=allow_llm_generate,
                 )
             except Exception as exc:
                 name = str(getattr(character, "name", "") or "角色")
                 print(f"DailyLifeScheduler: 生成 {name} 的日程失败: {exc}")
+
+    def _allow_llm_generate(self) -> bool:
+        if self.allow_llm_generate_getter is None:
+            return False
+        try:
+            return bool(self.allow_llm_generate_getter())
+        except Exception as exc:
+            print(f"DailyLifeScheduler: 检查 LLM 日程开关失败: {exc}")
+            return False
 
     def _run(self) -> None:
         self._safe_generate_today()

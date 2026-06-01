@@ -366,6 +366,12 @@ class DesktopMenuMixin:
     def toggle_proactive_contact(self, checked: bool) -> None:
         config_manager.set_proactive_contact_enabled(bool(checked))
         rt = try_get_app_runtime()
+        life_scheduler = getattr(rt, "life_scheduler", None) if rt is not None else None
+        if life_scheduler is not None:
+            if checked:
+                life_scheduler.start()
+            else:
+                life_scheduler.stop()
         scheduler = getattr(rt, "proactive_contact_scheduler", None) if rt is not None else None
         if scheduler is not None and checked:
             try:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock
 
 import core.timezone as timezone_helpers
@@ -21,6 +22,7 @@ def test_daily_life_scheduler_generates_plans_for_characters(tmp_path):
         config_manager=config,
         life_engine=engine,
         agent_backend=backend,
+        allow_llm_generate_getter=lambda: True,
     )
 
     scheduler.generate_today()
@@ -29,6 +31,49 @@ def test_daily_life_scheduler_generates_plans_for_characters(tmp_path):
     assert "只输出一个 JSON 对象" in backend.oneshot.call_args.kwargs["system_prompt"]
     life_dir = engine.memory_store.agent_home("Alice") / "life"
     assert any(path.name.endswith(".json") for path in life_dir.iterdir())
+
+
+def test_daily_life_scheduler_uses_local_plan_when_llm_not_enabled(tmp_path):
+    config = MagicMock()
+    config.config.characters = [make_character(name="Alice")]
+    backend = MagicMock()
+    engine = LifeEngine(
+        memory_store=AgentMemoryStore(tmp_path / "agent_memory"),
+        timezone="Asia/Shanghai",
+    )
+    scheduler = DailyLifeScheduler(
+        config_manager=config,
+        life_engine=engine,
+        agent_backend=backend,
+    )
+
+    scheduler.generate_today()
+
+    backend.oneshot.assert_not_called()
+    plan_path = next((engine.memory_store.agent_home("Alice") / "life").glob("*.json"))
+    plan_data = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert plan_data["blocks"]
+
+
+def test_daily_life_scheduler_allows_llm_when_feature_enabled(tmp_path):
+    config = MagicMock()
+    config.config.characters = [make_character(name="Alice")]
+    backend = MagicMock()
+    backend.oneshot.return_value = "{}"
+    engine = LifeEngine(
+        memory_store=AgentMemoryStore(tmp_path / "agent_memory"),
+        timezone="Asia/Shanghai",
+    )
+    scheduler = DailyLifeScheduler(
+        config_manager=config,
+        life_engine=engine,
+        agent_backend=backend,
+        allow_llm_generate_getter=lambda: True,
+    )
+
+    scheduler.generate_today()
+
+    assert backend.oneshot.called
 
 
 def test_daily_life_scheduler_falls_back_when_helper_returns_non_plan(tmp_path):
@@ -44,6 +89,7 @@ def test_daily_life_scheduler_falls_back_when_helper_returns_non_plan(tmp_path):
         config_manager=config,
         life_engine=engine,
         agent_backend=backend,
+        allow_llm_generate_getter=lambda: True,
     )
 
     scheduler.generate_today()

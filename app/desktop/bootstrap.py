@@ -145,6 +145,20 @@ def _install_tray_icon(app: QApplication, window: ChatUIWindow, icon: QIcon, tr_
     return tray
 
 
+def _proactive_contact_enabled(config: ConfigManager) -> bool:
+    return bool(getattr(config.config.system_config, "proactive_contact_enabled", False))
+
+
+def _try_init_audio_mixer(tr_i18n) -> bool:
+    try:
+        pygame.mixer.init()
+        return True
+    except Exception as exc:
+        print(tr_i18n("main.print_audio_unavailable", e=str(exc)))
+        traceback.print_exc()
+        return False
+
+
 def _default_sprite_scale(config: ConfigManager) -> float:
     try:
         raw = getattr(config.config.system_config, "default_sprite_scale", 0.72)
@@ -261,8 +275,8 @@ def run_desktop_app():
     image_queue = Queue()
     emotion_queue = Queue()
 
-    # 初始化 Pygame
-    pygame.mixer.init()
+    # 初始化 Pygame 音频；失败时保留文本聊天和 UI 启动。
+    audio_available = _try_init_audio_mixer(tr_i18n)
 
     # 创建三个消息队列
     user_input_queue = Queue()
@@ -322,6 +336,8 @@ def run_desktop_app():
     )
     connect_to_desktop_window(ui_updates, window)
     ui_updates.post_notification(f"Agent 后端: {selected_backend}")
+    if not audio_available:
+        ui_updates.post_notification(tr_i18n("main.notify_audio_unavailable"))
 
     rt = AppRuntime(
         config=config,
@@ -344,8 +360,10 @@ def run_desktop_app():
         config_manager=config,
         life_engine=rt.life_engine,
         agent_backend=agent_backend,
+        allow_llm_generate_getter=lambda: _proactive_contact_enabled(config),
     )
-    rt.life_scheduler.start()
+    if _proactive_contact_enabled(config):
+        rt.life_scheduler.start()
     rt.contact_engine = ContactPlanEngine(memory_store, rt.life_engine)
     rt.delivery_router = DeliveryRouter(config, DeliveryCapabilityProbe(config))
     messaging_sender = MessageSender(
