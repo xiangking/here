@@ -367,6 +367,8 @@
       "collapse_process_hint": "処理ヒントを折りたたむ",
       "sprite_scale": "立ち絵スケール",
       "minimize": "最小化",
+      "hide_to_background": "バックグラウンドに隠す",
+      "show_from_background": "キャラクターを表示",
       "close": "終了",
       "cancel": "キャンセル",
       "save": "保存",

@@ -44,11 +44,12 @@ from core.proactive import ContactPlanEngine, ProactiveContactScheduler
 from core.runtime.workers import AgentWorker, TTSWorker, UIWorker
 from core.runtime.app_runtime import ActiveCharacterState, AppRuntime, set_app_runtime
 from core.runtime.ui_update_manager import UIUpdateManager, connect_to_desktop_window
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QAction, QIcon
 from services.tts.tts_manager import TTSManager, TTSAdapterFactory
 from ui.desktop import ChatUIWindow, character_entry_line, character_entry_sprite
+from ui.desktop import styles
 from ui.desktop.combo_style import install_combo_popup_style
 from ui.desktop.qss_fusion import ensure_fusion_style
 from services.config.config_manager import ConfigManager
@@ -104,6 +105,44 @@ def _install_sigint_handler(app: QApplication) -> QTimer | None:
     timer.timeout.connect(lambda: None)
     timer.start(100)
     return timer
+
+
+def _install_tray_icon(app: QApplication, window: ChatUIWindow, icon: QIcon, tr_i18n) -> QSystemTrayIcon | None:
+    if not QSystemTrayIcon.isSystemTrayAvailable():
+        return None
+
+    app.setQuitOnLastWindowClosed(False)
+    tray = QSystemTrayIcon(icon, app)
+    tray.setToolTip("here")
+
+    menu = QMenu(window)
+    show_action = QAction(tr_i18n("desktop.menu.show_from_background"), menu)
+    hide_action = QAction(tr_i18n("desktop.menu.hide_to_background"), menu)
+    quit_action = QAction(tr_i18n("desktop.menu.close"), menu)
+
+    show_action.triggered.connect(window.show_from_background)
+    hide_action.triggered.connect(window.hide_to_background)
+    quit_action.triggered.connect(app.quit)
+
+    menu.addAction(show_action)
+    menu.addAction(hide_action)
+    menu.addSeparator()
+    menu.addAction(quit_action)
+    menu.setStyleSheet(styles.menu_popup())
+    tray.setContextMenu(menu)
+    tray._here_context_menu = menu
+
+    def _on_activated(reason) -> None:
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            if window.isVisible() and not window.isMinimized():
+                window.hide_to_background()
+            else:
+                window.show_from_background()
+
+    tray.activated.connect(_on_activated)
+    tray.show()
+    window._background_tray_available = True
+    return tray
 
 
 def _default_sprite_scale(config: ConfigManager) -> float:
@@ -428,11 +467,12 @@ def run_desktop_app():
     )
 
     # 确保在程序退出时停止所有线程
+    appIcon = QIcon(str(project_root / "assets" / "system" / "picture" / "Icon.png"))
     try:
-        appIcon = QIcon(str(project_root / "assets" / "system" / "picture" / "Icon.png"))
         app.setWindowIcon(appIcon)
     except Exception as e:
         print(tr_i18n("main.print_icon_fail", e=str(e)))
+    tray_icon = _install_tray_icon(app, window, appIcon, tr_i18n)
 
     # 关闭顺序：TTS 服务器 → Worker 线程 → 保存数据
     app.aboutToQuit.connect(lambda: tts_manager and tts_manager.shutdown())
@@ -451,6 +491,8 @@ def run_desktop_app():
     )
     if sigint_timer is not None:
         app.aboutToQuit.connect(sigint_timer.stop)
+    if tray_icon is not None:
+        app.aboutToQuit.connect(tray_icon.hide)
 
     window.show()
 

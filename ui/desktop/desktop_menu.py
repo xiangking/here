@@ -304,6 +304,8 @@ class DesktopMenuMixin:
         pin_top_action.setCheckable(True)
         pin_top_action.setChecked(bool(self.windowFlags() & Qt.WindowStaysOnTopHint))
         minimize_action = QAction(tr("desktop.menu.minimize"), self)
+        hide_to_background_action = QAction(tr("desktop.menu.hide_to_background"), self)
+        hide_to_background_action.setEnabled(bool(getattr(self, "_background_tray_available", False)))
         close_action = QAction(tr("desktop.menu.close"), self)
 
         history_action.triggered.connect(lambda: self.open_chat_history_dialog.emit())
@@ -318,6 +320,7 @@ class DesktopMenuMixin:
         copy_history_action.triggered.connect(self.copy_chat_history_to_clipboard)
         pin_top_action.triggered.connect(self._toggle_pin_top)
         minimize_action.triggered.connect(self.minimize_window)
+        hide_to_background_action.triggered.connect(self.hide_to_background)
         close_action.triggered.connect(self.close)
 
         menu.addMenu(character_menu)
@@ -348,6 +351,7 @@ class DesktopMenuMixin:
         menu.addSeparator()
         menu.addAction(pin_top_action)
         menu.addAction(minimize_action)
+        menu.addAction(hide_to_background_action)
         menu.addAction(close_action)
 
         if global_pos is None:

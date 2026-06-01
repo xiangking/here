@@ -162,6 +162,8 @@ class ChatUIWindow(DesktopToolbarMixin, DesktopMenuMixin, QWidget):
         self.image_queue = image_queue
         self.display_thread = None
         self._closing = False
+        self._background_hidden = False
+        self._background_tray_available = False
         self.max_sprite_slots = max_sprite_slots
         self.agent_backend = agent_backend
         self.emotion_queue = emotion_queue
@@ -2144,9 +2146,30 @@ class ChatUIWindow(DesktopToolbarMixin, DesktopMenuMixin, QWidget):
             self.drag_position = None
         super().mouseReleaseEvent(event)
 
+    def hide_to_background(self) -> None:
+        """Hide the desktop character while keeping the runtime alive."""
+        self._persist_chat_window_geometry()
+        self._background_hidden = True
+        self.hide()
+
+    def show_from_background(self) -> None:
+        """Restore the desktop character after it was hidden to background."""
+        self._background_hidden = False
+        if self.isMinimized():
+            self.showNormal()
+        else:
+            self.show()
+        self.raise_()
+        self.activateWindow()
+        self._raise_input_and_toolbar()
+
+    def is_background_hidden(self) -> bool:
+        return self._background_hidden and not self.isVisible()
+
     def closeEvent(self, event):
         """关闭窗口时停止线程"""
         self._closing = True
+        self._background_hidden = False
         self.stop_runtime_activity()
         self._persist_chat_window_geometry()
         if getattr(self, "mic_button", None) is not None:

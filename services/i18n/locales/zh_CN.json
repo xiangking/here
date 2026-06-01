@@ -367,6 +367,8 @@
       "collapse_process_hint": "收起过程提示",
       "sprite_scale": "立绘缩放比例",
       "minimize": "最小化",
+      "hide_to_background": "隐藏到后台",
+      "show_from_background": "显示角色",
       "close": "退出",
       "cancel": "取消",
       "save": "保存",

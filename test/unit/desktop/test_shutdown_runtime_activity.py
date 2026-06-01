@@ -5,10 +5,11 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import numpy as np
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 
 from ui.desktop.busy_bar import BusyBar
 from ui.desktop.components import SpritePanel, TypingLabel
+from ui.desktop.chat_ui import ChatUIWindow
 
 
 def _app() -> QApplication:
@@ -61,3 +62,24 @@ def test_sprite_panel_shutdown_stops_frame_animation() -> None:
 
     assert not sprite.frame_timer.isActive()
     assert sprite._animation_frames == []
+
+
+def test_hide_to_background_keeps_window_runtime_alive() -> None:
+    _app()
+    window = QWidget()
+    window._background_hidden = False
+    window._closing = False
+    window._persist_chat_window_geometry = lambda: None
+    window._raise_input_and_toolbar = lambda: None
+
+    ChatUIWindow.hide_to_background(window)
+
+    assert window._background_hidden is True
+    assert window._closing is False
+    assert not window.isVisible()
+
+    ChatUIWindow.show_from_background(window)
+
+    assert window._background_hidden is False
+    assert window.isVisible()
+    window.close()

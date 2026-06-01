@@ -370,6 +370,8 @@
       "collapse_process_hint": "Collapse process hint",
       "sprite_scale": "Sprite scale",
       "minimize": "Minimize",
+      "hide_to_background": "Hide to background",
+      "show_from_background": "Show character",
       "close": "Exit",
       "cancel": "Cancel",
       "save": "Save",

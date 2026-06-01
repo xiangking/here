@@ -372,6 +372,8 @@
       "collapse_process_hint": "진행 표시 접기",
       "sprite_scale": "스프라이트 크기",
       "minimize": "최소화",
+      "hide_to_background": "백그라운드로 숨기기",
+      "show_from_background": "캐릭터 표시",
       "close": "종료",
       "cancel": "취소",
       "save": "저장",
