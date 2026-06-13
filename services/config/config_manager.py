@@ -6,7 +6,7 @@ from pathlib import Path
 from infrastructure.paths import get_app_paths, seed_defaults
 from typing import Dict, Any, List, Optional, Union
 from pydantic import ValidationError
-from services.config.schema import AppConfig, Character, ApiConfig, SystemConfig, Background
+from services.config.schema import AppConfig, Character, ApiConfig, SystemConfig, Background, ProviderProfile
 import traceback
 from core.delivery.models import DELIVERY_CHANNELS
 
@@ -340,6 +340,10 @@ class ConfigManager:
         internal_agent_model: str | None = None,
         internal_agent_base_url: str | None = None,
         internal_agent_api_key: str | None = None,
+        provider_profiles: Dict[str, Any] | None = None,
+        agent_profile: str | None = None,
+        tts_profile: str | None = None,
+        t2i_profile: str | None = None,
     ) -> str:
         """
         更新内存中的 ApiConfig，并将其保存到 api.yaml。
@@ -406,6 +410,17 @@ class ConfigManager:
         current_api_config.t2i_api_url=t2i_url
         current_api_config.tts_split_enabled = bool(tts_split_enabled)
         current_api_config.tts_max_sentence_length = int(tts_max_sentence_length)
+
+        # Provider Profiles
+        if provider_profiles is not None:
+            current_api_config.provider_profiles = dict(provider_profiles)
+        if agent_profile is not None:
+            current_api_config.agent_profile = str(agent_profile or "").strip()
+        if tts_profile is not None:
+            current_api_config.tts_profile = str(tts_profile or "").strip()
+        if t2i_profile is not None:
+            current_api_config.t2i_profile = str(t2i_profile or "").strip()
+
         self.config.api_config = current_api_config
 
         
@@ -485,12 +500,54 @@ class ConfigManager:
 
     def get_internal_agent_config(self) -> Dict[str, Any]:
         api = self.config.api_config
+        explicit_url = str(getattr(api, "internal_agent_base_url", "") or "").strip()
+        explicit_key = str(getattr(api, "internal_agent_api_key", "") or "").strip()
+        provider = str(getattr(api, "internal_agent_provider", "") or "").strip()
+        model = str(getattr(api, "internal_agent_model", "") or "").strip()
+
+        # Profile 覆盖：当 agent_profile 指向有效档案且对应字段未显式填写时使用档案值
+        profile = self.resolve_provider_profile(getattr(api, "agent_profile", ""))
+        if profile:
+            if not explicit_url:
+                explicit_url = profile["base_url"]
+            if not explicit_key:
+                explicit_key = profile["api_key"]
+
         return {
-            "provider": str(getattr(api, "internal_agent_provider", "") or "").strip(),
-            "model": str(getattr(api, "internal_agent_model", "") or "").strip(),
-            "base_url": str(getattr(api, "internal_agent_base_url", "") or "").strip(),
-            "api_key": str(getattr(api, "internal_agent_api_key", "") or "").strip(),
+            "provider": provider,
+            "model": model,
+            "base_url": explicit_url,
+            "api_key": explicit_key,
         }
+
+    def resolve_provider_profile(self, profile_name: str) -> Dict[str, str]:
+        """解析供应商档案，返回 {base_url, api_key}；无效名称返回空 dict。"""
+        name = str(profile_name or "").strip()
+        if not name:
+            return {}
+        if self._config is None:
+            return {}
+        profiles = getattr(self.config.api_config, "provider_profiles", None) or {}
+        profile = profiles.get(name)
+        if profile is None:
+            return {}
+
+        import os as _os
+        base_url = str(getattr(profile, "base_url", "") or "").strip()
+        api_key = str(getattr(profile, "api_key", "") or "").strip()
+
+        if not api_key:
+            env_name = str(getattr(profile, "api_key_env", "") or "").strip()
+            if env_name:
+                api_key = _os.environ.get(env_name, "")
+            if not api_key:
+                # 回退：从档案名猜测环境变量 SILICONFLOW_API_KEY / OPENAI_API_KEY …
+                guessed_env = name.upper().replace("-", "_").replace(" ", "_") + "_API_KEY"
+                api_key = _os.environ.get(guessed_env, "")
+            if not api_key:
+                api_key = _os.environ.get("OPENAI_API_KEY", "")
+
+        return {"base_url": base_url, "api_key": api_key}
 
     def get_adapter_extra_config(self, kind: str, provider_key: str) -> Dict[str, Any]:
         """读取某类适配器在指定 provider/slug 下的扩展配置（扁平 dict）。"""
@@ -539,6 +596,15 @@ class ConfigManager:
         out = dict(base_kwargs)
         if cls is None:
             return out
+
+        # Profile 注入：如果 tts_profile 指向有效档案，注入 base_url 和 api_key
+        profile = self.resolve_provider_profile(getattr(self.config.api_config, "tts_profile", ""))
+        if profile:
+            if profile["base_url"] and not out.get("base_url"):
+                out["base_url"] = profile["base_url"]
+            if profile["api_key"] and not out.get("api_key"):
+                out["api_key"] = profile["api_key"]
+
         extra = self.get_adapter_extra_config("tts", slug)
         out.update(filter_kwargs_for_ctor(cls, extra))
         return out
@@ -552,6 +618,15 @@ class ConfigManager:
         out = dict(base_kwargs)
         if cls is None:
             return out
+
+        # Profile 注入：如果 t2i_profile 指向有效档案，注入 api_url 和 api_key
+        profile = self.resolve_provider_profile(getattr(self.config.api_config, "t2i_profile", ""))
+        if profile:
+            if profile["base_url"] and not out.get("api_url"):
+                out["api_url"] = profile["base_url"]
+            if profile["api_key"] and not out.get("api_key"):
+                out["api_key"] = profile["api_key"]
+
         extra = self.get_adapter_extra_config("t2i", name)
         out.update(filter_kwargs_for_ctor(cls, extra))
         return out

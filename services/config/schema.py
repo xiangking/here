@@ -75,9 +75,42 @@ class Background(BaseModel):
     bgm_list: Optional[List[str]] = Field(default_factory=list, description="背景音乐列表")
     bgm_tags: DefaultIfNone[str] = Field(default="",description="背景音乐描述")
 
+# ----------------- Provider Profile -----------------
+class ProviderProfile(BaseModel):
+    """可复用的 API 供应商档案：base_url + api_key 定义一次，多个服务共享。"""
+    base_url: str = Field(..., description="OpenAI-compatible Base URL")
+    api_key: DefaultIfNone[str] = Field(
+        default="",
+        description="API Key；留空时从 api_key_env 指定的环境变量读取",
+    )
+    api_key_env: DefaultIfNone[str] = Field(
+        default="",
+        description="API Key 环境变量名；当 api_key 为空时从此环境变量读取",
+    )
+
+
 # API Config Model
 class ApiConfig(BaseModel):
     """API 相关的配置，如 TTS、生图 API 和 Hermes Agent 的设置"""
+
+    # ---- Provider Profiles ----
+    provider_profiles: DefaultIfNone[Dict[str, ProviderProfile]] = Field(
+        default_factory=dict,
+        description="可复用的供应商档案：名称 -> {base_url, api_key, api_key_env}",
+    )
+    agent_profile: DefaultIfNone[str] = Field(
+        default="",
+        description="Agent 后端使用的供应商档案名；留空则使用下方 internal_agent_* 独立字段",
+    )
+    tts_profile: DefaultIfNone[str] = Field(
+        default="",
+        description="OpenAI-compatible TTS 使用的供应商档案名；留空则使用 tts_extra_configs 中的独立配置",
+    )
+    t2i_profile: DefaultIfNone[str] = Field(
+        default="",
+        description="生图使用的供应商档案名；留空则使用 t2i_extra_configs 中的独立配置",
+    )
+
     agent_backend: DefaultIfNone[str] = Field(
         default="auto",
         description="Agent 后端: hermes-agent / internal-agent / auto",

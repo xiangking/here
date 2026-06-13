@@ -148,7 +148,20 @@ def _t2i_base_kwargs(config: ConfigManager, provider: str) -> dict[str, str]:
     return {}
 
 
+def _load_dotenv_files() -> None:
+    """Load .env / .env.local from the project root into os.environ (if present)."""
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    for name in (".env", ".env.local"):
+        p = project_root / name
+        if p.is_file():
+            load_dotenv(p, override=False)
+
+
 def run_desktop_app():
+    _load_dotenv_files()
     app_paths = get_app_paths()
     install_user_python_packages_path(app_paths)
     seed_defaults(app_paths)

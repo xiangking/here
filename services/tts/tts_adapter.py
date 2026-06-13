@@ -140,7 +140,12 @@ class OpenAITTSAdapter(TTSAdapter):
         timeout: int = 60,
         **_ignored,
     ):
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
+        self.api_key = (
+            api_key
+            or os.environ.get("OPENAI_API_KEY", "")
+            or os.environ.get("SILICONFLOW_API_KEY", "")
+            or os.environ.get("API_KEY", "")
+        )
         self.model = model or "gpt-4o-mini-tts"
         self.voice = voice or "alloy"
         self.response_format = (response_format or "mp3").lstrip(".")
