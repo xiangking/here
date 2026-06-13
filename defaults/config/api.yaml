@@ -1,15 +1,27 @@
-agent_backend: auto
-internal_agent_provider: openai
-internal_agent_model: gpt-4o-mini
-internal_agent_base_url: https://api.openai.com/v1
+# ============================================================
+# Provider Profiles — 定义一次，Agent / TTS / T2I 共享
+# ============================================================
+# 每个 profile 定义一组 base_url + api_key，
+# 各服务通过 agent_profile / tts_profile / t2i_profile 引用。
+# api_key 留空时自动从 api_key_env 指定的环境变量读取，
+# 若 api_key_env 也为空，则按 "{PROFILE_NAME}_API_KEY" 猜测环境变量。
+provider_profiles:
+  siliconflow:
+    base_url: https://api.siliconflow.cn/v1
+    api_key: ''
+    api_key_env: SILICONFLOW_API_KEY
+
+# 各服务绑定的 profile 名（留空则走下方独立字段 / extra_configs）
+agent_profile: siliconflow
+tts_profile: siliconflow
+t2i_profile: siliconflow
+
+# ---- Agent 后端 ----
+agent_backend: internal-agent
+internal_agent_provider: siliconflow
+internal_agent_model: deepseek-ai/DeepSeek-V3
+internal_agent_base_url: ''
 internal_agent_api_key: ''
-tts_provider: edge-tts
-tts_speed: 1.0
-tts_split_enabled: false
-tts_max_sentence_length: 15
-t2i_provider: image-api
-t2i_api_url: http://127.0.0.1:7860/v1/images/generations
-selfie_provider: ''
 hermes_streaming: true
 hermes_max_iterations: 90
 hermes_enabled_toolsets:
@@ -25,16 +37,41 @@ hermes_reasoning_config: {}
 hermes_max_tokens: null
 hermes_use_internal_memory: true
 hermes_disable_native_memory: true
+
+# ---- TTS 语音合成 ----
+tts_provider: openai-tts
+tts_speed: 1.0
+tts_split_enabled: false
+tts_max_sentence_length: 15
 tts_extra_configs:
+  openai-tts:
+    # base_url / api_key 由 tts_profile 自动注入，无需在此重复
+    model: FunAudioLLM/CosyVoice2-0.5B
+    voice: FunAudioLLM/CosyVoice2-0.5B:alex
+    response_format: mp3
+    timeout: 60
   edge-tts:
     voice: zh-CN-XiaoxiaoNeural
     rate: +0%
     volume: +0%
     pitch: +0Hz
+
+# ---- ASR 语音识别 ----
 asr_extra_configs:
   vosk:
     model_path: ''
     sample_rate: 16000
     chunk_size: 8192
-t2i_extra_configs: {}
+
+# ---- T2I 文生图 ----
+t2i_provider: openai-gpt-image
+t2i_api_url: ''
+selfie_provider: ''
+t2i_extra_configs:
+  openai-gpt-image:
+    # api_url / api_key 由 t2i_profile 自动注入，无需在此重复
+    default_model: Kwai-Kolors/Kolors
+    size: 1024x1024
+    timeout_s: 120
+
 selfie_extra_configs: {}

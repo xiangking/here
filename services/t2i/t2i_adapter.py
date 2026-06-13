@@ -700,7 +700,13 @@ class OpenAIGPTImageAdapter(ImageAPIAdapter):
             api_format="openai",
             **kwargs,
         )
-        self.api_key = str(api_key or os.environ.get("OPENAI_API_KEY", "") or "").strip()
+        self.api_key = str(
+            api_key
+            or os.environ.get("OPENAI_API_KEY", "")
+            or os.environ.get("SILICONFLOW_API_KEY", "")
+            or os.environ.get("API_KEY", "")
+            or ""
+        ).strip()
         self.size = str(size or "auto").strip()
         self.quality = str(quality or "auto").strip()
         self.background = str(background or "auto").strip()
