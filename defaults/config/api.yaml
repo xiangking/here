@@ -47,7 +47,7 @@ tts_extra_configs:
   openai-tts:
     # base_url / api_key 由 tts_profile 自动注入，无需在此重复
     model: FunAudioLLM/CosyVoice2-0.5B
-    voice: alex
+    voice: FunAudioLLM/CosyVoice2-0.5B:alex
     response_format: mp3
     timeout: 60
   edge-tts:
