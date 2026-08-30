@@ -1,0 +1,4 @@
+interface:
+  display_name: "here 同桌模式"
+  short_description: "构建有视觉理解、主动关心与习惯记忆的桌面端同桌模式"
+  default_prompt: "使用 $here-companion-mode 把桌面应用设计成会观察、关心并记住用户工作节奏的同桌伙伴。"

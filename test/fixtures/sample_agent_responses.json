@@ -1,5 +1,0 @@
-[
-  {"character_name": "TestChar", "speech": "Hello, world!", "emotion": "neutral"},
-  {"character_name": "NARR", "speech": "The sun rises over the horizon.", "emotion": "neutral", "asset_id": "-1"},
-  {"character_name": "TestChar", "speech": "How are you today?", "emotion": "happy"}
-]

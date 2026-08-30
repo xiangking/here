@@ -1,0 +1,3 @@
+-r requirements.txt
+pyaudio; sys_platform == "darwin" or sys_platform == "win32"
+vosk==0.3.44; sys_platform == "darwin" or sys_platform == "win32"

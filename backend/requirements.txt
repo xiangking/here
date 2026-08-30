@@ -1,0 +1,18 @@
+openai
+anthropic
+google-genai
+pydantic
+requests
+PyYAML
+opencc-python-reimplemented
+tiktoken
+edge-tts
+fal-client
+qrcode[pil]
+cryptography
+websockets
+py7zr
+numpy
+pillow
+pyobjc-framework-AVFoundation; sys_platform == "darwin"
+tzdata; sys_platform == "win32"

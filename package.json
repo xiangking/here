@@ -1,0 +1,90 @@
+{
+  "name": "here-electron",
+  "version": "0.1.0",
+  "description": "Electron desktop companion migrated from the Qt-based here application",
+  "main": "dist-electron/main/main.js",
+  "private": true,
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "scripts": {
+    "backend:setup": "node scripts/backend-tasks.mjs setup",
+    "backend:setup:full": "node scripts/backend-tasks.mjs setup-full",
+    "backend:runtime": "node scripts/backend-tasks.mjs runtime",
+    "backend:test": "node scripts/backend-tasks.mjs test",
+    "dev": "concurrently -k \"vite --host 127.0.0.1 --port 5180 --strictPort\" \"wait-on tcp:5180 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5180 node scripts/run-electron-dev.mjs\"",
+    "build": "tsc -p tsconfig.main.json && vite build",
+    "start": "npm run build && node scripts/run-electron-dev.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dist": "npm run build && npm run backend:runtime && electron-builder",
+    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.12",
+    "lucide": "^1.24.0",
+    "marked": "^18.0.7",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "vitest": "^4.0.0",
+    "wait-on": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.here.companion",
+    "productName": "here",
+    "asar": true,
+    "files": [
+      "dist-electron/**/*",
+      "dist/renderer/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!.venv/**/*",
+          "!.runtime-build/**/*",
+          "!__pycache__/**/*",
+          "!tests/**/*",
+          "!**/*.pyc",
+          "!assets/system/models/*.zip"
+        ]
+      },
+      {
+        "from": "skills/here-companion-mode",
+        "to": "skills/here-companion-mode",
+        "filter": ["**/*"]
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.entertainment",
+      "icon": "src/renderer/public/assets/icon.png",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "here 需要访问麦克风来提供语音输入。",
+        "NSScreenCaptureUsageDescription": "here 需要访问屏幕来提供同桌模式。"
+      },
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Utility"
+    }
+  }
+}
