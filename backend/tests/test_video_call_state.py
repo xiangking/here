@@ -1,8 +1,15 @@
+from __future__ import annotations
+
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from services.config.video_call_state import migrate_here_video_call
+
+_BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_BACKEND_ROOT))
+
+from services.config.video_call_state import migrate_here_video_call  # noqa: E402
 
 
 class VideoCallStateTests(unittest.TestCase):

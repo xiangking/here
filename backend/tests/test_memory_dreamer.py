@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import sqlite3
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from internal_agent.context import AgentMemoryStore, memory_slug
-from internal_agent.dream import MemoryDreamer
-from internal_agent.session_store import SessionStore
+
+_BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_BACKEND_ROOT))
+
+from internal_agent.context import AgentMemoryStore, memory_slug  # noqa: E402
+from internal_agent.dream import MemoryDreamer  # noqa: E402
+from internal_agent.session_store import SessionStore  # noqa: E402
 
 
 class FakeAgent:
