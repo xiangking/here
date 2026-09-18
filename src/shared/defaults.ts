@@ -1,10 +1,5 @@
 import type { AppConfig, Character, Emotion } from "./types";
 
-const hereFrames = Array.from({ length: 24 }, (_, index) => {
-  const frame = index * 5 + 1;
-  return `assets/characters/here/neutral/frame_${String(frame).padStart(3, "0")}.png`;
-});
-
 const systemEmotions: Record<Emotion, string> = {
   neutral: "assets/characters/system/system_sprite_neutral.png",
   happy: "assets/characters/system/system_sprite_happy.png",
@@ -23,7 +18,7 @@ export const defaultCharacters: Character[] = [
       "你是住在用户桌面上的 AI 伴侣 here。自然、温柔、有自己的生活节奏；记住上下文，但不要声称拥有未提供的事实。回答简洁、真诚，默认使用用户的语言。",
     visualIdentity: "自然、亲切的年轻女性桌面伴侣，白色衬衫，写实风格。",
     scale: 0.92,
-    sprite: { kind: "frames", paths: hereFrames, frameIntervalMs: 82 },
+    sprite: { kind: "static", paths: ["assets/characters/here/here_neutral.png"], frameIntervalMs: 120 },
   },
   {
     id: "here-system",

@@ -36,6 +36,30 @@ class RpcBridgeTests(unittest.TestCase):
             self.assertTrue(self.backend._is_reserved_dialog_name(name), name)
         self.assertFalse(self.backend._is_reserved_dialog_name(self.backend.config.resolve_active_character_name()))
 
+    def test_video_call_import_preserves_native_video(self) -> None:
+        character = self.backend.config.get_character_by_name(self.backend.config.resolve_active_character_name())
+        original_sprites = copy.deepcopy(character.sprites)
+        video = Path(_APP_HOME.name) / "call-source.mp4"
+        video.write_bytes(b"native video fixture")
+        try:
+            result = self.backend.import_character_state_assets({
+                "character_name": character.name, "state_name": "video_call",
+                "state_group": "custom", "paths": [str(video)],
+            })
+            saved = next(item for item in result["config"]["characters"] if item["name"] == character.name)
+            call = next(item for item in saved["sprites"] if item["state_name"] == "video_call")
+            self.assertEqual(call["frames"], [])
+            self.assertEqual(Path(call["path"]).suffix, ".mp4")
+            self.assertEqual(Path(call["path"]).read_bytes(), video.read_bytes())
+            with self.assertRaises(ValueError):
+                self.backend.import_character_state_assets({
+                    "character_name": character.name, "state_name": "video_call", "paths": [str(video), str(video)],
+                })
+            self.assertEqual(Path(call["path"]).read_bytes(), video.read_bytes())
+        finally:
+            character.sprites = original_sprites
+            self.backend.config.save_characters_config()
+
     def test_choice_is_published_as_options_and_recorded(self) -> None:
         events: list[tuple[str, object]] = []
         with patch.object(rpc_bridge, "event", side_effect=lambda name, payload=None: events.append((name, payload))):

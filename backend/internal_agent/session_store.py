@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     end_reason TEXT,
     message_count INTEGER DEFAULT 0,
     tool_call_count INTEGER DEFAULT 0,
-    title TEXT
+    title TEXT,
+    character_name TEXT
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -80,6 +81,11 @@ class SessionStore:
         self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
+        # Databases created before character-scoped sessions do not have the
+        # column.  Migrate in place so existing installations keep working.
+        columns = {row[1] for row in self._conn.execute("PRAGMA table_info(sessions)").fetchall()}
+        if "character_name" not in columns:
+            self._conn.execute("ALTER TABLE sessions ADD COLUMN character_name TEXT")
         self._conn.commit()
 
     def create_session(
@@ -91,15 +97,21 @@ class SessionStore:
         system_prompt: str = "",
         parent_session_id: str | None = None,
         title: str | None = None,
+        character_name: str | None = None,
     ) -> None:
         self._conn.execute(
             """
             INSERT OR IGNORE INTO sessions
-            (id, source, model, system_prompt, parent_session_id, started_at, title)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (id, source, model, system_prompt, parent_session_id, started_at, title, character_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (session_id, source, model, system_prompt, parent_session_id, time.time(), title),
+            (session_id, source, model, system_prompt, parent_session_id, time.time(), title, character_name),
         )
+        if character_name is not None:
+            self._conn.execute(
+                "UPDATE sessions SET character_name = ? WHERE id = ? AND character_name IS NULL",
+                (character_name, session_id),
+            )
         self._conn.commit()
 
     def replace_messages(self, session_id: str, messages: list[dict[str, Any]]) -> None:
@@ -123,6 +135,7 @@ class SessionStore:
         query: str,
         *,
         role_filter: list[str] | None = None,
+        character_name: str | None = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
         query = str(query or "").strip()
@@ -139,10 +152,12 @@ class SessionStore:
                 query,
                 role_clause=role_clause,
                 role_params=role_params,
+                character_name=character_name,
                 limit=limit,
             )
         table, escaped = _search_table_and_query(query)
-        params: list[Any] = [escaped, *role_params, int(limit or 50)]
+        character_clause = " AND (? IS NULL OR s.character_name = ?)"
+        params: list[Any] = [escaped, *role_params, character_name, character_name, int(limit or 50)]
         rows = self._conn.execute(
             f"""
             SELECT m.session_id, m.role, m.content, m.timestamp,
@@ -150,7 +165,7 @@ class SessionStore:
             FROM {table} f
             JOIN messages m ON m.id = f.rowid
             JOIN sessions s ON s.id = m.session_id
-            WHERE {table} MATCH ? {role_clause}
+            WHERE {table} MATCH ? {role_clause} {character_clause}
             ORDER BY bm25({table})
             LIMIT ?
             """,
@@ -164,6 +179,7 @@ class SessionStore:
         *,
         role_clause: str,
         role_params: list[Any],
+        character_name: str | None,
         limit: int,
     ) -> list[dict[str, Any]]:
         terms = [
@@ -180,6 +196,7 @@ class SessionStore:
             )
             params.extend([pattern, pattern, pattern])
         params.extend(role_params)
+        params.extend([character_name, character_name])
         params.append(int(limit or 50))
         rows = self._conn.execute(
             f"""
@@ -188,6 +205,7 @@ class SessionStore:
             FROM messages m
             JOIN sessions s ON s.id = m.session_id
             WHERE ({' OR '.join(clauses)}) {role_clause}
+              AND (? IS NULL OR s.character_name = ?)
             ORDER BY m.timestamp DESC, m.id DESC
             LIMIT ?
             """,
@@ -229,17 +247,24 @@ class SessionStore:
             messages.append(msg)
         return messages
 
-    def list_sessions(self, *, limit: int = 5, exclude_session_id: str | None = None) -> list[dict[str, Any]]:
+    def list_sessions(
+        self,
+        *,
+        limit: int = 5,
+        exclude_session_id: str | None = None,
+        character_name: str | None = None,
+    ) -> list[dict[str, Any]]:
         rows = self._conn.execute(
             """
             SELECT s.*,
                    (SELECT content FROM messages WHERE session_id = s.id ORDER BY timestamp DESC, id DESC LIMIT 1) AS preview
             FROM sessions s
             WHERE (? IS NULL OR s.id != ?)
+              AND (? IS NULL OR s.character_name = ?)
             ORDER BY COALESCE((SELECT MAX(timestamp) FROM messages WHERE session_id = s.id), s.started_at) DESC
             LIMIT ?
             """,
-            (exclude_session_id, exclude_session_id, int(limit or 5)),
+            (exclude_session_id, exclude_session_id, character_name, character_name, int(limit or 5)),
         ).fetchall()
         return [dict(row) for row in rows]
 

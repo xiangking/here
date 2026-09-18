@@ -10,6 +10,7 @@ const characters = [
     sprite_prefix: "here",
     sprites: [
       { path: "assets/characters/here/here_neutral.png", frames: [], state_name: "neutral", state_group: "core_emotion", frame_interval_ms: 120 },
+      { path: "assets/characters/here/neutral.mp4", frames: [], state_name: "video_call", state_group: "custom", frame_interval_ms: 120 },
       { path: "assets/characters/system/system_sprite_happy.png", frames: [], state_name: "happy", state_group: "core_emotion", frame_interval_ms: 120 },
       { path: "assets/characters/system/system_sprite_thinking.png", frames: [], state_name: "thinking", state_group: "core_emotion", frame_interval_ms: 120 },
     ],
@@ -150,7 +151,7 @@ const state: DesktopState = {
   },
   messaging: { telegram: { enabled: false }, discord: { enabled: false }, wechat: { enabled: false }, feishu: { enabled: false }, whatsapp: { enabled: false } },
   storage: { character_memory_dir: "", character_assets_dir: "" },
-  memory: { character: ["用户喜欢在晚上安静聊天。"], user: ["称呼用户为你。"] },
+  memory: { character: ["你喜欢在晚上安静聊天。"], user: ["称呼你为你。"] },
   life_plan: {
     date: "2026-07-16",
     timezone: "Asia/Shanghai",
@@ -163,7 +164,7 @@ const state: DesktopState = {
   },
   contact_plan: {
     date: "2026-07-16",
-    contact_style: "温柔、克制，在生活间隙自然想起用户。",
+    contact_style: "温柔、克制，在生活间隙自然想起你。",
     contacts: [
       { window_start: "12:15", window_end: "13:00", intent: "午休时轻轻问候", status: "pending", type: "check_in" },
       { window_start: "20:30", window_end: "21:15", intent: "分享晚上的小片刻", status: "pending", type: "share_moment" },

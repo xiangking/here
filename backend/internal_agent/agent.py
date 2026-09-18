@@ -73,6 +73,7 @@ class InternalAgent:
         self.load_soul_identity = load_soul_identity
         self.skip_memory = skip_memory
         self.memory_home = Path(memory_home).expanduser() if memory_home else None
+        self.character_name = self.memory_home.name if self.memory_home else None
         self.session_id = str(session_id or self._new_session_id())
         self.session_store = session_store or self._default_session_store()
         self._api_key = api_key or self._api_key_from_env()
@@ -317,6 +318,7 @@ class InternalAgent:
                 session_store=self.session_store,
                 current_session_id=self.session_id,
                 role_filter=args.get("role_filter"),
+                character_name=self.character_name,
             )
         else:
             result = f"Tool {name} is not available."
@@ -383,6 +385,7 @@ class InternalAgent:
                 source="desktop_chat",
                 model=self.model,
                 system_prompt=system_message or self.ephemeral_system_prompt,
+                character_name=self.character_name,
             )
             self.session_store.replace_messages(self.session_id, messages)
         except Exception:

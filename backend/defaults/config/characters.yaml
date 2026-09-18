@@ -127,153 +127,17 @@
   color: '#F4A7B9'
   sprite_prefix: here
   sprites:
-  - path: defaults/characters/here/animations/neutral/frame_001.png
+  - path: defaults/characters/here/here_neutral.png
+    frames: []
     state_name: neutral
     state_group: core_emotion
     source_state: neutral
-    frame_interval_ms: 67
-    frames:
-    - defaults/characters/here/animations/neutral/frame_001.png
-    - defaults/characters/here/animations/neutral/frame_002.png
-    - defaults/characters/here/animations/neutral/frame_003.png
-    - defaults/characters/here/animations/neutral/frame_004.png
-    - defaults/characters/here/animations/neutral/frame_005.png
-    - defaults/characters/here/animations/neutral/frame_006.png
-    - defaults/characters/here/animations/neutral/frame_007.png
-    - defaults/characters/here/animations/neutral/frame_008.png
-    - defaults/characters/here/animations/neutral/frame_009.png
-    - defaults/characters/here/animations/neutral/frame_010.png
-    - defaults/characters/here/animations/neutral/frame_011.png
-    - defaults/characters/here/animations/neutral/frame_012.png
-    - defaults/characters/here/animations/neutral/frame_013.png
-    - defaults/characters/here/animations/neutral/frame_014.png
-    - defaults/characters/here/animations/neutral/frame_015.png
-    - defaults/characters/here/animations/neutral/frame_016.png
-    - defaults/characters/here/animations/neutral/frame_017.png
-    - defaults/characters/here/animations/neutral/frame_018.png
-    - defaults/characters/here/animations/neutral/frame_019.png
-    - defaults/characters/here/animations/neutral/frame_020.png
-    - defaults/characters/here/animations/neutral/frame_021.png
-    - defaults/characters/here/animations/neutral/frame_022.png
-    - defaults/characters/here/animations/neutral/frame_023.png
-    - defaults/characters/here/animations/neutral/frame_024.png
-    - defaults/characters/here/animations/neutral/frame_025.png
-    - defaults/characters/here/animations/neutral/frame_026.png
-    - defaults/characters/here/animations/neutral/frame_027.png
-    - defaults/characters/here/animations/neutral/frame_028.png
-    - defaults/characters/here/animations/neutral/frame_029.png
-    - defaults/characters/here/animations/neutral/frame_030.png
-    - defaults/characters/here/animations/neutral/frame_031.png
-    - defaults/characters/here/animations/neutral/frame_032.png
-    - defaults/characters/here/animations/neutral/frame_033.png
-    - defaults/characters/here/animations/neutral/frame_034.png
-    - defaults/characters/here/animations/neutral/frame_035.png
-    - defaults/characters/here/animations/neutral/frame_036.png
-    - defaults/characters/here/animations/neutral/frame_037.png
-    - defaults/characters/here/animations/neutral/frame_038.png
-    - defaults/characters/here/animations/neutral/frame_039.png
-    - defaults/characters/here/animations/neutral/frame_040.png
-    - defaults/characters/here/animations/neutral/frame_041.png
-    - defaults/characters/here/animations/neutral/frame_042.png
-    - defaults/characters/here/animations/neutral/frame_043.png
-    - defaults/characters/here/animations/neutral/frame_044.png
-    - defaults/characters/here/animations/neutral/frame_045.png
-    - defaults/characters/here/animations/neutral/frame_046.png
-    - defaults/characters/here/animations/neutral/frame_047.png
-    - defaults/characters/here/animations/neutral/frame_048.png
-    - defaults/characters/here/animations/neutral/frame_049.png
-    - defaults/characters/here/animations/neutral/frame_050.png
-    - defaults/characters/here/animations/neutral/frame_051.png
-    - defaults/characters/here/animations/neutral/frame_052.png
-    - defaults/characters/here/animations/neutral/frame_053.png
-    - defaults/characters/here/animations/neutral/frame_054.png
-    - defaults/characters/here/animations/neutral/frame_055.png
-    - defaults/characters/here/animations/neutral/frame_056.png
-    - defaults/characters/here/animations/neutral/frame_057.png
-    - defaults/characters/here/animations/neutral/frame_058.png
-    - defaults/characters/here/animations/neutral/frame_059.png
-    - defaults/characters/here/animations/neutral/frame_060.png
-    - defaults/characters/here/animations/neutral/frame_061.png
-    - defaults/characters/here/animations/neutral/frame_062.png
-    - defaults/characters/here/animations/neutral/frame_063.png
-    - defaults/characters/here/animations/neutral/frame_064.png
-    - defaults/characters/here/animations/neutral/frame_065.png
-    - defaults/characters/here/animations/neutral/frame_066.png
-    - defaults/characters/here/animations/neutral/frame_067.png
-    - defaults/characters/here/animations/neutral/frame_068.png
-    - defaults/characters/here/animations/neutral/frame_069.png
-    - defaults/characters/here/animations/neutral/frame_070.png
-    - defaults/characters/here/animations/neutral/frame_071.png
-    - defaults/characters/here/animations/neutral/frame_072.png
-    - defaults/characters/here/animations/neutral/frame_073.png
-    - defaults/characters/here/animations/neutral/frame_074.png
-    - defaults/characters/here/animations/neutral/frame_075.png
-    - defaults/characters/here/animations/neutral/frame_076.png
-    - defaults/characters/here/animations/neutral/frame_077.png
-    - defaults/characters/here/animations/neutral/frame_078.png
-    - defaults/characters/here/animations/neutral/frame_079.png
-    - defaults/characters/here/animations/neutral/frame_080.png
-    - defaults/characters/here/animations/neutral/frame_081.png
-    - defaults/characters/here/animations/neutral/frame_082.png
-    - defaults/characters/here/animations/neutral/frame_083.png
-    - defaults/characters/here/animations/neutral/frame_084.png
-    - defaults/characters/here/animations/neutral/frame_085.png
-    - defaults/characters/here/animations/neutral/frame_086.png
-    - defaults/characters/here/animations/neutral/frame_087.png
-    - defaults/characters/here/animations/neutral/frame_088.png
-    - defaults/characters/here/animations/neutral/frame_089.png
-    - defaults/characters/here/animations/neutral/frame_090.png
-    - defaults/characters/here/animations/neutral/frame_091.png
-    - defaults/characters/here/animations/neutral/frame_092.png
-    - defaults/characters/here/animations/neutral/frame_093.png
-    - defaults/characters/here/animations/neutral/frame_094.png
-    - defaults/characters/here/animations/neutral/frame_095.png
-    - defaults/characters/here/animations/neutral/frame_096.png
-    - defaults/characters/here/animations/neutral/frame_097.png
-    - defaults/characters/here/animations/neutral/frame_098.png
-    - defaults/characters/here/animations/neutral/frame_099.png
-    - defaults/characters/here/animations/neutral/frame_100.png
-    - defaults/characters/here/animations/neutral/frame_101.png
-    - defaults/characters/here/animations/neutral/frame_102.png
-    - defaults/characters/here/animations/neutral/frame_103.png
-    - defaults/characters/here/animations/neutral/frame_104.png
-    - defaults/characters/here/animations/neutral/frame_105.png
-    - defaults/characters/here/animations/neutral/frame_106.png
-    - defaults/characters/here/animations/neutral/frame_107.png
-    - defaults/characters/here/animations/neutral/frame_108.png
-    - defaults/characters/here/animations/neutral/frame_109.png
-    - defaults/characters/here/animations/neutral/frame_110.png
-    - defaults/characters/here/animations/neutral/frame_111.png
-    - defaults/characters/here/animations/neutral/frame_112.png
-    - defaults/characters/here/animations/neutral/frame_113.png
-    - defaults/characters/here/animations/neutral/frame_114.png
-    - defaults/characters/here/animations/neutral/frame_115.png
-    - defaults/characters/here/animations/neutral/frame_116.png
-    - defaults/characters/here/animations/neutral/frame_117.png
-    - defaults/characters/here/animations/neutral/frame_118.png
-    - defaults/characters/here/animations/neutral/frame_119.png
-    - defaults/characters/here/animations/neutral/frame_120.png
-    - defaults/characters/here/animations/neutral/frame_121.png
-    - defaults/characters/here/animations/neutral/frame_122.png
-    - defaults/characters/here/animations/neutral/frame_123.png
-    - defaults/characters/here/animations/neutral/frame_124.png
-    - defaults/characters/here/animations/neutral/frame_125.png
-    - defaults/characters/here/animations/neutral/frame_126.png
-    - defaults/characters/here/animations/neutral/frame_127.png
-    - defaults/characters/here/animations/neutral/frame_128.png
-    - defaults/characters/here/animations/neutral/frame_129.png
-    - defaults/characters/here/animations/neutral/frame_130.png
-    - defaults/characters/here/animations/neutral/frame_131.png
-    - defaults/characters/here/animations/neutral/frame_132.png
-    - defaults/characters/here/animations/neutral/frame_133.png
-    - defaults/characters/here/animations/neutral/frame_134.png
-    - defaults/characters/here/animations/neutral/frame_135.png
-    - defaults/characters/here/animations/neutral/frame_136.png
-    - defaults/characters/here/animations/neutral/frame_137.png
-    - defaults/characters/here/animations/neutral/frame_138.png
-    - defaults/characters/here/animations/neutral/frame_139.png
-    frame_count: 139
-    fps: 0.0
+    frame_interval_ms: 120
+  - path: defaults/characters/here/video_call.mp4
+    frames: []
+    state_name: video_call
+    state_group: custom
+    source_state: video_call
   character_profile:
     identity:
       age: 23
@@ -357,7 +221,7 @@
 
 
     当用户问她的过去，她可以自然提到自己曾经接近过舞台、也曾经失落过，但不要把对话变成自我中心的伤感独白。她更重要的存在感，是陪用户把一天过稳、把混乱的事理清、把一点点行动重新找回来。'
-  visual_reference_image: defaults/characters/here/animations/neutral/frame_001.png
+  visual_reference_image: defaults/characters/here/here_neutral.png
   visual_identity: here 是写实真人风格的年轻女性：栗棕色中长发，轻薄刘海，右侧有小发夹；眼神明亮但不刺眼，笑起来亲近自然。默认穿浅蓝色上衣、米白开衫、深蓝半裙和浅色平底鞋，整体干净、柔和、带一点练习生留下的端正站姿。后续新增立绘或视觉资源时应保持同一张脸、发型、发夹、清爽日常穿搭和温暖但不夸张的气质。
   sprite_scale: 0.42
   emotion_tags: '状态分组：核心情绪 core_emotion、系统可选情绪 system_optional_emotion、用户自定义 custom、鼠标事件
