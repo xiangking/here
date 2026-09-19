@@ -44,6 +44,7 @@ def search(
     session_store: SessionStore | None = None,
     current_session_id: str | None = None,
     role_filter: str | None = None,
+    character_name: str | None = None,
 ) -> str:
     store = session_store or _store_from_memory_home(memory_home)
     if store is None:
@@ -56,7 +57,11 @@ def search(
 
     query = str(query or "").strip()
     if not query:
-        sessions = store.list_sessions(limit=limit, exclude_session_id=current_session_id)
+        sessions = store.list_sessions(
+            limit=limit,
+            exclude_session_id=current_session_id,
+            character_name=character_name,
+        )
         return _dump(
             True,
             mode="recent",
@@ -74,7 +79,12 @@ def search(
         )
 
     roles = [role.strip() for role in str(role_filter or "").split(",") if role.strip()] or None
-    rows = store.search_messages(query, role_filter=roles, limit=50)
+    rows = store.search_messages(
+        query,
+        role_filter=roles,
+        character_name=character_name,
+        limit=50,
+    )
     sessions: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         sid = str(row.get("session_id") or "")

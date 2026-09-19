@@ -143,7 +143,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   inset: calc(var(--call-header-height) + var(--call-media-top-gap)) 0 var(--call-controls-height);
 }
 .call-screen .call-character-media .sprite-image,
-.call-screen .call-character-media .sprite-canvas {
+.call-screen .call-character-media .sprite-canvas,
+.call-screen .call-character-media .sprite-video {
   width: 100% !important;
   height: 100% !important;
   min-width: 0;
@@ -157,7 +158,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   user-select: none;
 }
 .call-screen .call-character-media.is-cutout .sprite-image,
-.call-screen .call-character-media.is-cutout .sprite-canvas {
+.call-screen .call-character-media.is-cutout .sprite-canvas,
+.call-screen .call-character-media.is-cutout .sprite-video {
   object-fit: contain;
   object-position: center bottom;
 }
@@ -277,43 +279,56 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .call-control:hover::before { background: rgba(48, 51, 49, 0.94); }
 .call-control:active { transform: scale(0.9); }
 .call-control svg { position: relative; z-index: 1; width: 14px; height: 14px; stroke-width: 2.3; }
-.call-control[data-call-toggle="camera"] svg,
-.call-control[data-call-toggle="video"] svg {
-  width: 14px;
-  height: 14px;
-  transform: translate(-1.5px, -1.5px) scale(1.08, 0.92);
-}
-.call-control[data-call-toggle="camera"] .call-glyph-switch-camera {
-  width: 16px;
-  height: 16px;
-  transform: translate(-1px, -1px);
-}
-.call-control[data-call-toggle="video"] .call-glyph-video-off {
+.call-video-icon, .call-microphone-icon {
+  position: relative;
+  z-index: 1;
+  display: block;
   width: 18px;
-  height: 16px;
-  transform: translate(-1px, -1px);
-}
-.call-control[data-call-toggle="microphone"] svg {
-  width: 11px;
-  height: 14px;
-  transform: translateY(-2.5px) scale(0.75, 1.1);
-}
-.call-control[data-call-toggle="microphone"] .call-glyph-mic-off {
-  width: 16px;
   height: 18px;
-  transform: translateY(-1px);
+  transform: translate(-0.5px, -0.5px);
 }
+.call-control .call-video-icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  stroke-width: 1.5;
+  shape-rendering: geometricPrecision;
+}
+.call-control.is-off .call-video-icon::after,
+.call-control.is-off .call-microphone-icon::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+  box-shadow: 0 0 0 1px #171916;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.call-control .call-microphone-icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+  shape-rendering: geometricPrecision;
+}
+.call-control .call-microphone-icon rect { fill: currentColor; }
+.call-control[data-call-toggle="camera"] svg,
 .call-control[data-call-toggle="speaker"] svg {
-  width: 13px;
-  height: 13px;
-  transform: translate(-1px, -1px) scaleY(0.9);
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+  shape-rendering: geometricPrecision;
+  transform: translate(-0.5px, -0.5px);
 }
-.call-control[data-call-toggle="speaker"] .call-glyph-speaker {
-  width: 16px;
-  height: 16px;
-  transform: translateY(-1px);
-}
+.call-control[data-call-toggle="speaker"] svg > path:first-child { fill: currentColor; }
 .call-control.is-off::before { background: rgba(16, 18, 17, 0.9); }
+.call-control[data-call-toggle="video"]::before { background: rgba(16, 18, 17, 0.9); }
+.call-control[data-call-toggle="video"]:hover::before { background: rgba(48, 51, 49, 0.94); }
 .call-end {
   width: 31px;
   height: 30px;
@@ -506,7 +521,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .micro-button svg { width: 15px; height: 15px; }
 
 .sprite-wrap { position: absolute; inset: 14px 0 120px; display: grid; place-items: end center; pointer-events: none; }
-.sprite-image, .sprite-canvas {
+.sprite-image, .sprite-canvas, .sprite-video {
   display: block;
   max-width: 100%;
   max-height: 100%;
@@ -936,7 +951,7 @@ dialog::backdrop { background: rgba(4, 6, 9, 0.48); backdrop-filter: blur(8px); 
   border-radius: 5px;
   background: rgba(9,11,14,.72);
 }
-.sprite-preview img { width: 100%; height: 100%; object-fit: contain; }
+.sprite-preview img, .sprite-preview video { width: 100%; height: 100%; object-fit: contain; }
 .sprite-preview-empty { padding: 10px; color: var(--muted); font-size: 10px; text-align: center; }
 .sprite-frame-badge { position: absolute; right: 6px; bottom: 6px; padding: 3px 6px; border-radius: 4px; background: rgba(10,12,15,.78); color: rgba(255,255,255,.82); font-size: 9px; }
 .sprite-editor-content { min-width: 0; }

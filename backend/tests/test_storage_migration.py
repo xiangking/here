@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from services.storage_migration import is_strict_child, migrate_storage_locations
+
+_BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_BACKEND_ROOT))
+
+from services.storage_migration import is_strict_child, migrate_storage_locations  # noqa: E402
 
 
 class FakeConfigManager:

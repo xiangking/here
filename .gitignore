@@ -5,7 +5,9 @@ dist/
 dist-electron/
 release/
 output/
-docs/
+docs/*
+!docs/FUNCTION_PARITY.md
+!docs/QT_TO_ELECTRON_MIGRATION.md
 
 # Python development and packaged runtimes
 backend/.venv/

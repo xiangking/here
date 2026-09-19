@@ -38,6 +38,7 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 const sidecar = new PythonSidecar();
+const MAX_LOCAL_FILE_TOKENS = 512;
 const localFiles = new Map<string, string>();
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -54,6 +55,23 @@ interface PersistedWindowState {
   width?: number;
   height?: number;
   always_on_top?: boolean;
+}
+
+function rememberLocalFile(token: string, path: string): void {
+  localFiles.set(token, path);
+  while (localFiles.size > MAX_LOCAL_FILE_TOKENS) {
+    const oldest = localFiles.keys().next().value;
+    if (oldest === undefined) break;
+    localFiles.delete(oldest);
+  }
+}
+
+function resolveLocalFile(token: string): string | undefined {
+  const path = localFiles.get(token);
+  if (!path) return undefined;
+  localFiles.delete(token);
+  localFiles.set(token, path);
+  return path;
 }
 
 function rendererEntry(): string {
@@ -510,7 +528,7 @@ function registerIpc(): void {
       throw new Error("Unsupported local asset.");
     }
     const token = randomUUID();
-    localFiles.set(token, path);
+    rememberLocalFile(token, path);
     return `here-local://asset/${token}`;
   });
   ipcMain.handle("window:action", (_event, action: string) => {
@@ -533,7 +551,7 @@ function registerIpc(): void {
 app.whenReady().then(async () => {
   protocol.handle("here-local", async (request) => {
     const token = new URL(request.url).pathname.replace(/^\//, "");
-    const path = localFiles.get(token);
+    const path = resolveLocalFile(token);
     if (!path) return new Response("Not found", { status: 404 });
     const response = await net.fetch(pathToFileURL(path).toString());
     const headers = new Headers(response.headers);

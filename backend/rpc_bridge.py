@@ -86,6 +86,7 @@ from infrastructure.paths import (
     seed_defaults,
 )
 from internal_agent.context import AgentMemoryStore, build_agent_context
+from internal_agent.dream import DreamScheduler, MemoryDreamer
 from services.asr.asr_adapter import (
     build_asr_setup_status,
     create_default_asr_adapter,
@@ -272,6 +273,7 @@ class HereBackend:
             tool_status_callback=lambda text: event("status", {"text": str(text), "busy": True}),
         )
         self.life = LifeEngine(self.memory)
+        self.dream_scheduler = DreamScheduler(self.config, MemoryDreamer(self.memory, self.agent))
         self.contacts = ContactPlanEngine(self.memory, self.life)
         self.delivery_router = DeliveryRouter(self.config, DeliveryCapabilityProbe(self.config))
         self.sender = MessageSender(
@@ -315,6 +317,7 @@ class HereBackend:
         )
         if self._proactive_enabled():
             self.life_scheduler.start()
+        self.dream_scheduler.start()
         self.proactive.start()
         self._restart_chat_platform_bridge()
 
@@ -324,6 +327,7 @@ class HereBackend:
         for runtime in (
             getattr(self, "proactive", None),
             getattr(self, "life_scheduler", None),
+            getattr(self, "dream_scheduler", None),
             getattr(self, "asr_adapter", None),
         ):
             stop = getattr(runtime, "stop", None)
@@ -1113,6 +1117,8 @@ class HereBackend:
         if not source_paths:
             raise ValueError("没有选择有效的立绘或动画文件。")
         state_name = self._safe_asset_name(str(payload.get("state_name") or "custom"), "custom")
+        if state_name == "video_call" and (len(source_paths) != 1 or source_paths[0].suffix.lower() not in {".mp4", ".webm", ".m4v"}):
+            raise ValueError("视频通话请选择一个 MP4、WebM 或 M4V 视频。")
         state_group = str(payload.get("state_group") or "custom").strip() or "custom"
         interval = max(20, min(10_000, int(payload.get("frame_interval_ms") or 120)))
         prefix = self._safe_asset_name(str(character.sprite_prefix or name), "character")
@@ -1122,7 +1128,11 @@ class HereBackend:
 
         video_suffixes = {".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm"}
         frames: list[Path] = []
-        if len(source_paths) == 1 and source_paths[0].suffix.lower() in video_suffixes:
+        native_video = len(source_paths) == 1 and state_name == "video_call" and source_paths[0].suffix.lower() in {".mp4", ".webm", ".m4v"}
+        if native_video:
+            first_path = target_dir / f"video_call{source_paths[0].suffix.lower()}"
+            shutil.copy2(source_paths[0], first_path)
+        elif len(source_paths) == 1 and source_paths[0].suffix.lower() in video_suffixes:
             try:
                 import cv2
             except ImportError as exc:
@@ -1155,7 +1165,9 @@ class HereBackend:
                         interval = max(20, min(10_000, duration))
             if len(frames) <= 1:
                 frames = []
-        if not frames:
+        if native_video:
+            pass
+        elif not frames:
             copied: list[Path] = []
             for index, source in enumerate(source_paths):
                 suffix = source.suffix.lower()
