@@ -1,4 +1,3 @@
-import { createIcons, icons } from "lucide";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import "./styles.css";
@@ -23,89 +22,36 @@ import {
   waitForAudioEnd,
 } from "./ui-behavior";
 import type { DialogResizeEdge } from "./ui-behavior";
+import {
+  $,
+  $$,
+  clone,
+  esc,
+  field,
+  pageHeader,
+  pathField,
+  refreshIcons,
+  selectField,
+  switchRow,
+  updateCallControl,
+} from "./dom";
+import {
+  adapterLabel,
+  deliveryOptions,
+  profileMap,
+  profileText,
+  renderCharacterSettings,
+  renderMemorySettings,
+  renderPlatformSettings,
+  renderSpriteEditor,
+  renderSpriteSettings,
+  renderStorageSettings,
+  schemaFields,
+  spriteStateLabel,
+  spriteStateName,
+} from "./settings-html";
 
 const api: HereDesktopApi = window.hereDesktop || createMockApi();
-const $ = <T extends Element>(selector: string): T => {
-  const element = document.querySelector<T>(selector);
-  if (!element) throw new Error(`Missing element: ${selector}`);
-  return element;
-};
-const $$ = <T extends Element>(selector: string): T[] => Array.from(document.querySelectorAll<T>(selector));
-const esc = (value: unknown): string => String(value ?? "")
-  .replaceAll("&", "&amp;")
-  .replaceAll("<", "&lt;")
-  .replaceAll(">", "&gt;")
-  .replaceAll('"', "&quot;")
-  .replaceAll("'", "&#039;");
-const clone = <T>(value: T): T => structuredClone(value);
-const callPixelIcons = {
-  lock: { width: 6, height: 6, rows: "033300/070220/386750/697882/694682/698882", className: "lock" },
-  participants: { width: 12, height: 10, rows: "000005bc8000/00003cffe600/05004defe700/3c303beed500/8c84049b7200/4b3200230000/070049ddb720/0029efffffc3/004deeeeeee8/002788888874", className: "participants" },
-  more: { width: 4, height: 12, rows: "0020/07c6/08e6/0230/0230/08b5/08d5/0020/0020/08d5/28b5/0230", className: "more" },
-  hangup: { width: 17, height: 12, rows: "00000000000000000/00000000000000000/000369aba97420000/05adeeeeeeedc8300/8deeda999aceeec50/dfee9300024ceeec2/eeee8000000beeed3/ceeb40000006ceea0/58420000000005840/00000000000000000/00000000000000000/00000000000000000", className: "hangup" },
-} as const;
-type CallPixelIconName = keyof typeof callPixelIcons;
-
-const renderCallPixelIcons = (): void => {
-  $$<SVGSVGElement>("[data-call-pixel-icon]:not([data-call-pixel-ready])").forEach((svg) => {
-    const name = svg.dataset.callPixelIcon as CallPixelIconName;
-    const icon = callPixelIcons[name];
-    if (!icon) return;
-    const rects: string[] = [];
-    icon.rows.split("/").forEach((row, y) => {
-      let x = 0;
-      while (x < row.length) {
-        const alpha = row[x];
-        let end = x + 1;
-        while (end < row.length && row[end] === alpha) end += 1;
-        const value = Number.parseInt(alpha, 16);
-        if (value) rects.push(`<rect x="${x}" y="${y}" width="${end - x}" height="1" fill="currentColor" fill-opacity="${value / 15}"/>`);
-        x = end;
-      }
-    });
-    svg.setAttribute("viewBox", `0 0 ${icon.width} ${icon.height}`);
-    svg.setAttribute("preserveAspectRatio", "none");
-    svg.setAttribute("shape-rendering", "crispEdges");
-    svg.innerHTML = rects.join("");
-    svg.dataset.callPixelReady = "true";
-  });
-};
-
-const refreshIcons = (): void => {
-  createIcons({ icons });
-  renderCallPixelIcons();
-};
-
-const callIconMarkup = (icon: string): string => {
-  if (icon === "video" || icon === "video-off") {
-    return '<span class="call-video-icon" aria-hidden="true"><i data-lucide="video"></i></span>';
-  }
-  if (icon === "mic" || icon === "mic-off") {
-    return '<span class="call-microphone-icon" aria-hidden="true"><i data-lucide="mic"></i></span>';
-  }
-  const pixelName = icon;
-  if (pixelName in callPixelIcons) {
-    const spec = callPixelIcons[pixelName as CallPixelIconName];
-    return `<svg class="call-glyph call-pixel-glyph call-glyph-${spec.className}" data-call-pixel-icon="${pixelName}" aria-hidden="true"></svg>`;
-  }
-  return `<i data-lucide="${icon}"></i>`;
-};
-
-const updateCallControl = (control: HTMLButtonElement, isOff: boolean): void => {
-  const kind = control.dataset.callToggle;
-  control.classList.toggle("is-off", isOff);
-  control.setAttribute("aria-pressed", String(isOff));
-  const icon = kind === "video" ? (isOff ? "video-off" : "video")
-    : kind === "microphone" ? (isOff ? "mic-off" : "mic")
-      : kind === "speaker" ? (isOff ? "volume-x" : "volume-2")
-        : "switch-camera";
-  control.innerHTML = callIconMarkup(icon);
-  control.title = kind === "video" ? (isOff ? "开启视频通话" : "关闭视频通话")
-    : kind === "microphone" ? (isOff ? "取消静音" : "静音")
-      : kind === "speaker" ? (isOff ? "打开扬声器" : "关闭扬声器")
-        : "切换摄像头";
-  refreshIcons();
-};
 
 let state: DesktopState;
 let attachments: Attachment[] = [];
@@ -171,191 +117,6 @@ const historyDialog = $("#history-dialog") as HTMLDialogElement;
 const lifeDialog = $("#life-dialog") as HTMLDialogElement;
 const createCharacterDialog = $("#create-character-dialog") as HTMLDialogElement;
 
-function switchRow(id: string, title: string, detail: string, checked: boolean): string {
-  return `<div class="switch-row">
-    <div class="switch-copy"><strong>${esc(title)}</strong>${detail ? `<span class="switch-detail">${esc(detail)}</span>` : ""}</div>
-    <label class="toggle"><input id="${esc(id)}" type="checkbox" ${checked ? "checked" : ""}><span></span></label>
-  </div>`;
-}
-
-function field(
-  id: string,
-  label: string,
-  value: unknown,
-  options?: { type?: string; wide?: boolean; min?: number; max?: number; step?: number; rows?: number; placeholder?: string; extraClass?: string; readOnly?: boolean; disabled?: boolean },
-): string {
-  const config = options || {};
-  const className = `field${config.wide ? " field-wide" : ""}${config.extraClass ? ` ${config.extraClass}` : ""}`;
-  const editState = `${config.readOnly ? " readonly" : ""}${config.disabled ? " disabled" : ""}`;
-  if (config.type === "textarea") {
-    return `<label class="${className}"><span>${esc(label)}</span><textarea id="${esc(id)}" rows="${config.rows || 4}"${config.placeholder ? ` placeholder="${esc(config.placeholder)}"` : ""}${editState}>${esc(value)}</textarea></label>`;
-  }
-  return `<label class="${className}"><span>${esc(label)}</span><input id="${esc(id)}" type="${esc(config.type || "text")}" value="${esc(value)}"${config.min !== undefined ? ` min="${config.min}"` : ""}${config.max !== undefined ? ` max="${config.max}"` : ""}${config.step !== undefined ? ` step="${config.step}"` : ""}${config.placeholder ? ` placeholder="${esc(config.placeholder)}"` : ""}${editState}></label>`;
-}
-
-function pathField(
-  id: string,
-  label: string,
-  value: unknown,
-  picker: "background" | "bgm" | "reference" | "directory",
-  wide = true,
-  placeholder = "",
-): string {
-  return `<label class="field${wide ? " field-wide" : ""}"><span>${esc(label)}</span><span class="path-control"><input id="${esc(id)}" type="text" value="${esc(value)}"${placeholder ? ` placeholder="${esc(placeholder)}"` : ""}><button class="icon-button" data-file-picker="${picker}" data-picker-target="${esc(id)}" type="button" title="选择"><i data-lucide="folder-open"></i></button></span></label>`;
-}
-
-function selectField(id: string, label: string, value: unknown, options: Array<[string, string]>, wide = false): string {
-  return `<label class="field${wide ? " field-wide" : ""}"><span>${esc(label)}</span><select id="${esc(id)}">${options.map(([key, text]) =>
-    `<option value="${esc(key)}" ${String(value) === key ? "selected" : ""}>${esc(text)}</option>`).join("")}</select></label>`;
-}
-
-function editableChoiceField(id: string, label: string, value: unknown, choices: string[], placeholder = ""): string {
-  const listId = `${id}-choices`;
-  return `<label class="field"><span>${esc(label)}</span><input id="${esc(id)}" type="text" value="${esc(value)}" list="${esc(listId)}"${placeholder ? ` placeholder="${esc(placeholder)}"` : ""}><datalist id="${esc(listId)}">${choices.map((choice) => `<option value="${esc(choice)}"></option>`).join("")}</datalist></label>`;
-}
-
-function pageHeader(title: string, subtitle: string): string {
-  return `<h2 class="page-title">${esc(title)}</h2>${subtitle ? `<p class="page-subtitle">${esc(subtitle)}</p>` : ""}`;
-}
-
-const schemaLabels: Record<"tts" | "asr" | "t2i", Record<string, string>> = {
-  tts: {
-    voice: "音色",
-    rate: "引擎语速",
-    volume: "引擎音量",
-    pitch: "音调",
-    api_key: "API 密钥",
-    group_id: "Group ID",
-    model: "模型",
-    model_id: "模型",
-    voice_id: "音色 ID",
-    reference_id: "参考音色 ID",
-    response_format: "输出格式",
-    output_format: "输出格式",
-    audio_format: "音频格式",
-    base_url: "基础地址",
-    timeout: "超时时间（秒）",
-    stability: "稳定性",
-    similarity_boost: "相似度增强",
-    sample_rate: "采样率",
-    bitrate: "比特率",
-    mp3_bitrate: "MP3 比特率",
-    latency: "延迟模式",
-  },
-  asr: {
-    model_path: "Vosk 模型目录",
-    sample_rate: "采样率",
-    chunk_size: "音频块大小",
-    vad_filter: "语音活动检测",
-    chunk_seconds: "分段时长（秒）",
-    beam_size: "Beam 数量",
-    silence_threshold: "静音阈值",
-    chunk_frames: "音频块帧数",
-    enable_realtime_transcription: "实时显示识别文字",
-    realtime_processing_pause: "实时处理停顿（秒）",
-  },
-  t2i: {
-    api_url: "API 地址",
-    api_key: "API 密钥",
-    api_style: "API 类型",
-    api_format: "请求格式",
-    default_model: "模型",
-    aspect_ratio: "画面比例",
-    image_size: "图像尺寸",
-    size: "图像尺寸",
-    quality: "图像质量",
-    background: "背景模式",
-    output_format: "输出格式",
-    output_compression: "输出压缩率",
-    moderation: "内容审核",
-    stream_images: "流式返回图像",
-    stream_partial_images: "流式预览数量",
-    timeout_s: "超时时间（秒）",
-  },
-};
-
-const adapterLabels: Record<"tts" | "asr" | "t2i", Record<string, string>> = {
-  tts: {
-    "edge-tts": "Edge TTS",
-    "openai-tts": "OpenAI TTS",
-    elevenlabs: "ElevenLabs",
-    "minimax-tts": "MiniMax TTS",
-    "fish-audio": "Fish Audio",
-  },
-  asr: {
-    vosk: "Vosk",
-    faster_whisper: "Faster-Whisper",
-    realtime_stt: "Realtime STT",
-  },
-  t2i: {
-    "image-api": "兼容图像 API",
-    "xai-grok-imagine": "xAI Grok Imagine",
-    "openai-gpt-image": "OpenAI GPT Image",
-  },
-};
-
-const schemaChoiceLabels: Record<string, string> = {
-  auto: "自动",
-  low: "低",
-  medium: "中",
-  high: "高",
-  transparent: "透明",
-  opaque: "不透明",
-  normal: "标准",
-  openai: "OpenAI 格式",
-  simple: "简单格式",
-  fal: "fal 格式",
-  openrouter: "OpenRouter 格式",
-  mp3: "MP3",
-  wav: "WAV",
-  pcm: "PCM",
-};
-
-function adapterLabel(kind: "tts" | "asr" | "t2i", provider: string): string {
-  return adapterLabels[kind][provider] || provider.replaceAll("_", "-");
-}
-
-function schemaFields(
-  kind: "tts" | "asr" | "t2i",
-  provider: string,
-  values: Record<string, unknown>,
-  idPrefix: string = kind,
-): string {
-  const schema = state.adapter_schemas[kind]?.[provider] || {};
-  const content = Object.entries(schema).map(([key, raw]) => {
-    const config = raw as Record<string, unknown>;
-    const id = `extra-${idPrefix}-${key}`;
-    const configuredValue = values[key];
-    const useDefault = config.type !== "password" && String(configuredValue ?? "").trim() === ""
-      && String(config.default ?? "").trim() !== "";
-    const value = useDefault ? config.default : configuredValue ?? config.default ?? "";
-    const label = schemaLabels[kind][key] || String(config.label || key);
-    const choices = (config.options || config.choices || config.enum) as unknown[] | undefined;
-    if (kind === "t2i" && provider === "image-api" && key === "api_url") return "";
-    if (kind === "asr" && key === "model_path") {
-      return pathField(id, label, value, "directory", false, "自动使用内置模型目录");
-    }
-    if (choices?.length) {
-      const normalizedChoices = choices.map(String);
-      if (config.editable) return editableChoiceField(id, label, value, normalizedChoices, String(config.placeholder || ""));
-      return selectField(id, label, value, normalizedChoices.map((item) => [item, schemaChoiceLabels[item] || item]));
-    }
-    if (config.type === "bool") return switchRow(id, label, String(config.help || ""), Boolean(value));
-    const type = config.type === "password" ? "password"
-      : ["int", "float", "number"].includes(String(config.type)) ? "number" : "text";
-    return field(id, label, value, {
-      type,
-      min: Number.isFinite(Number(config.min)) ? Number(config.min) : undefined,
-      max: Number.isFinite(Number(config.max)) ? Number(config.max) : undefined,
-      step: Number.isFinite(Number(config.step)) ? Number(config.step) : undefined,
-      placeholder: String(config.placeholder || (config.type === "password" ? "未设置" : "")),
-    });
-  }).join("");
-  return content
-    ? `<div class="provider-schema field-grid">${content}</div>`
-    : `<div class="provider-schema schema-empty">当前引擎无需额外参数。</div>`;
-}
-
 function activeCharacter(): BackendCharacter {
   return state.config.characters.find((item) => item.name === state.active_character_name)
     || state.config.characters[0];
@@ -416,7 +177,7 @@ function renderSettings(): void {
       ${field("voice-tts-speed", "全局语速", apiConfig.tts_speed, { type: "number", min: 0.5, max: 3, step: 0.1 })}
       ${field("voice-split-length", "分句最大长度", apiConfig.tts_max_sentence_length, { type: "number", min: 5, max: 100, step: 1 })}
     </div>${switchRow("voice-split", "分句合成", "长回复按句拆分语音", apiConfig.tts_split_enabled)}
-    <div id="tts-schema">${schemaFields("tts", activeTtsProvider, apiConfig.tts_extra_configs[activeTtsProvider] || {})}</div></div></div>`;
+    <div id="tts-schema">${schemaFields(state, "tts", activeTtsProvider, apiConfig.tts_extra_configs[activeTtsProvider] || {})}</div></div></div>`;
 
   $("[data-page='asr']").innerHTML = pageHeader("ASR", "麦克风语音识别") + `
     <div class="form-section"><h3>语音识别</h3><div class="field-grid">
@@ -426,7 +187,7 @@ function renderSettings(): void {
       ${field("voice-whisper-model", "Whisper 模型", system.asr_whisper_model_size)}
       ${selectField("voice-whisper-device", "计算设备", system.asr_whisper_device, [["auto", "自动"], ["cpu", "CPU"], ["cuda", "CUDA"]])}
       ${field("voice-whisper-compute", "计算精度", system.asr_whisper_compute_type)}
-    </div><div id="asr-schema">${schemaFields("asr", activeAsrProvider, apiConfig.asr_extra_configs[activeAsrProvider] || {})}</div>
+    </div><div id="asr-schema">${schemaFields(state, "asr", activeAsrProvider, apiConfig.asr_extra_configs[activeAsrProvider] || {})}</div>
       <div class="inline-actions"><button id="asr-install" class="text-button" type="button"><i data-lucide="package-plus"></i><span>安装当前识别依赖</span></button><button id="asr-prepare" class="text-button" type="button"><i data-lucide="download"></i><span>检查 / 预载模型</span></button><span id="asr-dependency-status" class="inline-status"></span></div></div>`;
 
   $("[data-page='image']").innerHTML = pageHeader("图像", "生图、自拍与实时立绘") + `
@@ -434,12 +195,12 @@ function renderSettings(): void {
       ${selectField("image-provider", "引擎", apiConfig.t2i_provider, t2iProviders)}
       ${selectField("image-selfie-provider", "自拍引擎", apiConfig.selfie_provider, [["", "沿用生图引擎"], ...t2iProviders])}
       ${field("image-api-url", "API 地址", imageApiUrl, { wide: true, extraClass: apiConfig.t2i_provider === "image-api" ? "" : "is-hidden" })}
-    </div><div id="t2i-schema">${schemaFields("t2i", apiConfig.t2i_provider, apiConfig.t2i_extra_configs[apiConfig.t2i_provider] || {})}</div></div>
+    </div><div id="t2i-schema">${schemaFields(state, "t2i", apiConfig.t2i_provider, apiConfig.t2i_extra_configs[apiConfig.t2i_provider] || {})}</div></div>
     <div class="form-section"><h3>自拍</h3><div class="field-grid">
       ${field("image-selfie-width", "图片宽度", Number(apiConfig.selfie_extra_configs.width) || 1024, { type: "number", min: 256, max: 4096, step: 64 })}
       ${field("image-selfie-height", "图片高度", Number(apiConfig.selfie_extra_configs.height) || 1024, { type: "number", min: 256, max: 4096, step: 64 })}
       <input id="image-selfie-extra" type="hidden" value="${esc(JSON.stringify(apiConfig.selfie_extra_configs))}">
-    </div><div id="selfie-schema">${schemaFields("t2i", selfieProvider, apiConfig.t2i_extra_configs[selfieProvider] || {}, "selfie-t2i")}</div></div>
+    </div><div id="selfie-schema">${schemaFields(state, "t2i", selfieProvider, apiConfig.t2i_extra_configs[selfieProvider] || {}, "selfie-t2i")}</div></div>
     <div class="form-section"><h3>桌面立绘</h3>
       ${switchRow("image-realtime", "实时生成立绘", "按情绪与场景调用生图服务", system.sprite_realtime_enabled)}
       <div id="image-realtime-settings" class="${system.sprite_realtime_enabled ? "" : "is-hidden"}"><div class="field-grid provider-schema">
@@ -462,18 +223,18 @@ function renderSettings(): void {
       ${switchRow("proactive-confirm", "发送前确认", "需要确认时自动回到桌面显示", system.external_delivery_requires_confirmation)}
       ${switchRow("proactive-audio", "附带语音", "外部主动消息同时发送 TTS 音频", system.external_delivery_audio_enabled)}
       <div class="field-grid provider-schema">
-        ${selectField("proactive-channel", "送达渠道", system.external_delivery_channel, deliveryOptions())}
+        ${selectField("proactive-channel", "送达渠道", system.external_delivery_channel, deliveryOptions(state))}
         ${field("proactive-limit", "每日外发上限", system.external_delivery_daily_limit, { type: "number", min: 1, max: 12, step: 1 })}
         ${field("proactive-quiet", "免打扰时段", system.external_delivery_quiet_hours)}
-        ${selectField("proactive-chat-channel", "普通聊天渠道", system.chat_delivery_channel, deliveryOptions())}
+        ${selectField("proactive-chat-channel", "普通聊天渠道", system.chat_delivery_channel, deliveryOptions(state))}
       </div>
       </div>
     </div>`;
 
-  $("[data-page='platforms']").innerHTML = renderPlatformSettings();
+  $("[data-page='platforms']").innerHTML = renderPlatformSettings(state);
   renderCharacterPages(character);
-  $("[data-page='memory']").innerHTML = renderMemorySettings();
-  $("[data-page='storage']").innerHTML = renderStorageSettings();
+  $("[data-page='memory']").innerHTML = renderMemorySettings(state);
+  $("[data-page='storage']").innerHTML = renderStorageSettings(state);
   document.querySelector<HTMLElement>("[data-page='companion']")!.innerHTML = pageHeader("同桌模式", "让 here 陪你工作，并逐渐理解你的工作节奏") + `
     <div class="form-section"><h3>同桌</h3>
       ${switchRow("screen-context-enabled", "开启同桌模式", "理解你的工作节奏，并在确实有帮助时主动提醒或提议", Boolean(system.screen_context_enabled))}
@@ -486,123 +247,6 @@ function renderSettings(): void {
   showSettingsPage(activeSettingsTab);
   refreshIcons();
   applyLocale(settingsDialog);
-}
-
-function deliveryOptions(): Array<[string, string]> {
-  return Object.values(state.capabilities).map((item) => [item.channel, item.label]);
-}
-
-const capabilityReasonLabels: Record<string, string> = {
-  ready: "可用",
-  missing_token: "缺少访问令牌",
-  missing_webhook: "缺少 Webhook",
-  missing_credentials: "缺少登录凭据",
-  missing_config: "尚未配置",
-  not_configured: "尚未配置",
-  not_logged_in: "尚未登录",
-  unsupported: "当前环境不支持",
-  disabled: "未启用",
-};
-
-function capabilityStatus(capability: DesktopState["capabilities"][string] | undefined): string {
-  if (!capability) return "尚未配置";
-  if (capability.available) return "可用";
-  const reason = String(capability.reason || "").trim();
-  return capabilityReasonLabels[reason] || reason.replaceAll("_", " ") || "尚未配置";
-}
-
-function renderPlatformSettings(): string {
-  const configs = state.messaging || {};
-  const platformMeta: Array<[string, string, Array<[string, string, string]>]> = [
-    ["telegram", "Telegram", [["token", "Bot Token", "password"], ["target", "接收 chat_id", "text"]]],
-    ["discord", "Discord", [["bot_token", "Bot Token", "password"], ["target", "接收用户 ID", "text"]]],
-    ["wechat", "WeChat", [["account_id", "账号 ID", "text"], ["base_url", "OpenClaw 地址", "text"], ["user_id", "当前登录用户 ID", "text"], ["target", "目标用户通道 ID", "text"]]],
-    ["feishu", "Feishu", [["app_id", "App ID", "text"], ["app_secret", "App Secret", "password"], ["target", "接收 ID", "text"], ["receive_id_type", "接收 ID 类型", "text"]]],
-    ["whatsapp", "WhatsApp", [["api_token", "API Token", "password"], ["phone_number_id", "Phone Number ID", "text"], ["api_version", "API 版本", "text"], ["target", "目标号码", "text"]]],
-  ];
-  return pageHeader("消息平台", "Telegram、Discord、WeChat、Feishu 与 WhatsApp") + platformMeta.map(([key, title, fields]) => {
-    const config = configs[key] || {};
-    const capability = state.capabilities[key];
-    return `<div class="form-section platform-section" data-platform="${key}"><h3>${esc(title)} · ${esc(capabilityStatus(capability))}</h3>
-      ${switchRow(`platform-${key}-enabled`, "启用", title, Boolean(config.enabled))}
-      <div class="platform-details${config.enabled ? "" : " is-hidden"}"><div class="field-grid provider-schema">${fields.map(([fieldKey, label, type]) =>
-        field(`platform-${key}-${fieldKey}`, label, config[fieldKey] || "", { type, placeholder: "未配置" })).join("")}</div>
-      ${key === "telegram" ? '<div class="inline-actions"><button id="telegram-discover" class="text-button" type="button"><i data-lucide="scan-search"></i><span>自动识别 chat_id</span></button></div>' : ""}
-      ${key === "wechat" ? `${switchRow("platform-wechat-require_context_token", "要求 context_token", "避免个人微信主动发送失败", config.require_context_token !== false)}<div class="inline-actions"><button id="wechat-login" class="text-button" type="button"><i data-lucide="qr-code"></i><span>微信扫码登录</span></button><button id="wechat-refresh" class="text-button" type="button"><i data-lucide="refresh-cw"></i><span>刷新接收方</span></button></div><div id="wechat-login-box" class="wechat-login-box is-hidden"></div><div id="wechat-status" class="inline-status"></div>` : ""}
-      </div>
-    </div>`;
-  }).join("");
-}
-
-function profileMap(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
-}
-
-function profileText(value: unknown, fallback = ""): string {
-  if (Array.isArray(value)) return value.map(String).filter(Boolean).join("、");
-  return String(value ?? fallback).trim();
-}
-
-function renderCharacterProfileEditor(character: BackendCharacter): string {
-  const profile = profileMap(character.character_profile);
-  const identity = profileMap(profile.identity);
-  const personality = profileMap(profile.personality);
-  const speech = profileMap(profile.speech);
-  const relationship = profileMap(profile.relationship);
-  const preferences = profileMap(profile.preferences);
-  const boundaries = profileMap(profile.boundaries);
-  const mbti = profileText(personality.mbti, "INFP").toUpperCase();
-  const locked = character.name === "here_system";
-  const profileField = (
-    id: string,
-    label: string,
-    value: unknown,
-    options: Parameters<typeof field>[3] = {},
-  ): string => field(id, label, value, { ...options, readOnly: locked });
-  const mbtiTypes = [
-    "INTJ", "INTP", "ENTJ", "ENTP", "INFJ", "INFP", "ENFJ", "ENFP",
-    "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP",
-  ];
-  return `<div class="form-section"><h3>角色档案</h3>
-    <div class="profile-subsection"><h4>基础</h4><div class="field-grid">
-      ${profileField("character-profile-age", "实际年龄", Number(identity.age) || 22, { type: "number", min: 18, max: 120, step: 1 })}
-      ${profileField("character-profile-birthday", "生日", profileText(identity.birthday))}
-      ${profileField("character-profile-gender", "性别/身份", profileText(identity.gender, "女性"))}
-      ${profileField("character-profile-occupation", "职业", profileText(identity.occupation, "自学中的程序员"))}
-      ${profileField("character-profile-life-status", "生活状态", profileText(identity.life_status, "独居"))}
-      ${profileField("character-profile-relationship", "与你的关系", profileText(identity.relationship_to_user, "暧昧陪伴者"))}
-      ${profileField("character-profile-first-person", "第一人称", profileText(identity.first_person, "我"))}
-      ${profileField("character-profile-user-address", "称呼你", profileText(identity.user_address, "你"))}
-    </div></div>
-    <div class="profile-subsection"><h4>性格与 MBTI</h4>
-      <input id="character-profile-mbti" type="hidden" value="${esc(mbti)}">
-      <div class="mbti-grid character-mbti-grid" role="radiogroup" aria-label="MBTI 类型">${mbtiTypes.map((item) => `<button type="button" data-character-mbti="${item}" class="${item === mbti ? "is-active" : ""}"${locked ? " disabled" : ""}>${item}</button>`).join("")}</div>
-      <div class="field-grid">
-        ${profileField("character-profile-mbti-style", "表现方式", profileText(personality.mbti_style, "典型表现"))}
-        ${profileField("character-profile-traits", "性格补充", profileText(personality.custom_traits), { placeholder: "用逗号分隔多个特质" })}
-        ${profileField("character-profile-flaws", "缺点补充", profileText(personality.flaws), { placeholder: "用逗号分隔" })}
-        ${profileField("character-profile-contrast", "反差点", profileText(personality.contrast))}
-      </div>
-    </div>
-    <div class="profile-subsection"><h4>说话与关系</h4><div class="field-grid">
-      ${profileField("character-profile-tone", "语气", profileText(speech.tone), { placeholder: "自然、亲近、轻柔" })}
-      ${profileField("character-profile-reply-length", "回复长度", profileText(speech.reply_length, "适中"))}
-      ${profileField("character-profile-catchphrases", "口头禅", profileText(speech.catchphrases), { placeholder: "用逗号分隔" })}
-      ${profileField("character-profile-stage", "关系阶段", profileText(relationship.stage, "暧昧"))}
-      ${profileField("character-profile-trust", "信任触发", profileText(relationship.trust_triggers), { placeholder: "用逗号分隔" })}
-      ${profileField("character-profile-sadness", "失落触发", profileText(relationship.sadness_triggers), { placeholder: "用逗号分隔" })}
-    </div></div>
-    <div class="profile-subsection"><h4>喜好与边界</h4><div class="field-grid">
-      ${profileField("character-profile-likes", "喜欢", profileText(preferences.likes), { placeholder: "用逗号分隔" })}
-      ${profileField("character-profile-dislikes", "讨厌", profileText(preferences.dislikes), { placeholder: "用逗号分隔" })}
-      ${profileField("character-profile-hobbies", "爱好", profileText(preferences.hobbies), { placeholder: "用逗号分隔" })}
-      ${profileField("character-profile-boundary", "亲密边界", profileText(boundaries.intimacy_level, "轻度亲密"))}
-      ${profileField("character-profile-boundary-notes", "边界补充", profileText(boundaries.notes), { type: "textarea", wide: true, rows: 3 })}
-    </div></div>
-    <div class="inline-actions">${locked ? "" : '<button id="character-regenerate-setting" class="text-button" type="button"><i data-lucide="refresh-cw"></i><span>根据档案重新生成设定文本</span></button>'}</div>
-  </div>`;
 }
 
 function characterProfileFromSettings(existing: Record<string, unknown>): Record<string, unknown> {
@@ -653,143 +297,9 @@ function characterProfileFromSettings(existing: Record<string, unknown>): Record
   return profile;
 }
 
-function renderCharacterSettings(character: BackendCharacter): string {
-  const locked = character.name === "here_system";
-  return pageHeader("角色", "人设、视觉身份与语音表现") + `
-    <div class="form-section"><h3>当前角色</h3><div class="field-grid">
-      ${selectField("character-select", "角色", character.name, state.config.characters.map((item) => [item.name, item.name]))}
-      ${field("character-name", "名称", character.name, { readOnly: locked })}
-      ${field("character-color", "对话颜色", character.color, { type: "color" })}
-      ${field("character-prefix", "资源前缀", character.sprite_prefix)}
-      ${field("character-scale", "立绘缩放", character.sprite_scale, { type: "number", min: 0.15, max: 3, step: 0.05 })}
-      ${field("character-speed", "语速倍率", character.speech_speed, { type: "number", min: 0.5, max: 2, step: 0.05 })}
-      ${field("character-volume", "语音音量", character.speech_volume, { type: "number", min: 0, max: 2, step: 0.05 })}
-      ${pathField("character-reference", "视觉参考图", character.visual_reference_image, "reference", true, "未设置")}
-      ${field("character-visual", "视觉身份", character.visual_identity, { type: "textarea", wide: true, rows: 4, readOnly: locked })}
-      ${field("character-setting", "角色设定", character.character_setting, { type: "textarea", wide: true, rows: 8, readOnly: locked })}
-      <input id="character-profile" type="hidden" value="${esc(JSON.stringify(character.character_profile))}">
-      <input id="character-pronunciation" type="hidden" value="${esc(JSON.stringify(character.pronunciation_map))}">
-    </div><div class="inline-actions">
-      <button id="character-new" class="text-button" type="button"><i data-lucide="user-plus"></i><span>新建</span></button>
-      <button id="character-delete" class="danger-button" type="button"><i data-lucide="trash-2"></i><span>删除</span></button>
-    </div></div>${renderCharacterProfileEditor(character)}`;
-}
-
-const coreSpriteStates = [
-  { name: "neutral", label: "平静", group: "core_emotion" },
-  { name: "happy", label: "开心", group: "core_emotion" },
-  { name: "thinking", label: "思考", group: "core_emotion" },
-  { name: "surprised", label: "惊讶", group: "core_emotion" },
-  { name: "sad", label: "难过", group: "core_emotion" },
-  { name: "angry", label: "生气", group: "core_emotion" },
-] as const;
-
-const welcomeSpriteState = { name: "welcome", label: "欢迎动画", group: "system_optional_emotion" } as const;
-
-const spriteStateLabels: Record<string, string> = {
-  video_call: "视频通话",
-  ...Object.fromEntries(coreSpriteStates.map((item) => [item.name, item.label])),
-  welcome: "欢迎动画",
-  working: "执行中",
-  reviewing: "检查中",
-  moving_right: "向右移动",
-  moving_left: "向左移动",
-};
-
-const fixedSpriteStates = [...coreSpriteStates, welcomeSpriteState] as const;
-
-function spriteStateName(sprite: Record<string, unknown>, index: number): string {
-  return String(sprite.state_name || sprite.source_state || `custom_${index + 1}`).trim();
-}
-
-function spriteStateLabel(stateName: string): string {
-  return spriteStateLabels[stateName] || stateName || "未命名状态";
-}
-
-function renderSpriteEditor(sprite: Record<string, unknown>, index: number, fixed = false): string {
-  const stateName = spriteStateName(sprite, index);
-  const stateLabel = spriteStateLabel(stateName);
-  const frameCount = Array.isArray(sprite.frames) && sprite.frames.length ? sprite.frames.length : Number(sprite.frame_count || 1);
-  const sourcePath = String((Array.isArray(sprite.frames) && sprite.frames[0]) || sprite.path || sprite.spritesheet_path || "");
-  const video = isVideoSprite({ path: sourcePath });
-  const sourceName = sourcePath.split(/[\\/]/).pop() || "未命名素材";
-  const fixedMeta = fixedSpriteStates.find((item) => item.name === stateName);
-  const timingField = video ? `<input id="sprite-interval-${index}" type="hidden" value="120">`
-    : field(`sprite-interval-${index}`, "帧间隔 ms", sprite.frame_interval_ms || 120, { type: "number", min: 20, max: 10000, step: 10 });
-  const stateGroup = String(sprite.state_group || fixedMeta?.group || "custom");
-  return `<article class="sprite-editor" data-sprite-editor="${index}">
-    <div class="sprite-preview">
-      ${video ? `<video class="is-hidden" data-sprite-preview="${index}" muted playsinline preload="auto" aria-label="${esc(stateLabel)}预览"></video>` : `<img class="is-hidden" data-sprite-preview="${index}" alt="${esc(stateLabel)}预览">`}
-      <span class="sprite-preview-empty" data-sprite-preview-empty="${index}">正在加载预览</span>
-      <span class="sprite-frame-badge">${esc(video ? "视频" : frameCount > 1 ? `${frameCount} 帧` : "静态")}</span>
-    </div>
-    <div class="sprite-editor-content">
-      <div class="sprite-editor-heading"><div><strong>${esc(stateLabel)}</strong><small>${esc(stateName)}</small></div><span>${esc(sourceName)}</span></div>
-      ${fixed
-        ? `<input id="sprite-state-${index}" type="hidden" value="${esc(stateName)}"><input id="sprite-group-${index}" type="hidden" value="${esc(stateGroup)}"><div class="sprite-editor-fields fixed-state-fields">${timingField}</div>`
-        : `<div class="sprite-editor-fields">${field(`sprite-state-${index}`, "状态名", stateName)}${selectField(`sprite-group-${index}`, "状态分组", stateGroup, [["system_optional_emotion", "系统情绪"], ["custom", "自定义"], ["mouse_event", "鼠标事件"]])}${field(`sprite-interval-${index}`, "帧间隔 ms", sprite.frame_interval_ms || 120, { type: "number", min: 20, max: 10000, step: 10 })}</div>`}
-      <div class="inline-actions sprite-editor-actions">
-        <button class="text-button" data-save-sprite="${index}" type="button"><i data-lucide="save"></i><span>保存设置</span></button>
-        <button class="text-button" data-replace-sprite="${index}" type="button"><i data-lucide="replace"></i><span>替换素材</span></button>
-        <button class="danger-button" data-delete-sprite="${index}" type="button"><i data-lucide="trash-2"></i><span>清空</span></button>
-      </div>
-    </div>
-  </article>`;
-}
-
-function renderEmptySpriteSlot(name: string, label: string, group: string): string {
-  return `<article class="sprite-editor sprite-editor-empty" data-empty-sprite-state="${esc(name)}">
-    <div class="sprite-preview">
-      <span class="sprite-preview-empty">未设置</span>
-      <span class="sprite-frame-badge">空</span>
-    </div>
-    <div class="sprite-editor-content">
-      <div class="sprite-editor-heading"><div><strong>${esc(label)}</strong><small>${esc(name)}</small></div><span>当前角色未配置</span></div>
-      <p class="sprite-empty-copy">可以添加静态图片、图片序列、GIF 或视频。</p>
-      <div class="inline-actions sprite-editor-actions">
-        <button class="text-button" data-add-sprite-state="${esc(name)}" data-state-group="${esc(group)}" type="button"><i data-lucide="plus"></i><span>添加素材</span></button>
-      </div>
-    </div>
-  </article>`;
-}
-
-function renderSpriteSettings(character: BackendCharacter): string {
-  const fixedIndexes = new Set<number>();
-  const renderFixedSlots = (states: readonly { name: string; label: string; group: string }[]) => states.map((fixedState) => {
-    const index = character.sprites.findIndex((sprite, spriteIndex) => !fixedIndexes.has(spriteIndex) && spriteStateName(sprite, spriteIndex) === fixedState.name);
-    if (index < 0) return renderEmptySpriteSlot(fixedState.name, fixedState.label, fixedState.group);
-    fixedIndexes.add(index);
-    return renderSpriteEditor(character.sprites[index], index, true);
-  }).join("");
-  const coreSlots = renderFixedSlots(coreSpriteStates);
-  const welcomeSlot = renderFixedSlots([welcomeSpriteState]);
-  const extraSprites = character.sprites
-    .map((sprite, index) => ({ sprite, index }))
-    .filter(({ sprite, index }) => !fixedIndexes.has(index) && spriteStateName(sprite, index) !== "video_call")
-    .map(({ sprite, index }) => renderSpriteEditor(sprite, index))
-    .join("");
-  return pageHeader("状态立绘", "按角色管理情绪状态、静态图与动画资源") + `
-    <div class="form-section"><h3>当前角色</h3><div class="field-grid">
-      ${selectField("sprite-character-select", "角色", character.name, state.config.characters.map((item) => [item.name, item.name]))}
-    </div></div>
-    <div class="form-section"><h3>核心情绪</h3><div class="sprite-editor-list">${coreSlots}</div></div>
-    <div class="form-section"><h3>欢迎动画</h3><div class="sprite-editor-list">${welcomeSlot}</div></div>
-    ${extraSprites ? `<div class="form-section"><h3>其他状态</h3><div class="sprite-editor-list">${extraSprites}</div></div>` : ""}
-    <div class="form-section"><h3>新增自定义状态</h3><div class="field-grid">
-      <input id="character-state-name" type="hidden" value="custom">
-      ${field("character-custom-state", "状态名", "", { placeholder: "例如：sleeping" })}
-      ${selectField("character-state-group", "状态分组", "custom", [["system_optional_emotion", "系统情绪"], ["custom", "自定义"], ["mouse_event", "鼠标事件"]])}
-      ${field("character-frame-interval", "帧间隔 ms", 120, { type: "number", min: 20, max: 10000, step: 10 })}
-    </div><div class="inline-actions">
-      <button id="character-import-state" class="text-button" type="button"><i data-lucide="film"></i><span>添加自定义素材</span></button>
-      <button id="character-upload" class="text-button" type="button"><i data-lucide="images"></i><span>批量添加静态立绘</span></button>
-    </div></div>
-    <input id="character-emotions" type="hidden" value="${esc(character.emotion_tags)}">`;
-}
-
 function renderCharacterPages(character = activeCharacter()): void {
-  $("[data-page='character']").innerHTML = renderCharacterSettings(character);
-  $("[data-page='sprites']").innerHTML = renderSpriteSettings(character);
+  $("[data-page='character']").innerHTML = renderCharacterSettings(state, character);
+  $("[data-page='sprites']").innerHTML = renderSpriteSettings(state, character);
   const callIndex = character.sprites.findIndex((sprite) => sprite.state_name === "video_call");
   $("[data-page='video-call']").innerHTML = pageHeader("视频通话", "") + `
     <div class="form-section"><div class="field-grid">
@@ -888,31 +398,6 @@ async function replaceCharacterSprite(index: number): Promise<void> {
   }
 }
 
-function renderMemorySettings(): string {
-  return pageHeader("记忆", `与 ${state.active_character_name} 隔离保存的长期内容`) + `
-    <div class="form-section"><h3>角色记忆</h3>
-      ${field("memory-character", "MEMORY.md", state.memory.character.join("\n---\n"), { type: "textarea", wide: true, rows: 10, placeholder: "暂无角色记忆" })}
-    </div>
-    <div class="form-section"><h3>你的档案</h3>
-      ${field("memory-user", "长期印象", state.memory.user.join("\n---\n"), { type: "textarea", wide: true, rows: 8, placeholder: "暂时还没有记录" })}
-    </div>`;
-}
-
-function renderStorageSettings(): string {
-  return pageHeader("存储", "角色资产、长期记忆与旧版数据导入") + `
-    <div class="form-section"><h3>位置</h3><div class="field-grid">
-      ${pathField("storage-memory", "角色记忆目录", state.storage?.character_memory_dir || "", "directory", true, "使用默认记忆目录")}
-      ${pathField("storage-assets", "角色资产目录", state.storage?.character_assets_dir || "", "directory", true, "使用默认角色资产目录")}
-      ${field("storage-root", "Electron 数据目录", state.paths.root || "", { wide: true })}
-    </div>
-      ${switchRow("storage-copy-memory", "保存时复制现有角色记忆到新目录", "", true)}
-      ${switchRow("storage-copy-assets", "保存时复制现有角色动画素材到新目录，并更新角色配置里的素材路径", "", true)}
-    </div>
-    <div class="form-section"><h3>旧版 here</h3><div class="inline-actions">
-      <button id="import-legacy" class="text-button" type="button"><i data-lucide="import"></i><span>导入旧版数据</span></button>
-    </div></div>`;
-}
-
 function setSettingsSectionVisible(selector: string, visible: boolean): void {
   document.querySelector<HTMLElement>(selector)?.classList.toggle("is-hidden", !visible);
 }
@@ -921,23 +406,24 @@ function bindDynamicSettings(): void {
   const ttsSelect = document.querySelector<HTMLSelectElement>("#voice-tts-provider");
   ttsSelect?.addEventListener("change", () => {
     setSettingsSectionVisible("#tts-provider-settings", ttsSelect.value !== "none");
-    $("#tts-schema").innerHTML = schemaFields("tts", ttsSelect.value, state.config.api_config.tts_extra_configs[ttsSelect.value] || {});
+    $("#tts-schema").innerHTML = schemaFields(state, "tts", ttsSelect.value, state.config.api_config.tts_extra_configs[ttsSelect.value] || {});
     refreshIcons();
     applyLocale($("#tts-provider-settings"));
   });
   const asrSelect = document.querySelector<HTMLSelectElement>("#voice-asr-provider");
   asrSelect?.addEventListener("change", () => {
-    $("#asr-schema").innerHTML = schemaFields("asr", asrSelect.value, state.config.api_config.asr_extra_configs[asrSelect.value] || {});
+    $("#asr-schema").innerHTML = schemaFields(state, "asr", asrSelect.value, state.config.api_config.asr_extra_configs[asrSelect.value] || {});
     $("#asr-whisper-fields").classList.toggle("is-hidden", asrSelect.value === "vosk");
     refreshIcons();
     applyLocale($("#asr-schema"));
   });
   const t2iSelect = document.querySelector<HTMLSelectElement>("#image-provider");
   t2iSelect?.addEventListener("change", () => {
-    $("#t2i-schema").innerHTML = schemaFields("t2i", t2iSelect.value, state.config.api_config.t2i_extra_configs[t2iSelect.value] || {});
+    $("#t2i-schema").innerHTML = schemaFields(state, "t2i", t2iSelect.value, state.config.api_config.t2i_extra_configs[t2iSelect.value] || {});
     const selfieSelect = document.querySelector<HTMLSelectElement>("#image-selfie-provider");
     if (selfieSelect?.value === "") {
       $("#selfie-schema").innerHTML = schemaFields(
+        state,
         "t2i",
         t2iSelect.value,
         state.config.api_config.t2i_extra_configs[t2iSelect.value] || {},
@@ -953,6 +439,7 @@ function bindDynamicSettings(): void {
   selfieSelect?.addEventListener("change", () => {
     const provider = selfieSelect.value || document.querySelector<HTMLSelectElement>("#image-provider")?.value || "image-api";
     $("#selfie-schema").innerHTML = schemaFields(
+      state,
       "t2i",
       provider,
       state.config.api_config.t2i_extra_configs[provider] || {},
