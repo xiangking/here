@@ -11,6 +11,7 @@ import type {
 } from "../shared/backend-types";
 import type { Attachment, HereDesktopApi } from "../shared/types";
 import { createMockApi } from "./mock-api";
+import { isVideoSprite, selectDisplaySprite } from "./sprite-media";
 import { applyLocale, observeLocale, setLocale } from "./i18n";
 import {
   normalizeThemeColor,
@@ -41,11 +42,7 @@ const callPixelIcons = {
   lock: { width: 6, height: 6, rows: "033300/070220/386750/697882/694682/698882", className: "lock" },
   participants: { width: 12, height: 10, rows: "000005bc8000/00003cffe600/05004defe700/3c303beed500/8c84049b7200/4b3200230000/070049ddb720/0029efffffc3/004deeeeeee8/002788888874", className: "participants" },
   more: { width: 4, height: 12, rows: "0020/07c6/08e6/0230/0230/08b5/08d5/0020/0020/08d5/28b5/0230", className: "more" },
-  "switch-camera": { width: 16, height: 16, rows: "0000000000000000/0000034544000000/00002bdedd600000/0377aeffffd88720/2ceeffeddffeee90/3effee6236cfffa0/3efeacaaa54effa0/2efb35cefa29ef90/2eea23bfe904df90/2efe74effc28ef90/2effb05a85beff90/2effe84337efff90/2dfffedcceeffe80/06aa999999999830/0000000000000000/0000000000000000", className: "switch-camera" },
-  "video-off": { width: 18, height: 16, rows: "000000000000000000/000000000000000000/005000000000000000/02b805abbb80000000/02ce828effc306b000/03cfe729efd58ed000/03cffd728eedefd000/02bfffd727dfffd000/02bffffd807dffd000/02cffffee807efd000/02cffffffe707dc000/02adddddddc6067000/00355555556a500000/000000000003300000/000000000000000000/000000000000000000", className: "video-off" },
   hangup: { width: 17, height: 12, rows: "00000000000000000/00000000000000000/000369aba97420000/05adeeeeeeedc8300/8deeda999aceeec50/dfee9300024ceeec2/eeee8000000beeed3/ceeb40000006ceea0/58420000000005840/00000000000000000/00000000000000000/00000000000000000", className: "hangup" },
-  "mic-off": { width: 16, height: 18, rows: "0000000000000000/0000000000000000/0000036620000000/03302aeea0000000/05b33cffd2000000/006b38efd2000000/0006938ed2000000/00007937b3200000/00433c9243640000/00782aea32940000/003b2368b4300000/0006a523da300000/000059ca8a930000/000000a402780000/0000009300040000/0000002000000000/0000000000000000/0000000000000000", className: "mic-off" },
-  speaker: { width: 16, height: 16, rows: "0000000000000000/0000000000000000/0000000362000000/00002824bb400000/0002bd202ad20000/035bee3202d80000/8eeffe37707b0000/affffd38a24b0000/9efffd38a05b0000/4abefd3760a90000/0005dd3005e40000/00005a228c900000/00000205a6000000/0000000020000000/0000000000000000/0000000000000000", className: "speaker" },
 } as const;
 type CallPixelIconName = keyof typeof callPixelIcons;
 
@@ -80,7 +77,13 @@ const refreshIcons = (): void => {
 };
 
 const callIconMarkup = (icon: string): string => {
-  const pixelName = icon === "volume-2" ? "speaker" : icon;
+  if (icon === "video" || icon === "video-off") {
+    return '<span class="call-video-icon" aria-hidden="true"><i data-lucide="video"></i></span>';
+  }
+  if (icon === "mic" || icon === "mic-off") {
+    return '<span class="call-microphone-icon" aria-hidden="true"><i data-lucide="mic"></i></span>';
+  }
+  const pixelName = icon;
   if (pixelName in callPixelIcons) {
     const spec = callPixelIcons[pixelName as CallPixelIconName];
     return `<svg class="call-glyph call-pixel-glyph call-glyph-${spec.className}" data-call-pixel-icon="${pixelName}" aria-hidden="true"></svg>`;
@@ -97,7 +100,7 @@ const updateCallControl = (control: HTMLButtonElement, isOff: boolean): void => 
       : kind === "speaker" ? (isOff ? "volume-x" : "volume-2")
         : "switch-camera";
   control.innerHTML = callIconMarkup(icon);
-  control.title = kind === "video" ? (isOff ? "启用角色动画" : "暂停角色动画")
+  control.title = kind === "video" ? (isOff ? "开启视频通话" : "关闭视频通话")
     : kind === "microphone" ? (isOff ? "取消静音" : "静音")
       : kind === "speaker" ? (isOff ? "打开扬声器" : "关闭扬声器")
         : "切换摄像头";
@@ -116,7 +119,8 @@ let asrStarting = false;
 let asrOriginalText = "";
 const asrPauseGate = new PauseReasonGate<"reply" | "audio">();
 let audioEnabled = true;
-let characterVideoEnabled = false;
+// Start in the dedicated video_call state when the character provides one.
+let characterVideoEnabled = true;
 let currentAudio: HTMLAudioElement | null = null;
 let finishCurrentAudio: (() => void) | null = null;
 const audioQueue: string[] = [];
@@ -147,6 +151,8 @@ const app = $("#app") as HTMLElement;
 const stage = $("#stage") as HTMLElement;
 const spriteImage = $("#sprite-image") as HTMLImageElement;
 const spriteCanvas = $("#sprite-canvas") as HTMLCanvasElement;
+const spriteVideo = $("#sprite-video") as HTMLVideoElement;
+let spriteVideoReady: Promise<void> | null = null;
 const spriteWrap = $("#sprite-wrap") as HTMLElement;
 const dialogCaption = $("#dialog-caption") as HTMLElement;
 const dialogPanel = $("#dialog-panel") as HTMLElement;
@@ -384,7 +390,7 @@ function renderSettings(): void {
       ${pathField("general-bgm", "BGM 路径", system.bgm_path, "bgm", true, "未设置")}
       ${field("general-volume", "BGM 音量", system.music_volumn, { type: "number", min: 0, max: 100, step: 1 })}
       ${field("general-theme", "主题色", system.theme_color)}
-      ${field("general-chat-theme-path", "聊天主题 JSON", system.chat_ui_theme_path, { wide: true, placeholder: "留空使用数据目录 config/chat_ui_theme.json" })}
+      ${field("general-chat-theme-path", "聊天主题文件", system.chat_ui_theme_path, { wide: true, placeholder: "留空使用默认主题" })}
     </div></div>`;
 
   $("[data-page='agent']").innerHTML = pageHeader("Agent", "Hermes 与内置 OpenAI-compatible Agent") + `
@@ -398,8 +404,8 @@ function renderSettings(): void {
     </div><div class="inline-actions"><button id="agent-fetch-models" class="text-button${apiConfig.agent_backend === "hermes-agent" ? " is-hidden" : ""}" type="button"><i data-lucide="refresh-cw"></i><span>获取模型列表</span></button><button id="hermes-install" class="text-button${apiConfig.agent_backend === "internal-agent" ? " is-hidden" : ""}" type="button"><i data-lucide="package-plus"></i><span>安装 Hermes Agent</span></button><select id="agent-model-list" class="inline-select is-hidden"></select></div></div>
     <div class="form-section"><h3>上下文</h3>
       ${switchRow("agent-stream", "流式响应", "接收模型的流式输出", apiConfig.hermes_streaming)}
-      ${switchRow("agent-memory", "角色内部记忆", "按角色隔离 SOUL 与长期记忆", apiConfig.hermes_use_internal_memory)}
-      ${switchRow("agent-native-memory", "隔离 Hermes 原生记忆", "不读取本机其他 Hermes profile", apiConfig.hermes_disable_native_memory)}
+      ${switchRow("agent-memory", "角色记忆", "按角色分别保存长期记忆", apiConfig.hermes_use_internal_memory)}
+      ${switchRow("agent-native-memory", "隔离其他应用记忆", "不读取本机其他应用的记忆数据", apiConfig.hermes_disable_native_memory)}
     </div>`;
 
   $("[data-page='tts']").innerHTML = pageHeader("TTS", "语音合成与播放") + `
@@ -432,7 +438,7 @@ function renderSettings(): void {
     <div class="form-section"><h3>自拍</h3><div class="field-grid">
       ${field("image-selfie-width", "图片宽度", Number(apiConfig.selfie_extra_configs.width) || 1024, { type: "number", min: 256, max: 4096, step: 64 })}
       ${field("image-selfie-height", "图片高度", Number(apiConfig.selfie_extra_configs.height) || 1024, { type: "number", min: 256, max: 4096, step: 64 })}
-      ${field("image-selfie-extra", "自拍通用参数 JSON", JSON.stringify(apiConfig.selfie_extra_configs, null, 2), { type: "textarea", wide: true, rows: 5, placeholder: "可填写尺寸、参考图等通用参数" })}
+      <input id="image-selfie-extra" type="hidden" value="${esc(JSON.stringify(apiConfig.selfie_extra_configs))}">
     </div><div id="selfie-schema">${schemaFields("t2i", selfieProvider, apiConfig.t2i_extra_configs[selfieProvider] || {}, "selfie-t2i")}</div></div>
     <div class="form-section"><h3>桌面立绘</h3>
       ${switchRow("image-realtime", "实时生成立绘", "按情绪与场景调用生图服务", system.sprite_realtime_enabled)}
@@ -566,9 +572,9 @@ function renderCharacterProfileEditor(character: BackendCharacter): string {
       ${profileField("character-profile-gender", "性别/身份", profileText(identity.gender, "女性"))}
       ${profileField("character-profile-occupation", "职业", profileText(identity.occupation, "自学中的程序员"))}
       ${profileField("character-profile-life-status", "生活状态", profileText(identity.life_status, "独居"))}
-      ${profileField("character-profile-relationship", "与用户关系", profileText(identity.relationship_to_user, "暧昧陪伴者"))}
+      ${profileField("character-profile-relationship", "与你的关系", profileText(identity.relationship_to_user, "暧昧陪伴者"))}
       ${profileField("character-profile-first-person", "第一人称", profileText(identity.first_person, "我"))}
-      ${profileField("character-profile-user-address", "称呼用户", profileText(identity.user_address, "你"))}
+      ${profileField("character-profile-user-address", "称呼你", profileText(identity.user_address, "你"))}
     </div></div>
     <div class="profile-subsection"><h4>性格与 MBTI</h4>
       <input id="character-profile-mbti" type="hidden" value="${esc(mbti)}">
@@ -661,8 +667,8 @@ function renderCharacterSettings(character: BackendCharacter): string {
       ${pathField("character-reference", "视觉参考图", character.visual_reference_image, "reference", true, "未设置")}
       ${field("character-visual", "视觉身份", character.visual_identity, { type: "textarea", wide: true, rows: 4, readOnly: locked })}
       ${field("character-setting", "角色设定", character.character_setting, { type: "textarea", wide: true, rows: 8, readOnly: locked })}
-      ${field("character-profile", "结构化档案 JSON", JSON.stringify(character.character_profile, null, 2), { type: "textarea", wide: true, rows: 10, readOnly: locked })}
-      ${field("character-pronunciation", "发音映射 JSON", JSON.stringify(character.pronunciation_map, null, 2), { type: "textarea", wide: true, rows: 4 })}
+      <input id="character-profile" type="hidden" value="${esc(JSON.stringify(character.character_profile))}">
+      <input id="character-pronunciation" type="hidden" value="${esc(JSON.stringify(character.pronunciation_map))}">
     </div><div class="inline-actions">
       <button id="character-new" class="text-button" type="button"><i data-lucide="user-plus"></i><span>新建</span></button>
       <button id="character-delete" class="danger-button" type="button"><i data-lucide="trash-2"></i><span>删除</span></button>
@@ -681,6 +687,7 @@ const coreSpriteStates = [
 const welcomeSpriteState = { name: "welcome", label: "欢迎动画", group: "system_optional_emotion" } as const;
 
 const spriteStateLabels: Record<string, string> = {
+  video_call: "视频通话",
   ...Object.fromEntries(coreSpriteStates.map((item) => [item.name, item.label])),
   welcome: "欢迎动画",
   working: "执行中",
@@ -704,19 +711,22 @@ function renderSpriteEditor(sprite: Record<string, unknown>, index: number, fixe
   const stateLabel = spriteStateLabel(stateName);
   const frameCount = Array.isArray(sprite.frames) && sprite.frames.length ? sprite.frames.length : Number(sprite.frame_count || 1);
   const sourcePath = String((Array.isArray(sprite.frames) && sprite.frames[0]) || sprite.path || sprite.spritesheet_path || "");
+  const video = isVideoSprite({ path: sourcePath });
   const sourceName = sourcePath.split(/[\\/]/).pop() || "未命名素材";
   const fixedMeta = fixedSpriteStates.find((item) => item.name === stateName);
+  const timingField = video ? `<input id="sprite-interval-${index}" type="hidden" value="120">`
+    : field(`sprite-interval-${index}`, "帧间隔 ms", sprite.frame_interval_ms || 120, { type: "number", min: 20, max: 10000, step: 10 });
   const stateGroup = String(sprite.state_group || fixedMeta?.group || "custom");
   return `<article class="sprite-editor" data-sprite-editor="${index}">
     <div class="sprite-preview">
-      <img class="is-hidden" data-sprite-preview="${index}" alt="${esc(stateLabel)}预览">
+      ${video ? `<video class="is-hidden" data-sprite-preview="${index}" muted playsinline preload="auto" aria-label="${esc(stateLabel)}预览"></video>` : `<img class="is-hidden" data-sprite-preview="${index}" alt="${esc(stateLabel)}预览">`}
       <span class="sprite-preview-empty" data-sprite-preview-empty="${index}">正在加载预览</span>
-      <span class="sprite-frame-badge">${esc(frameCount > 1 ? `${frameCount} 帧` : "静态")}</span>
+      <span class="sprite-frame-badge">${esc(video ? "视频" : frameCount > 1 ? `${frameCount} 帧` : "静态")}</span>
     </div>
     <div class="sprite-editor-content">
       <div class="sprite-editor-heading"><div><strong>${esc(stateLabel)}</strong><small>${esc(stateName)}</small></div><span>${esc(sourceName)}</span></div>
       ${fixed
-        ? `<input id="sprite-state-${index}" type="hidden" value="${esc(stateName)}"><input id="sprite-group-${index}" type="hidden" value="${esc(stateGroup)}"><div class="sprite-editor-fields fixed-state-fields">${field(`sprite-interval-${index}`, "帧间隔 ms", sprite.frame_interval_ms || 120, { type: "number", min: 20, max: 10000, step: 10 })}</div>`
+        ? `<input id="sprite-state-${index}" type="hidden" value="${esc(stateName)}"><input id="sprite-group-${index}" type="hidden" value="${esc(stateGroup)}"><div class="sprite-editor-fields fixed-state-fields">${timingField}</div>`
         : `<div class="sprite-editor-fields">${field(`sprite-state-${index}`, "状态名", stateName)}${selectField(`sprite-group-${index}`, "状态分组", stateGroup, [["system_optional_emotion", "系统情绪"], ["custom", "自定义"], ["mouse_event", "鼠标事件"]])}${field(`sprite-interval-${index}`, "帧间隔 ms", sprite.frame_interval_ms || 120, { type: "number", min: 20, max: 10000, step: 10 })}</div>`}
       <div class="inline-actions sprite-editor-actions">
         <button class="text-button" data-save-sprite="${index}" type="button"><i data-lucide="save"></i><span>保存设置</span></button>
@@ -755,7 +765,7 @@ function renderSpriteSettings(character: BackendCharacter): string {
   const welcomeSlot = renderFixedSlots([welcomeSpriteState]);
   const extraSprites = character.sprites
     .map((sprite, index) => ({ sprite, index }))
-    .filter(({ index }) => !fixedIndexes.has(index))
+    .filter(({ sprite, index }) => !fixedIndexes.has(index) && spriteStateName(sprite, index) !== "video_call")
     .map(({ sprite, index }) => renderSpriteEditor(sprite, index))
     .join("");
   return pageHeader("状态立绘", "按角色管理情绪状态、静态图与动画资源") + `
@@ -774,14 +784,21 @@ function renderSpriteSettings(character: BackendCharacter): string {
       <button id="character-import-state" class="text-button" type="button"><i data-lucide="film"></i><span>添加自定义素材</span></button>
       <button id="character-upload" class="text-button" type="button"><i data-lucide="images"></i><span>批量添加静态立绘</span></button>
     </div></div>
-    <div class="form-section"><h3>状态匹配规则</h3>
-      ${field("character-emotions", "情绪与立绘标签", character.emotion_tags, { type: "textarea", wide: true, rows: 6 })}
-    </div>`;
+    <input id="character-emotions" type="hidden" value="${esc(character.emotion_tags)}">`;
 }
 
 function renderCharacterPages(character = activeCharacter()): void {
   $("[data-page='character']").innerHTML = renderCharacterSettings(character);
   $("[data-page='sprites']").innerHTML = renderSpriteSettings(character);
+  const callIndex = character.sprites.findIndex((sprite) => sprite.state_name === "video_call");
+  $("[data-page='video-call']").innerHTML = pageHeader("视频通话", "") + `
+    <div class="form-section"><div class="field-grid">
+      ${selectField("video-call-character-select", "角色", character.name, state.config.characters.map((item) => [item.name, item.name]))}
+    </div></div>
+    <div class="form-section"><h3>通话视频</h3>
+      ${callIndex >= 0 ? renderSpriteEditor(character.sprites[callIndex], callIndex, true)
+        : `<div class="inline-actions"><button class="text-button" data-add-sprite-state="video_call" data-state-group="custom" type="button"><i data-lucide="video"></i><span>添加视频</span></button></div>`}
+    </div>`;
 }
 
 function spriteEditorValues(index: number): { stateName: string; stateGroup: string; frameIntervalMs: number } {
@@ -818,12 +835,12 @@ async function hydrateSpritePreviews(): Promise<void> {
     const resolved = await api.backendCall<{ sprites: ResolvedSprite[] }>("resolve_assets", { character_name: characterName });
     if (state.active_character_name !== characterName) return;
     for (const sprite of resolved.sprites || []) {
-      const image = document.querySelector<HTMLImageElement>(`[data-sprite-preview='${sprite.index}']`);
+      const image = document.querySelector<HTMLImageElement | HTMLVideoElement>(`[data-sprite-preview='${sprite.index}']`);
       const empty = document.querySelector<HTMLElement>(`[data-sprite-preview-empty='${sprite.index}']`);
       if (!image || !empty) continue;
       const previewPath = sprite.frames?.[0] || sprite.path || sprite.spritesheet_path || "";
       if (!previewPath) { empty.textContent = "无可预览素材"; continue; }
-      image.addEventListener("load", () => {
+      image.addEventListener(image instanceof HTMLVideoElement ? "loadeddata" : "load", () => {
         image.classList.remove("is-hidden");
         empty.classList.add("is-hidden");
       }, { once: true });
@@ -876,8 +893,8 @@ function renderMemorySettings(): string {
     <div class="form-section"><h3>角色记忆</h3>
       ${field("memory-character", "MEMORY.md", state.memory.character.join("\n---\n"), { type: "textarea", wide: true, rows: 10, placeholder: "暂无角色记忆" })}
     </div>
-    <div class="form-section"><h3>用户档案</h3>
-      ${field("memory-user", "USER.md", state.memory.user.join("\n---\n"), { type: "textarea", wide: true, rows: 8, placeholder: "暂无用户档案" })}
+    <div class="form-section"><h3>你的档案</h3>
+      ${field("memory-user", "长期印象", state.memory.user.join("\n---\n"), { type: "textarea", wide: true, rows: 8, placeholder: "暂时还没有记录" })}
     </div>`;
 }
 
@@ -987,7 +1004,7 @@ function bindDynamicSettings(): void {
 }
 
 function bindCharacterSettings(): void {
-  document.querySelectorAll<HTMLSelectElement>("#character-select, #sprite-character-select").forEach((select) => select.addEventListener("change", (event) => {
+  document.querySelectorAll<HTMLSelectElement>("#character-select, #sprite-character-select, #video-call-character-select").forEach((select) => select.addEventListener("change", (event) => {
     const selectedName = (event.target as HTMLSelectElement).value;
     try {
       commitCharacterDraft();
@@ -1847,8 +1864,9 @@ function applyDialogLayout(): void {
     && spriteImage.complete
     && spriteImage.naturalWidth > 0
     && spriteImage.naturalHeight > 0;
+  const videoReady = !spriteVideo.classList.contains("is-hidden") && spriteVideo.videoWidth > 0;
   const spriteElement = !spriteWrap.classList.contains("is-hidden")
-    ? (canvasReady ? spriteCanvas : imageReady ? spriteImage : null)
+    ? (videoReady ? spriteVideo : canvasReady ? spriteCanvas : imageReady ? spriteImage : null)
     : null;
   const spriteRect = spriteElement?.getBoundingClientRect();
   const spriteTop = spriteRect ? Math.max(0, spriteRect.top - stageRect.top) : 0;
@@ -2018,9 +2036,15 @@ function updateSpriteMediaMode(source: CanvasImageSource, sourceWidth: number, s
 
 async function renderSprite(emotion = "neutral", assetId?: string | number | null): Promise<void> {
   const token = ++spriteLoadToken;
+  spriteVideo.pause();
   if (spriteTimer !== null) window.clearInterval(spriteTimer);
   spriteTimer = null;
-  if (state.config.system_config.sprite_realtime_enabled) {
+  const hasVideoCall = activeCharacter().sprites.some((sprite) => sprite.state_name === "video_call");
+  const callControl = $("[data-call-toggle='video']") as HTMLButtonElement;
+  callControl.disabled = !hasVideoCall;
+  updateCallControl(callControl, !hasVideoCall || !characterVideoEnabled);
+  if (!hasVideoCall) callControl.title = "未设置通话视频";
+  if (state.config.system_config.sprite_realtime_enabled && !hasVideoCall) {
     try {
       const generated = await api.backendCall<{ path: string; scale?: number }>("generate_realtime_sprite", {
         character_name: state.active_character_name,
@@ -2038,15 +2062,20 @@ async function renderSprite(emotion = "neutral", assetId?: string | number | nul
   }
   const resolved = await api.backendCall<{ name: string; scale: number; sprites: ResolvedSprite[] }>("resolve_assets", { character_name: state.active_character_name });
   if (token !== spriteLoadToken || !resolved.sprites.length) return;
-  const requestedIndex = Number(assetId) - 1;
-  const sprite = Number.isInteger(requestedIndex) && requestedIndex >= 0 && resolved.sprites[requestedIndex]
-    ? resolved.sprites[requestedIndex]
-    : resolved.sprites.find((item) => item.state_name === emotion)
-    || resolved.sprites.find((item) => item.state_name === "neutral")
-    || resolved.sprites[0];
+  const sprite = selectDisplaySprite(resolved.sprites, characterVideoEnabled, emotion, assetId);
+  if (!sprite) { spriteVideo.classList.add("is-hidden"); return; }
   const scale = Math.max(0.15, Math.min(3, Number(resolved.scale || 1)));
   spriteImage.style.transform = "none";
   spriteCanvas.style.transform = "none";
+  if (isVideoSprite(sprite)) {
+    const videoUrl = spriteVideo.dataset.assetPath === sprite.path && spriteVideoReady
+      ? spriteVideo.src : await localUrl(sprite.path);
+    if (token !== spriteLoadToken) return;
+    spriteVideo.dataset.assetPath = sprite.path;
+    await renderSpriteVideo(videoUrl, token, scale);
+    return;
+  }
+  spriteVideo.classList.add("is-hidden");
   if (sprite.spritesheet_path && sprite.frame_width && sprite.frame_height) {
     await renderSpritesheet(sprite, token, scale);
     return;
@@ -2079,7 +2108,68 @@ async function renderSprite(emotion = "neutral", assetId?: string | number | nul
   }
 }
 
+function updateSpriteVideoPlayback(): void {
+  if (!characterVideoEnabled) {
+    spriteVideo.pause();
+    return;
+  }
+  void spriteVideo.play().catch((error) => {
+    if (error instanceof DOMException && error.name === "AbortError") return;
+    characterVideoEnabled = false;
+    updateCallControl($("[data-call-toggle='video']") as HTMLButtonElement, true);
+    console.error("Unable to play character video", error);
+    void renderSprite("neutral");
+  });
+}
+
+async function renderSpriteVideo(url: string, token: number, scale: number): Promise<void> {
+  if (spriteVideo.src !== new URL(url, document.baseURI).href) spriteVideoReady = null;
+  spriteVideoReady ??= new Promise<void>((resolve, reject) => {
+    const finish = (error?: Error): void => {
+      window.clearTimeout(timeout);
+      spriteVideo.removeEventListener("loadeddata", loaded);
+      spriteVideo.removeEventListener("error", failed);
+      if (error) reject(error);
+      else resolve();
+    };
+    const loaded = (): void => finish();
+    const failed = (): void => finish(new Error("Unable to load character video"));
+    const timeout = window.setTimeout(failed, 15_000);
+    spriteVideo.addEventListener("loadeddata", loaded, { once: true });
+    spriteVideo.addEventListener("error", failed, { once: true });
+    spriteVideo.muted = true;
+    spriteVideo.src = url;
+    spriteVideo.load();
+  }).catch((error) => {
+    spriteVideoReady = null;
+    throw error;
+  });
+  try {
+    await spriteVideoReady;
+  } catch (error) {
+    if (token !== spriteLoadToken) return;
+    console.error("Unable to load character video; returning to neutral", error);
+    characterVideoEnabled = false;
+    updateCallControl($("[data-call-toggle='video']") as HTMLButtonElement, true);
+    await renderSprite("neutral");
+    return;
+  }
+  if (token !== spriteLoadToken) return;
+  const ratio = Math.min(scale, spriteWrap.clientWidth / spriteVideo.videoWidth,
+    spriteWrap.clientHeight / spriteVideo.videoHeight);
+  spriteVideo.style.width = `${Math.round(spriteVideo.videoWidth * ratio)}px`;
+  spriteVideo.style.height = `${Math.round(spriteVideo.videoHeight * ratio)}px`;
+  spriteWrap.classList.remove("is-cutout");
+  spriteImage.classList.add("is-hidden");
+  spriteCanvas.classList.add("is-hidden");
+  spriteVideo.classList.remove("is-hidden");
+  updateSpriteVideoPlayback();
+  applyDialogLayout();
+}
+
 async function renderSingleSprite(path: string, scale: number, token: number): Promise<void> {
+  spriteVideo.pause();
+  spriteVideo.classList.add("is-hidden");
   spriteCanvas.classList.add("is-hidden");
   spriteImage.classList.remove("is-hidden");
   spriteImage.src = await localUrl(path);
@@ -2684,7 +2774,7 @@ function wireEvents(): void {
     const isOff = !control.classList.contains("is-off");
     if (kind === "video") {
       characterVideoEnabled = !isOff;
-      void renderSprite(currentEmotion);
+      void renderSprite("neutral");
     }
     if (kind === "speaker") {
       audioEnabled = !isOff;

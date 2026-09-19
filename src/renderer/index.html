@@ -21,6 +21,7 @@
           <div id="sprite-wrap" class="sprite-wrap call-character-media">
             <img id="sprite-image" class="sprite-image" alt="当前角色立绘" crossorigin="anonymous" draggable="false" />
             <canvas id="sprite-canvas" class="sprite-canvas is-hidden" aria-label="当前角色动画"></canvas>
+            <video id="sprite-video" class="sprite-video is-hidden" muted loop playsinline preload="auto" aria-label="当前角色动画"></video>
           </div>
           <header class="call-header">
             <button id="call-back" class="call-header-button no-drag" type="button" title="最小化">
@@ -41,19 +42,19 @@
           </header>
           <footer class="call-controls no-drag" aria-label="通话控制">
             <button class="call-control" data-call-toggle="camera" type="button" title="切换摄像头" aria-pressed="false">
-              <svg class="call-glyph call-pixel-glyph call-glyph-switch-camera" data-call-pixel-icon="switch-camera" aria-hidden="true"></svg>
+              <i data-lucide="switch-camera" aria-hidden="true"></i>
             </button>
-            <button class="call-control is-off" data-call-toggle="video" type="button" title="启用角色动画" aria-pressed="true">
-              <svg class="call-glyph call-pixel-glyph call-glyph-video-off" data-call-pixel-icon="video-off" aria-hidden="true"></svg>
+            <button class="call-control" data-call-toggle="video" type="button" title="关闭视频通话" aria-pressed="false">
+              <span class="call-video-icon" aria-hidden="true"><i data-lucide="video"></i></span>
             </button>
             <button id="call-end" class="call-control call-end" type="button" title="隐藏到后台">
               <svg class="call-glyph call-pixel-glyph call-glyph-hangup" data-call-pixel-icon="hangup" aria-hidden="true"></svg>
             </button>
             <button class="call-control is-off" data-call-toggle="microphone" type="button" title="取消静音" aria-pressed="true">
-              <svg class="call-glyph call-pixel-glyph call-glyph-mic-off" data-call-pixel-icon="mic-off" aria-hidden="true"></svg>
+              <span class="call-microphone-icon" aria-hidden="true"><i data-lucide="mic"></i></span>
             </button>
             <button class="call-control" data-call-toggle="speaker" type="button" title="关闭扬声器" aria-pressed="false">
-              <svg class="call-glyph call-pixel-glyph call-glyph-speaker" data-call-pixel-icon="speaker" aria-hidden="true"></svg>
+              <i data-lucide="volume-2" aria-hidden="true"></i>
             </button>
           </footer>
           <button id="restore-dialog" class="restore-control call-dialog-restore no-drag is-hidden" type="button" title="显示对白">
@@ -173,6 +174,9 @@
         <div class="workspace-layout">
           <nav id="settings-tabs" class="settings-tabs" aria-label="设置分类">
             <button class="tab-button is-active" data-tab="general" type="button" aria-label="通用" title="通用"><i data-lucide="sliders-horizontal"></i><span>通用</span></button>
+            <button class="tab-button" data-tab="character" type="button" aria-label="角色" title="角色"><i data-lucide="contact"></i><span>角色</span></button>
+            <button class="tab-button" data-tab="sprites" type="button" aria-label="状态立绘" title="状态立绘"><i data-lucide="layers-3"></i><span>状态立绘</span></button>
+            <button class="tab-button" data-tab="video-call" type="button" aria-label="视频通话" title="视频通话"><i data-lucide="video"></i><span>视频通话</span></button>
             <button class="tab-button" data-tab="agent" type="button" aria-label="Agent" title="Agent"><i data-lucide="sparkles"></i><span>Agent</span></button>
             <button class="tab-button" data-tab="tts" type="button" aria-label="TTS" title="TTS"><i data-lucide="volume-2"></i><span>TTS</span></button>
             <button class="tab-button" data-tab="asr" type="button" aria-label="ASR" title="ASR"><i data-lucide="mic"></i><span>ASR</span></button>
@@ -180,13 +184,14 @@
             <button class="tab-button" data-tab="companion" type="button" aria-label="同桌模式" title="同桌模式"><i data-lucide="eye"></i><span>同桌模式</span></button>
             <button class="tab-button" data-tab="proactive" type="button" aria-label="主动联系" title="主动联系"><i data-lucide="send"></i><span>主动联系</span></button>
             <button class="tab-button" data-tab="platforms" type="button" aria-label="消息平台" title="消息平台"><i data-lucide="radio-tower"></i><span>消息平台</span></button>
-            <button class="tab-button" data-tab="character" type="button" aria-label="角色" title="角色"><i data-lucide="contact"></i><span>角色</span></button>
-            <button class="tab-button" data-tab="sprites" type="button" aria-label="状态立绘" title="状态立绘"><i data-lucide="layers-3"></i><span>状态立绘</span></button>
             <button class="tab-button" data-tab="memory" type="button" aria-label="记忆" title="记忆"><i data-lucide="brain"></i><span>记忆</span></button>
             <button class="tab-button" data-tab="storage" type="button" aria-label="存储" title="存储"><i data-lucide="hard-drive"></i><span>存储</span></button>
           </nav>
           <form id="settings-form" class="settings-content">
             <section class="settings-page is-active" data-page="general"></section>
+            <section class="settings-page" data-page="character"></section>
+            <section class="settings-page" data-page="sprites"></section>
+            <section class="settings-page" data-page="video-call"></section>
             <section class="settings-page" data-page="agent"></section>
             <section class="settings-page" data-page="tts"></section>
             <section class="settings-page" data-page="asr"></section>
@@ -194,8 +199,6 @@
             <section class="settings-page" data-page="companion"></section>
             <section class="settings-page" data-page="proactive"></section>
             <section class="settings-page" data-page="platforms"></section>
-            <section class="settings-page" data-page="character"></section>
-            <section class="settings-page" data-page="sprites"></section>
             <section class="settings-page" data-page="memory"></section>
             <section class="settings-page" data-page="storage"></section>
           </form>

@@ -3,7 +3,8 @@ from __future__ import annotations
 import yaml
 from pathlib import Path
 
-from infrastructure.paths import get_app_paths, seed_defaults
+from infrastructure.paths import get_app_paths, seed_defaults, defaults_dir
+from services.config.video_call_state import migrate_here_video_call
 from typing import Dict, Any, List, Optional, Union
 from pydantic import ValidationError
 from services.config.schema import AppConfig, Character, ApiConfig, SystemConfig, Background
@@ -128,6 +129,10 @@ class ConfigManager:
             # 对于 characters.yaml，它是一个列表，直接传递给 List[Character]
             if not isinstance(characters_data, list):
                 characters_data = [] # 处理文件为空或格式错误的情况
+            video_call_marker = self._paths.config_dir / ".here-video-call-v1"
+            migrated_video_call = not video_call_marker.exists() and migrate_here_video_call(
+                characters_data, self._paths.characters_dir, defaults_dir() / "characters",
+            )
             if not isinstance(background_data, list):
                 background_data = [] # 处理文件为空或格式错误的情况
                 
@@ -144,6 +149,10 @@ class ConfigManager:
             if migrated_legacy_names:
                 self.save_characters_config()
                 self.save_system_config()
+            elif migrated_video_call:
+                self.save_characters_config()
+            if not video_call_marker.exists():
+                video_call_marker.write_text("1\n", encoding="utf-8")
             print("配置加载成功！")
         except ValidationError as e:
             self._config = None

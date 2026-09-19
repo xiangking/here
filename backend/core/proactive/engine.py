@@ -120,7 +120,7 @@ class ContactPlanEngine:
         profile = getattr(character, "character_profile", {}) or {}
         life = profile.get("life") if isinstance(profile.get("life"), dict) else {}
         style = str(life.get("proactive_style") or life.get("availability_style") or "").strip()
-        contact_style = style or "温柔、克制，像在自己的生活间隙自然想起用户。"
+        contact_style = style or "温柔、克制，像在自己的生活间隙自然想起你。"
         memories = self.memory_store.read_character_memories(str(getattr(character, "name", "") or "角色"))[-4:]
         contacts = self._candidate_contacts(life_plan, memories)
         return DailyContactPlan(
@@ -149,9 +149,9 @@ class ContactPlanEngine:
                     window_end=end,
                     source_block_id=block_id,
                     type="check_in",
-                    intent="休息时轻轻问候用户，看看用户今天过得怎么样。",
+                    intent="休息时轻轻问候你，看看你今天过得怎么样。",
                     memory_basis=memories[-2:],
-                    message_seed="问问用户上午或现在的状态，语气轻，不追问太多。",
+                    message_seed="问问你上午或现在的状态，语气轻，不追问太多。",
                     priority="medium",
                 ))
             elif any(word in activity for word in ("晚饭", "个人时间", "兴趣", "睡前")):
@@ -161,9 +161,9 @@ class ContactPlanEngine:
                     window_end=end,
                     source_block_id=block_id,
                     type="share_moment",
-                    intent="在自己的生活间隙分享一个小片刻，让用户感觉她想起了自己。",
+                    intent="在自己的生活间隙分享一个小片刻，让你感觉她想起了你。",
                     memory_basis=memories[-2:],
-                    message_seed="分享她此刻的小状态，再自然把话递给用户。",
+                    message_seed="分享她此刻的小状态，再自然把话递给你。",
                     photo_intent="把此刻的地点、心情和正在做的小事拍成一张自然自拍，作为这次分享的附图。",
                     priority="medium",
                 ))
