@@ -22,6 +22,12 @@ import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import type { Attachment, LegacyImportReport } from "../shared/types";
 import type { BackendEvent, BackendState, DesktopState } from "../shared/backend-types";
+import {
+  CHARACTER_ANIMATION_EXTENSIONS,
+  CHARACTER_ASSETS_EXTENSIONS,
+  CHARACTER_IMAGE_EXTENSIONS,
+  isLocalAssetExtension,
+} from "../shared/asset-extensions";
 import { PythonSidecar } from "./python-sidecar";
 
 protocol.registerSchemesAsPrivileged([
@@ -381,9 +387,9 @@ async function chooseFiles(kind: string): Promise<string[]> {
     background: { title: "选择背景图片", properties: ["openFile"], filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "gif"] }] },
     bgm: { title: "选择背景音乐", properties: ["openFile"], filters: [{ name: "Audio", extensions: ["mp3", "ogg", "wav", "m4a", "aac", "flac"] }] },
     reference: { title: "选择视觉参考图", properties: ["openFile"], filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp"] }] },
-    character_assets: { title: "选择立绘、逐帧图片或视频", properties: ["openFile", "multiSelections"], filters: [{ name: "Character assets", extensions: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "mp4", "mov", "m4v", "avi", "mkv", "webm"] }] },
-    character_image: { title: "选择立绘图片", properties: ["openFile"], filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "bmp"] }] },
-    character_animation: { title: "选择动画帧或视频", properties: ["openFile", "multiSelections"], filters: [{ name: "Animation frames or video", extensions: ["png", "jpg", "jpeg", "webp", "bmp", "mp4", "mov", "webm", "m4v", "avi"] }] },
+    character_assets: { title: "选择立绘、逐帧图片或视频", properties: ["openFile", "multiSelections"], filters: [{ name: "Character assets", extensions: CHARACTER_ASSETS_EXTENSIONS }] },
+    character_image: { title: "选择立绘图片", properties: ["openFile"], filters: [{ name: "Images", extensions: CHARACTER_IMAGE_EXTENSIONS }] },
+    character_animation: { title: "选择动画帧或视频", properties: ["openFile", "multiSelections"], filters: [{ name: "Animation frames or video", extensions: CHARACTER_ANIMATION_EXTENSIONS }] },
     audio: { title: "选择音频", properties: ["openFile"], filters: [{ name: "Audio", extensions: ["wav", "mp3", "ogg", "m4a", "flac"] }] },
     directory: { title: "选择目录", properties: ["openDirectory"] },
   };
@@ -500,8 +506,7 @@ function registerIpc(): void {
     return await sidecar.request("import_codex_pet", { path: choice.filePaths[0] }, 120_000);
   });
   ipcMain.handle("local-file:url", async (_event, path: string) => {
-    const allowed = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".wav", ".mp3", ".ogg", ".m4a", ".aac", ".flac"]);
-    if (!allowed.has(extname(path).toLowerCase()) || !(await stat(path)).isFile()) {
+    if (!isLocalAssetExtension(extname(path)) || !(await stat(path)).isFile()) {
       throw new Error("Unsupported local asset.");
     }
     const token = randomUUID();
