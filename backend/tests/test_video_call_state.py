@@ -45,3 +45,28 @@ class VideoCallStateTests(unittest.TestCase):
         characters = [{"name": "here", "sprites": [{"path": "/my-image.png", "state_name": "neutral"}]}]
         self.assertFalse(migrate_here_video_call(characters, self.assets, self.defaults))
         self.assertEqual(len(characters[0]["sprites"]), 1)
+
+    def test_skips_non_dict_characters_and_still_migrates_valid_here(self):
+        neutral = {"path": "defaults/characters/here/animations/neutral/frame_001.png",
+                   "state_name": "neutral"}
+        characters = [None, "not-a-dict", {"name": "here", "sprites": [neutral]}]
+        self.assertTrue(migrate_here_video_call(characters, self.assets, self.defaults))
+        self.assertEqual(characters[2]["sprites"][1]["state_name"], "video_call")
+
+    def test_characters_without_valid_here_returns_false(self):
+        self.assertFalse(migrate_here_video_call([None, "not-a-dict"], self.assets, self.defaults))
+
+    def test_here_sprites_none_returns_false(self):
+        characters = [{"name": "here", "sprites": None}]
+        self.assertFalse(migrate_here_video_call(characters, self.assets, self.defaults))
+
+    def test_sprites_skips_non_dict_entries(self):
+        neutral = {"path": "defaults/characters/here/animations/neutral/frame_001.png",
+                   "state_name": "neutral"}
+        characters = [{"name": "here", "sprites": [None, "not-a-dict", neutral]}]
+        self.assertTrue(migrate_here_video_call(characters, self.assets, self.defaults))
+        self.assertEqual(characters[0]["sprites"][3]["state_name"], "video_call")
+
+    def test_sprites_non_list_returns_false(self):
+        characters = [{"name": "here", "sprites": {"state_name": "neutral"}}]
+        self.assertFalse(migrate_here_video_call(characters, self.assets, self.defaults))
