@@ -7,6 +7,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -16,6 +17,16 @@ from core.timezone import resolve_timezone  # noqa: E402
 from internal_agent.context import AgentMemoryStore, memory_slug  # noqa: E402
 from internal_agent.dream import DreamScheduler, MemoryDreamer  # noqa: E402
 from internal_agent.session_store import SessionStore  # noqa: E402
+
+
+def _zoneinfo_available(name: str) -> bool:
+    try:
+        from zoneinfo import ZoneInfo
+
+        ZoneInfo(name)
+    except Exception:
+        return False
+    return True
 
 
 class FakeAgent:
@@ -153,6 +164,41 @@ class MemoryDreamerTests(unittest.TestCase):
             marker = memory.agent_home(character.name) / ".dream-date"
             self.assertEqual(marker.read_text(encoding="utf-8").strip(), "2026-09-20")
             self.assertFalse(dreamer.run(character, now=now))
+
+    @unittest.skipUnless(_zoneinfo_available("America/New_York"), "America/New_York tzdata required")
+    def test_wait_uses_elapsed_seconds_across_dst_transitions(self) -> None:
+        from zoneinfo import ZoneInfo
+
+        ny = ZoneInfo("America/New_York")
+        cases = (
+            (datetime(2026, 3, 8, 0, 0, 5, tzinfo=ny), 82800.0),
+            (datetime(2026, 11, 1, 0, 0, 5, tzinfo=ny), 90000.0),
+        )
+        for now, expected in cases:
+            with self.subTest(now=str(now)):
+                dreamer = SimpleNamespace(timezone="UTC", run=lambda _character: None)
+                scheduler = DreamScheduler(
+                    SimpleNamespace(config=SimpleNamespace(characters=[])),
+                    dreamer,
+                    timezone="America/New_York",
+                )
+                self.assertEqual(scheduler.seconds_until_next_run(now), expected)
+                self.assertNotEqual(
+                    (scheduler.next_run_at(now) - now).total_seconds(),
+                    expected,
+                )
+
+                waits: list[float] = []
+
+                def fake_wait(timeout: float | None = None) -> bool:
+                    waits.append(timeout or 0.0)
+                    return True
+
+                scheduler._stop.wait = fake_wait  # type: ignore[method-assign]
+                with patch("internal_agent.dream.now_in_timezone", return_value=now):
+                    scheduler._run()
+                self.assertEqual(waits, [expected])
+                self.assertEqual(dreamer.timezone, "America/New_York")
 
 
 if __name__ == "__main__":

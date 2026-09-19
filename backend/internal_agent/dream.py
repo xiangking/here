@@ -142,11 +142,18 @@ class DreamScheduler:
         tomorrow = (current + timedelta(days=1)).date()
         return datetime.combine(tomorrow, datetime.min.time(), tzinfo=tz) + timedelta(seconds=5)
 
+    def seconds_until_next_run(self, now: datetime | None = None) -> float:
+        tz = resolve_timezone(self.timezone)
+        current = (now or now_in_timezone(self.timezone)).astimezone(tz)
+        # Same ZoneInfo objects ignore DST offset changes in datetime subtraction;
+        # timestamps reflect the actual elapsed seconds across transitions.
+        return max(1.0, self.next_run_at(current).timestamp() - current.timestamp())
+
     def _run(self) -> None:
         self._dream_all()
         while not self._stop.is_set():
-            delay = max(1.0, (self.next_run_at() - now_in_timezone(self.timezone)).total_seconds())
-            if self._stop.wait(delay):
+            current = now_in_timezone(self.timezone)
+            if self._stop.wait(self.seconds_until_next_run(current)):
                 return
             self._dream_all()
 
