@@ -4,6 +4,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -11,8 +12,9 @@ from types import SimpleNamespace
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_BACKEND_ROOT))
 
+from core.timezone import resolve_timezone  # noqa: E402
 from internal_agent.context import AgentMemoryStore, memory_slug  # noqa: E402
-from internal_agent.dream import MemoryDreamer  # noqa: E402
+from internal_agent.dream import DreamScheduler, MemoryDreamer  # noqa: E402
 from internal_agent.session_store import SessionStore  # noqa: E402
 
 
@@ -106,6 +108,51 @@ class MemoryDreamerTests(unittest.TestCase):
                 {"a"},
             )
             self.assertEqual(store.get_session("legacy")["character_name"], "role_a")
+
+    def test_dream_date_and_next_run_use_configured_timezone(self) -> None:
+        utc = timezone.utc
+        now = datetime(2026, 9, 19, 16, 30, tzinfo=utc)  # 2026-09-20 00:30 in Asia/Shanghai
+        shanghai = resolve_timezone("Asia/Shanghai")
+
+        with tempfile.TemporaryDirectory() as root:
+            memory = AgentMemoryStore(Path(root) / "memory")
+            shanghai_dreamer = MemoryDreamer(memory, FakeAgent("{}"), timezone="Asia/Shanghai")
+            honolulu_dreamer = MemoryDreamer(memory, FakeAgent("{}"), timezone="Pacific/Honolulu")
+            self.assertEqual(shanghai_dreamer.current_dream_date(now), "2026-09-20")
+            try:
+                from zoneinfo import ZoneInfo
+                ZoneInfo("Pacific/Honolulu")
+            except Exception:
+                pass
+            else:
+                self.assertEqual(honolulu_dreamer.current_dream_date(now), "2026-09-19")
+
+            scheduler = DreamScheduler(
+                SimpleNamespace(config=SimpleNamespace(characters=[])),
+                shanghai_dreamer,
+                timezone="Asia/Shanghai",
+            )
+            next_run = scheduler.next_run_at(now)
+            self.assertEqual(next_run.tzinfo, shanghai)
+            self.assertEqual(next_run, datetime(2026, 9, 21, 0, 0, 5, tzinfo=shanghai))
+            self.assertEqual(next_run.astimezone(utc), datetime(2026, 9, 20, 16, 0, 5, tzinfo=utc))
+            self.assertEqual(shanghai_dreamer.timezone, "Asia/Shanghai")
+
+    def test_writes_timezone_date_marker_not_naive_local_date(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            memory = AgentMemoryStore(Path(root) / "memory")
+            character = SimpleNamespace(name="角色 A")
+            sessions = SessionStore(memory.root)
+            sessions.create_session("a-session", character_name=memory_slug(character.name))
+            sessions.replace_messages("a-session", [{"role": "user", "content": "我每周跑步"}])
+            agent = FakeAgent('{"character":["新增角色记忆"],"user":["用户每周跑步"]}')
+            dreamer = MemoryDreamer(memory, agent, timezone="Asia/Shanghai")
+            now = datetime(2026, 9, 19, 16, 30, tzinfo=timezone.utc)
+
+            self.assertTrue(dreamer.run(character, now=now))
+            marker = memory.agent_home(character.name) / ".dream-date"
+            self.assertEqual(marker.read_text(encoding="utf-8").strip(), "2026-09-20")
+            self.assertFalse(dreamer.run(character, now=now))
 
 
 if __name__ == "__main__":

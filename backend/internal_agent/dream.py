@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 import threading
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any
 
+from core.timezone import DEFAULT_FALLBACK_TIMEZONE, now_in_timezone, resolve_timezone
 from internal_agent.context import AgentMemoryStore
 from internal_agent.context import memory_slug
 from internal_agent.session_store import SessionStore
@@ -14,19 +14,31 @@ from internal_agent.session_store import SessionStore
 class MemoryDreamer:
     """Daily, best-effort consolidation of recent sessions into memory files."""
 
-    def __init__(self, memory: AgentMemoryStore, agent: Any, sessions: SessionStore | None = None) -> None:
+    def __init__(
+        self,
+        memory: AgentMemoryStore,
+        agent: Any,
+        sessions: SessionStore | None = None,
+        timezone: str = DEFAULT_FALLBACK_TIMEZONE,
+    ) -> None:
         self.memory = memory
         self.agent = agent
         self.sessions = sessions or SessionStore(memory.root)
+        self.timezone = timezone or DEFAULT_FALLBACK_TIMEZONE
         self._lock = threading.Lock()
 
-    def run(self, character: Any, *, min_sessions: int = 1, limit: int = 8) -> bool:
+    def current_dream_date(self, now: datetime | None = None) -> str:
+        tz = resolve_timezone(self.timezone)
+        current = (now or now_in_timezone(self.timezone)).astimezone(tz)
+        return current.date().isoformat()
+
+    def run(self, character: Any, *, min_sessions: int = 1, limit: int = 8, now: datetime | None = None) -> bool:
         if not self._lock.acquire(blocking=False):
             return False
         try:
             name = str(getattr(character, "name", "") or "角色").strip() or "角色"
             marker = self.memory.agent_home(name) / ".dream-date"
-            today = datetime.now().date().isoformat()
+            today = self.current_dream_date(now)
             try:
                 if marker.read_text(encoding="utf-8").strip() == today:
                     return False
@@ -98,27 +110,44 @@ def _memory_key(value: str) -> str:
 
 
 class DreamScheduler:
-    def __init__(self, config_manager: Any, dreamer: MemoryDreamer, timezone: str = "Asia/Shanghai") -> None:
-        self.config_manager, self.dreamer, self.timezone = config_manager, dreamer, timezone
+    def __init__(
+        self,
+        config_manager: Any,
+        dreamer: MemoryDreamer,
+        timezone: str = DEFAULT_FALLBACK_TIMEZONE,
+    ) -> None:
+        self.config_manager = config_manager
+        self.dreamer = dreamer
+        self.timezone = timezone or DEFAULT_FALLBACK_TIMEZONE
+        if hasattr(self.dreamer, "timezone"):
+            self.dreamer.timezone = self.timezone
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
     def start(self) -> None:
-        if self._thread and self._thread.is_alive(): return
+        if self._thread and self._thread.is_alive():
+            return
         self._stop.clear()
         self._thread = threading.Thread(target=self._run, name="DreamScheduler", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
         self._stop.set()
-        if self._thread and self._thread.is_alive(): self._thread.join(timeout=2)
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=2)
+
+    def next_run_at(self, now: datetime | None = None) -> datetime:
+        tz = resolve_timezone(self.timezone)
+        current = (now or now_in_timezone(self.timezone)).astimezone(tz)
+        tomorrow = (current + timedelta(days=1)).date()
+        return datetime.combine(tomorrow, datetime.min.time(), tzinfo=tz) + timedelta(seconds=5)
 
     def _run(self) -> None:
         self._dream_all()
         while not self._stop.is_set():
-            now = datetime.now().astimezone()
-            tomorrow = now.replace(hour=0, minute=0, second=5, microsecond=0) + timedelta(days=1)
-            if self._stop.wait(max(1, (tomorrow - now).total_seconds())): return
+            delay = max(1.0, (self.next_run_at() - now_in_timezone(self.timezone)).total_seconds())
+            if self._stop.wait(delay):
+                return
             self._dream_all()
 
     def _dream_all(self) -> None:
