@@ -11,7 +11,8 @@
     "backend:runtime": "node scripts/backend-tasks.mjs runtime",
     "backend:test": "node scripts/backend-tasks.mjs test",
     "dev": "concurrently -k \"vite --host 127.0.0.1 --port 5180 --strictPort\" \"wait-on tcp:5180 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5180 node scripts/run-electron-dev.mjs\"",
-    "build": "tsc -p tsconfig.main.json && vite build",
+    "clean": "node scripts/clean-dist-electron.mjs",
+    "build": "npm run clean && tsc -p tsconfig.main.json && vite build",
     "start": "npm run build && node scripts/run-electron-dev.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -21,8 +22,7 @@
   "dependencies": {
     "dompurify": "^3.4.12",
     "lucide": "^1.24.0",
-    "marked": "^18.0.7",
-    "yaml": "^2.9.0"
+    "marked": "^18.0.7"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
