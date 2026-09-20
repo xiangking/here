@@ -11,6 +11,7 @@ from bridge.deps import (
     SystemConfig,
     load_storage_paths,
 )
+from infrastructure.asset_paths import UnsafeSpritePrefixError, sprite_prefix_in_use, validate_sprite_prefix
 
 
 def state(self) -> dict[str, Any]:
@@ -66,7 +67,21 @@ def save_config(self, payload: dict[str, Any]) -> dict[str, Any]:
         self.config.config.system_config = SystemConfig.model_validate(payload["system_config"])
         self.config.save_system_config()
     if "characters" in payload:
-        self.config.config.characters = [Character.model_validate(item) for item in payload["characters"]]
+        characters = [Character.model_validate(item) for item in payload["characters"]]
+        seen: set[str] = set()
+        for character in characters:
+            prefix = str(character.sprite_prefix or "").strip()
+            if not prefix:
+                continue
+            try:
+                prefix = validate_sprite_prefix(prefix)
+            except UnsafeSpritePrefixError as exc:
+                raise ValueError(str(exc)) from exc
+            if prefix in seen or sprite_prefix_in_use(characters, prefix, exclude_name=character.name):
+                raise ValueError(f"资源前缀已被其他角色使用：{prefix}")
+            seen.add(prefix)
+            character.sprite_prefix = prefix
+        self.config.config.characters = characters
         self.config.save_characters_config()
     if old_name and new_name and old_name != new_name:
         try:

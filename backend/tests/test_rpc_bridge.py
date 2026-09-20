@@ -21,8 +21,9 @@ sys.path.insert(0, str(_BACKEND_ROOT))
 
 import rpc_bridge  # noqa: E402
 from core.messaging.messages import AgentDialogMessage  # noqa: E402
-from services.config.schema import Sprite  # noqa: E402
+from core.sprite.character_profile import default_character_profile  # noqa: E402
 from infrastructure.paths import load_storage_paths  # noqa: E402
+from services.config.schema import Character, Sprite  # noqa: E402
 
 
 class RpcBridgeTests(unittest.TestCase):
@@ -198,6 +199,62 @@ class RpcBridgeTests(unittest.TestCase):
             external.unlink(missing_ok=True)
             character.__dict__.update(copy.deepcopy(original.__dict__))
             self.backend.config.save_characters_config()
+
+    def test_delete_character_does_not_remove_unrelated_absolute_prefix(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="here-unrelated-") as raw:
+            unrelated = Path(raw)
+            secret = unrelated / "important.txt"
+            secret.write_text("keep", encoding="utf-8")
+            extra = Character(
+                name="AssetGuardVictim",
+                color="#84c2d5",
+                sprite_prefix=str(unrelated),
+                sprites=[],
+                character_profile=default_character_profile("AssetGuardVictim"),
+                character_setting="test",
+            )
+            self.backend.config.config.characters.append(extra)
+            self.backend.config.save_characters_config()
+            try:
+                self.backend.delete_character({"name": extra.name})
+                names = [item.name for item in self.backend.config.config.characters]
+                self.assertNotIn(extra.name, names)
+                self.assertTrue(secret.is_file())
+            finally:
+                self.backend.config.config.characters = [
+                    item for item in self.backend.config.config.characters if item.name != extra.name
+                ]
+                self.backend.config.save_characters_config()
+
+    def test_delete_character_sprite_leaves_files_outside_owned_dir(self) -> None:
+        character = self.backend.config.get_character_by_name(self.backend.config.resolve_active_character_name())
+        self.assertIsNotNone(character)
+        original = copy.deepcopy(character)
+        with tempfile.TemporaryDirectory(prefix="here-sprite-out-") as raw:
+            outside = Path(raw) / "outside.png"
+            outside.write_bytes(b"outside")
+            character.sprite_prefix = "../escape"
+            character.sprites = [Sprite(path=outside, state_name="neutral")]
+            character.emotion_tags = "立绘 1：中立"
+            self.backend.config.save_characters_config()
+            try:
+                self.backend.delete_character_sprite({"character_name": character.name, "index": 0})
+                self.assertTrue(outside.is_file())
+                saved = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                self.assertEqual(saved.sprites, [])
+            finally:
+                character.__dict__.update(copy.deepcopy(original.__dict__))
+                self.backend.config.save_characters_config()
+
+    def test_save_config_rejects_absolute_sprite_prefix(self) -> None:
+        payload = self.backend.state()
+        characters = payload["config"]["characters"]
+        original_prefix = characters[0]["sprite_prefix"]
+        characters[0]["sprite_prefix"] = "/tmp/not-owned"
+        with self.assertRaises(ValueError):
+            self.backend.save_config({"characters": characters})
+        saved = next(item for item in self.backend.config.config.characters if item.name == characters[0]["name"])
+        self.assertEqual(saved.sprite_prefix, original_prefix)
 
     def test_chat_ui_theme_snapshot_filters_qss_and_clamps_layout(self) -> None:
         with tempfile.TemporaryDirectory() as root:
