@@ -31,6 +31,47 @@ class RpcBridgeTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.backend.shutdown()
 
+    def test_dispatch_method_names_match_snapshot(self) -> None:
+        expected = {
+            "ping",
+            "get_state",
+            "save_config",
+            "set_active_character",
+            "chat",
+            "observe_screen",
+            "stop_chat",
+            "clear_history",
+            "revert_history",
+            "update_memory",
+            "create_character",
+            "upload_character_sprites",
+            "import_character_state_assets",
+            "delete_character_sprite",
+            "delete_character",
+            "generate_image",
+            "generate_realtime_sprite",
+            "start_asr",
+            "stop_asr",
+            "pause_asr",
+            "resume_asr",
+            "codex_pet_candidates",
+            "import_codex_pet",
+            "wechat_login_start",
+            "wechat_login_poll",
+            "wechat_status",
+            "telegram_discover",
+            "list_models",
+            "dependency_status",
+            "install_dependencies",
+            "prepare_asr",
+            "save_messaging",
+            "save_storage",
+            "import_legacy",
+            "resolve_assets",
+        }
+        self.assertEqual(set(rpc_bridge.RPC_METHOD_NAMES), expected)
+        self.assertEqual(set(rpc_bridge.rpc_methods(self.backend)), expected)
+
     def test_reserved_dialog_names_remain_system_messages(self) -> None:
         for name in ("COT", "CHOICE", "STAT", "SCENE", "bgm", "CG", "NARR", "选项", "场景"):
             self.assertTrue(self.backend._is_reserved_dialog_name(name), name)
