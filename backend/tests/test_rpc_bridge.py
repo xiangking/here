@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
 import copy
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -467,6 +469,45 @@ class RpcBridgeTests(unittest.TestCase):
                 self.backend.config.save_characters_config()
                 self.backend.config.set_active_character_name(original_active)
                 self.backend.reload_runtime()
+
+
+class RpcBridgeScriptEntryTests(unittest.TestCase):
+    def test_script_entry_emits_ready_and_answers_ping(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="here-rpc-entry-") as app_home:
+            process = subprocess.Popen(
+                [sys.executable, str(_BACKEND_ROOT / "rpc_bridge.py")],
+                cwd=_BACKEND_ROOT,
+                env={
+                    **os.environ,
+                    "HERE_APP_HOME": app_home,
+                    "HERE_PROJECT_ROOT": str(_BACKEND_ROOT),
+                    "PYTHONUNBUFFERED": "1",
+                },
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            try:
+                stdout, stderr = process.communicate(
+                    '{"id":"entry-ping","method":"ping","params":{}}\n',
+                    timeout=20,
+                )
+            except subprocess.TimeoutExpired:
+                process.kill()
+                stdout, stderr = process.communicate()
+                self.fail(f"rpc_bridge.py timed out\nstdout={stdout}\nstderr={stderr}")
+
+        self.assertEqual(process.returncode, 0, stderr)
+        messages = [json.loads(line) for line in stdout.splitlines() if line.strip()]
+        self.assertTrue(messages, stdout)
+        for message in messages:
+            self.assertIn(message.get("type"), {"event", "response"})
+        self.assertEqual(messages[0]["type"], "event")
+        self.assertEqual(messages[0]["event"], "ready")
+        ping = next(item for item in messages if item.get("type") == "response" and item.get("id") == "entry-ping")
+        self.assertTrue(ping["ok"])
+        self.assertEqual(ping["result"]["ok"], True)
 
 
 if __name__ == "__main__":

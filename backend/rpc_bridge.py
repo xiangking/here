@@ -30,6 +30,10 @@ BACKEND_ROOT = Path(__file__).resolve().parent
 os.environ.setdefault("HERE_PROJECT_ROOT", str(BACKEND_ROOT))
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
+# ``python rpc_bridge.py`` registers this file as ``__main__``. Alias it so
+# ``bridge.hooks`` and ``import rpc_bridge`` see one module without re-running
+# the stdout redirect.
+sys.modules.setdefault("rpc_bridge", sys.modules[__name__])
 
 from bridge.backend import HereBackend
 from core.delivery.chat_platform_bridge import start_chat_platform_bridge, stop_chat_platform_bridge
