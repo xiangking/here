@@ -108,10 +108,18 @@ def replace_prefixed_path(value: Any, old_root: Path, new_root: Path) -> str | N
     text = str(value or "").strip()
     if not text or text.lower().startswith(("http://", "https://", "data:")):
         return None
+    path = Path(text).expanduser()
     try:
-        relative = Path(text).expanduser().relative_to(old_root)
+        relative = path.relative_to(old_root)
     except ValueError:
-        return None
+        # The stored path and the old root may differ in spelling (for example
+        # ``/var`` vs ``/private/var`` on macOS). Fall back to a resolved match
+        # so the relocated data is still found under the new root.
+        try:
+            resolved_root = Path(old_root).expanduser().resolve(strict=False)
+            relative = path.resolve(strict=False).relative_to(resolved_root)
+        except (OSError, ValueError):
+            return None
     return (new_root / relative).as_posix()
 
 

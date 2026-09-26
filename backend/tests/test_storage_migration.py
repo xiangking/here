@@ -62,6 +62,35 @@ class StorageMigrationTests(unittest.TestCase):
             self.assertEqual(character.sprites[0]["frames"][1], external.as_posix())
             self.assertEqual(character.sprites[0]["voice_path"], "https://example.com/voice.wav")
 
+    def test_rewrites_paths_reached_through_a_symlinked_root(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            base = Path(root)
+            real_assets = base / "real-assets"
+            real_assets.mkdir()
+            (real_assets / "hero.png").write_bytes(b"png")
+            link = base / "link-assets"
+            try:
+                link.symlink_to(real_assets, target_is_directory=True)
+            except OSError:
+                self.skipTest("symlinks unavailable")
+            new_assets = base / "new-assets"
+            character = SimpleNamespace(
+                visual_reference_image="",
+                sprites=[{"path": (link / "hero.png").as_posix(), "frames": []}],
+            )
+            config = FakeConfigManager(character)
+
+            changed = migrate_storage_locations(
+                old_memory_dir=base / "unused-memory",
+                old_assets_dir=real_assets,
+                new_memory_dir=base / "unused-memory-target",
+                new_assets_dir=new_assets,
+                config_manager=config,
+            )
+
+            self.assertTrue(changed)
+            self.assertEqual(character.sprites[0]["path"], (new_assets / "hero.png").as_posix())
+
     def test_detects_nested_migration_target(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             source = Path(root) / "source"

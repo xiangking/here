@@ -69,6 +69,7 @@ from infrastructure.paths import (
     resolve_storage_path,
     save_storage_paths,
     seed_defaults,
+    STORAGE_PATHS_CONFIG_FILE,
 )
 from internal_agent.context import AgentMemoryStore, build_agent_context
 from internal_agent.dream import DreamScheduler, MemoryDreamer
@@ -82,6 +83,6 @@ from services.config.config_manager import ConfigManager, SYSTEM_CHARACTER_NAME,
 from services.config.schema import ApiConfig, Character, Sprite, SystemConfig
 from services.selfie import SelfieRequest
 from services.selfie.factory import build_selfie_runtime
-from services.storage_migration import is_strict_child
+from services.storage_migration import copy_directory_contents, is_strict_child, rewrite_character_asset_paths
 from services.t2i.t2i_manager import T2IAdapterFactory, T2IManager
 from services.tts.tts_manager import TTSAdapterFactory, TTSManager

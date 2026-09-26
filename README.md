@@ -70,6 +70,6 @@ Windows 发布请在 Windows 环境执行 `npm run dist`，这样 `backend:runti
 - macOS 默认数据：`~/Library/Application Support/here-electron/python-data`
 - Windows/Linux：跟随 Electron `app.getPath("userData")`
 - 旧数据导入只读取所选目录，然后复制 `config/memory/characters/backgrounds/state/character_templates`
-- 自定义角色记忆目录和资产目录仍由原 `storage_paths.yaml` 语义管理
+- 导入会读取旧数据的 `storage_paths.yaml`，把自定义角色记忆/资产目录的内容一并复制到 Electron 数据目录，并改用 Electron 自己的存储配置；原目录保持不变
 
 功能对齐证据见 [功能对齐矩阵](docs/FUNCTION_PARITY.md)，迁移方法和经验见 [Qt 到 Electron 迁移总结](docs/QT_TO_ELECTRON_MIGRATION.md)。
