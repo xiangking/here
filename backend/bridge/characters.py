@@ -20,6 +20,14 @@ from bridge.deps import (
     shutil,
     uuid,
 )
+from infrastructure.asset_paths import (
+    UnsafeSpritePrefixError,
+    is_inside_owned_dir,
+    owned_character_dir,
+    prepare_owned_character_dir,
+    remove_owned_character_dir,
+    validate_sprite_prefix,
+)
 
 
 def upload_character_sprites(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -27,8 +35,8 @@ def upload_character_sprites(self, payload: dict[str, Any]) -> dict[str, Any]:
     character = self.config.get_character_by_name(name)
     if character is None:
         raise ValueError(f"角色不存在：{name}。请先保存新角色，再添加立绘。")
-    target = self.paths.characters_dir / str(character.sprite_prefix or re.sub(r"\W+", "_", name))
-    target.mkdir(parents=True, exist_ok=True)
+    prefix = str(character.sprite_prefix or "").strip() or self._safe_asset_name(name, "character")
+    target = prepare_owned_character_dir(self.paths.characters_dir, prefix)
     added = 0
     for attachment in list(payload.get("attachments") or []):
         data_url = str(attachment.get("dataUrl") or attachment.get("data_url") or "")
@@ -147,7 +155,7 @@ def create_character(self, payload: dict[str, Any]) -> dict[str, Any]:
         self.config.config.characters = [item for item in self.config.config.characters if item.name != name]
         self.config.save_characters_config()
         self.config.set_active_character_name(previous_active)
-        shutil.rmtree(self.paths.characters_dir / character.sprite_prefix, ignore_errors=True)
+        remove_owned_character_dir(self.paths.characters_dir, character.sprite_prefix)
         raise
     hooks.event("character", {"name": name})
     return self.state()
@@ -172,10 +180,16 @@ def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, An
         raise ValueError("视频通话请选择一个 MP4、WebM 或 M4V 视频。")
     state_group = str(payload.get("state_group") or "custom").strip() or "custom"
     interval = max(20, min(10_000, int(payload.get("frame_interval_ms") or 120)))
-    prefix = self._safe_asset_name(str(character.sprite_prefix or name), "character")
-    target_dir = self.paths.characters_dir / prefix / "animations" / state_name
-    shutil.rmtree(target_dir, ignore_errors=True)
+    prefix = str(character.sprite_prefix or "").strip() or self._safe_asset_name(name, "character")
+    character_dir = prepare_owned_character_dir(self.paths.characters_dir, prefix)
+    target_dir = character_dir / "animations" / state_name
+    if target_dir.exists():
+        if not is_inside_owned_dir(target_dir, character_dir, allow_root=False):
+            raise UnsafeSpritePrefixError("资源路径超出允许的目录。")
+        shutil.rmtree(target_dir, ignore_errors=True)
     target_dir.mkdir(parents=True, exist_ok=True)
+    if not is_inside_owned_dir(target_dir, character_dir, allow_root=False):
+        raise UnsafeSpritePrefixError("资源路径超出允许的目录。")
 
     video_suffixes = {".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm"}
     frames: list[Path] = []
@@ -279,28 +293,34 @@ def delete_character_sprite(self, payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("立绘索引无效。")
     sprite = character.sprites[index]
     raw = hooks.model_json(sprite)
-    # Imported animations live below the character asset root. Remove only
-    # files/directories owned by this character; external legacy paths are
-    # left untouched.
-    asset_root = (self.paths.characters_dir / str(character.sprite_prefix or "")).resolve()
+    prefix = ""
+    asset_root = None
+    voice_root = None
+    try:
+        prefix = validate_sprite_prefix(character.sprite_prefix)
+        asset_root = owned_character_dir(self.paths.characters_dir, prefix)
+        voice_root = owned_character_dir(self.paths.generated_dir / "voices", prefix)
+    except UnsafeSpritePrefixError:
+        prefix = ""
+        asset_root = None
+        voice_root = None
     referenced = [raw.get("path"), *(raw.get("frames") or []), raw.get("spritesheet_path"), raw.get("voice_path")]
     for candidate in referenced:
-        if not candidate:
+        if not candidate or asset_root is None:
             continue
         try:
             path = resolve_character_asset_path(candidate, self.paths).resolve()
-            if path.is_file() and (path == asset_root or asset_root in path.parents):
+            if path.is_file() and is_inside_owned_dir(path, asset_root):
                 path.unlink(missing_ok=True)
-            elif path.is_dir() and (path == asset_root or asset_root in path.parents):
+            elif path.is_dir() and is_inside_owned_dir(path, asset_root):
                 shutil.rmtree(path, ignore_errors=True)
         except (OSError, RuntimeError, ValueError):
             continue
     voice_path = str(raw.get("voice_path") or "").strip()
-    if voice_path:
+    if voice_path and voice_root is not None:
         try:
             voice = Path(voice_path).expanduser().resolve()
-            voice_root = (self.paths.generated_dir / "voices" / str(character.sprite_prefix or "")).resolve()
-            if voice.is_file() and (voice == voice_root or voice_root in voice.parents):
+            if voice.is_file() and is_inside_owned_dir(voice, voice_root):
                 voice.unlink(missing_ok=True)
         except (OSError, RuntimeError, ValueError):
             pass
@@ -330,7 +350,7 @@ def delete_character(self, payload: dict[str, Any]) -> dict[str, Any]:
     if len(self.config.config.characters) <= 1:
         raise ValueError("不能删除最后一个角色。")
     message, _ = CharacterManager().delete_character(name, delete_memory=bool(payload.get("delete_memory")))
-    if "找不到" in message or "不能" in message:
+    if any(token in message for token in ("找不到", "不能", "资源前缀")):
         raise ValueError(message)
     self.reload_runtime()
     active = self.config.resolve_active_character_name()

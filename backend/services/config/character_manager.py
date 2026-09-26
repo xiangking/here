@@ -2,6 +2,15 @@ import os
 import shutil
 from pathlib import Path
 
+from infrastructure.asset_paths import (
+    UnsafeSpritePrefixError,
+    is_inside_owned_dir,
+    owned_character_dir,
+    prepare_owned_character_dir,
+    remove_owned_character_dir,
+    sprite_prefix_in_use,
+    validate_sprite_prefix,
+)
 from infrastructure.paths import get_app_paths
 from typing import List, Dict, Any, Tuple, Optional, Union
 from services.config.schema import Character, Sprite
@@ -55,6 +64,23 @@ class CharacterManager:
     def _save_characters_config(self) -> None:
         """保存角色配置的便捷方法"""
         self._config_manager.save_characters_config()
+
+    def _require_sprite_prefix(
+        self,
+        sprite_prefix: str,
+        *,
+        exclude_name: Optional[str] = None,
+        allow_empty: bool = False,
+    ) -> str:
+        text = str(sprite_prefix or "").strip()
+        if not text:
+            if allow_empty:
+                return ""
+            raise UnsafeSpritePrefixError("资源前缀不能为空。")
+        prefix = validate_sprite_prefix(text)
+        if sprite_prefix_in_use(self._get_characters(), prefix, exclude_name=exclude_name):
+            raise UnsafeSpritePrefixError(f"资源前缀已被其他角色使用：{prefix}")
+        return prefix
 
     def generate_character_setting(self, name: str, setting: str) -> Tuple[str, str]:
         """
@@ -177,6 +203,14 @@ class CharacterManager:
 
         characters = self._config_manager.config.characters
         profile = normalize_character_profile(name, character_profile)
+        try:
+            prefix = self._require_sprite_prefix(
+                sprite_prefix,
+                exclude_name=str(edit_as_name or name).strip() or None,
+                allow_empty=True,
+            )
+        except UnsafeSpritePrefixError as exc:
+            return str(exc), current_names
 
         if edit_as_name and str(edit_as_name).strip():
             target = self._config_manager.get_character_by_name(str(edit_as_name).strip())
@@ -192,7 +226,7 @@ class CharacterManager:
                     return f"名称「{name}」已与其他角色重复！", [c.name for c in characters]
                 target.name = name
                 target.color = color
-                target.sprite_prefix = sprite_prefix
+                target.sprite_prefix = prefix
                 target.character_setting = character_setting
                 target.visual_reference_image = visual_reference_image
                 target.visual_identity = visual_identity
@@ -214,7 +248,7 @@ class CharacterManager:
             new_character = Character(
                 name=name,
                 color=color,
-                sprite_prefix=sprite_prefix,
+                sprite_prefix=prefix,
                 sprites=[],
                 sprite_scale=1.0,
                 emotion_tags="",
@@ -239,7 +273,7 @@ class CharacterManager:
             # 更新现有 Character 实例的属性
             existing_character.name = name
             existing_character.color = color
-            existing_character.sprite_prefix = sprite_prefix
+            existing_character.sprite_prefix = prefix
             existing_character.character_setting = character_setting
             existing_character.visual_reference_image = visual_reference_image
             existing_character.visual_identity = visual_identity
@@ -272,31 +306,35 @@ class CharacterManager:
         
         if character_to_delete is None:
             return f"找不到角色: {name}", current_names
-        
-        # 移除角色
+
+        sprite_prefix = str(character_to_delete.sprite_prefix or "").strip()
+        can_remove_files = False
+        if sprite_prefix and not sprite_prefix_in_use(characters, sprite_prefix, exclude_name=name):
+            try:
+                validate_sprite_prefix(sprite_prefix)
+                for base_dir in [_characters_dir(), _voice_dir(), _models_dir()]:
+                    owned_character_dir(base_dir, sprite_prefix)
+                can_remove_files = True
+            except UnsafeSpritePrefixError:
+                can_remove_files = False
+
         try:
             characters.remove(character_to_delete)
         except ValueError:
             return f"找不到角色: {name}", current_names
-            
+
         self._save_characters_config()
         new_names = [c.name for c in characters]
 
-        sprite_prefix = character_to_delete.sprite_prefix
-        if not sprite_prefix:
-            return "已删除角色", new_names
-        
-        # 删除相关目录
-        for base_dir in [_characters_dir(), _voice_dir(), _models_dir()]:
-            char_dir = os.path.join(str(base_dir), sprite_prefix)
-            if os.path.exists(char_dir):
-                shutil.rmtree(char_dir)
+        if can_remove_files:
+            for base_dir in [_characters_dir(), _voice_dir(), _models_dir()]:
+                remove_owned_character_dir(base_dir, sprite_prefix)
 
         if delete_memory:
             from internal_agent.context import AgentMemoryStore
 
             AgentMemoryStore().delete_character(name)
-        
+
         return f"角色 {name} 已删除！", new_names
 
     def upload_sprites(self, character_name: str, sprite_files: List[Any], emotion_tags: str) -> Tuple[str, List[str], str]:
@@ -315,9 +353,11 @@ class CharacterManager:
         character: Optional[Character] = self._config_manager.get_character_by_name(character_name)
         if not character:
             return f"找不到角色: {character_name}", [], ''
-        
-        char_dir = os.path.join(str(_characters_dir()), character.sprite_prefix)
-        Path(char_dir).mkdir(parents=True, exist_ok=True)
+
+        try:
+            char_dir = str(prepare_owned_character_dir(_characters_dir(), character.sprite_prefix))
+        except UnsafeSpritePrefixError as exc:
+            return str(exc), [], ''
         
         if character.sprites is None:
             character.sprites = []
@@ -357,16 +397,18 @@ class CharacterManager:
         character: Optional[Character] = self._config_manager.get_character_by_name(character_name)
         if not character:
             return f"找不到角色: {character_name}", [], ""
-        
-        # 删除立绘目录
-        char_dir = os.path.join(str(_characters_dir()), character.sprite_prefix)
-        if os.path.exists(char_dir):
-            shutil.rmtree(char_dir)
 
-        # 删除语音目录
-        char_voice_dir = os.path.join(str(_voice_dir()), character.sprite_prefix)
-        if os.path.exists(char_voice_dir):
-            shutil.rmtree(char_voice_dir)
+        remaining_paths = [s.path if isinstance(s, Sprite) else s.get('path', '') for s in (character.sprites or [])]
+        try:
+            prefix = validate_sprite_prefix(character.sprite_prefix)
+            if sprite_prefix_in_use(self._get_characters(), prefix, exclude_name=character_name):
+                return f"资源前缀已被其他角色使用：{prefix}", remaining_paths, character.emotion_tags or ""
+            owned_character_dir(_characters_dir(), prefix)
+            owned_character_dir(_voice_dir(), prefix)
+        except UnsafeSpritePrefixError as exc:
+            return str(exc), remaining_paths, character.emotion_tags or ""
+        remove_owned_character_dir(_characters_dir(), prefix)
+        remove_owned_character_dir(_voice_dir(), prefix)
         
         # 清空角色属性
         character.sprites = []
@@ -402,11 +444,16 @@ class CharacterManager:
         sprite_path = sprite_data.path if isinstance(sprite_data, Sprite) else sprite_data.get("path", "")
         voice_path = sprite_data.voice_path if isinstance(sprite_data, Sprite) else sprite_data.get("voice_path", "")
 
-        # 删除文件
-        if sprite_path and os.path.exists(sprite_path) and os.path.isfile(sprite_path):
+        try:
+            prefix = validate_sprite_prefix(character.sprite_prefix)
+            asset_root = owned_character_dir(_characters_dir(), prefix)
+            voice_root = owned_character_dir(_voice_dir(), prefix)
+        except UnsafeSpritePrefixError:
+            asset_root = None
+            voice_root = None
+        if sprite_path and os.path.isfile(sprite_path) and asset_root is not None and is_inside_owned_dir(sprite_path, asset_root):
             os.remove(sprite_path)
-            
-        if voice_path and os.path.exists(voice_path) and os.path.isfile(voice_path):
+        if voice_path and os.path.isfile(voice_path) and voice_root is not None and is_inside_owned_dir(voice_path, voice_root):
             os.remove(voice_path)
         
         # 从列表中移除
@@ -480,8 +527,10 @@ class CharacterManager:
         if (not voice_file) and (not original_voice_path):
             return "请选择语音文件！", None
         
-        voice_char_dir = os.path.join(str(_voice_dir()), character.sprite_prefix)
-        Path(voice_char_dir).mkdir(parents=True, exist_ok=True)
+        try:
+            voice_char_dir = str(prepare_owned_character_dir(_voice_dir(), character.sprite_prefix))
+        except UnsafeSpritePrefixError as exc:
+            return str(exc), None
         
         file_ext = Path(voice_file).suffix
         voice_filename = f"voice_{sprite_index:02d}{file_ext}"
