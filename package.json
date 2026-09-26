@@ -32,7 +32,7 @@
     "electron-builder": "^26.15.3",
     "typescript": "^7.0.2",
     "vite": "^8.1.5",
-    "vitest": "^4.0.0",
+    "vitest": "^4.1.11",
     "wait-on": "^9.0.1"
   },
   "build": {
@@ -61,7 +61,9 @@
       {
         "from": "skills/here-companion-mode",
         "to": "skills/here-companion-mode",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "directories": {
