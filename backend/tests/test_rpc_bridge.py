@@ -104,6 +104,182 @@ class RpcBridgeTests(unittest.TestCase):
             character.sprites = original_sprites
             self.backend.config.save_characters_config()
 
+    def _add_probe_character(self, name: str, prefix: str) -> Character:
+        character = Character(
+            name=name,
+            color="#84c2d5",
+            sprite_prefix=prefix,
+            sprites=[],
+            character_profile=default_character_profile(name),
+            character_setting="test",
+        )
+        self.backend.config.config.characters.append(character)
+        self.backend.config.save_characters_config()
+        return character
+
+    def _remove_probe_character(self, character: Character) -> None:
+        self.backend.config.config.characters = [
+            item for item in self.backend.config.config.characters if item.name != character.name
+        ]
+        self.backend.config.save_characters_config()
+        shutil.rmtree(self.backend.paths.characters_dir / character.sprite_prefix, ignore_errors=True)
+        self.backend.reload_runtime()
+
+    @staticmethod
+    def _sprite_path(sprite: object) -> Path:
+        raw = sprite.path if hasattr(sprite, "path") else sprite.get("path")
+        return Path(str(raw))
+
+    def test_failed_gif_replacement_keeps_previous_asset_and_config(self) -> None:
+        from PIL import UnidentifiedImageError
+
+        character = self._add_probe_character("AtomicGifProbe", "atomic_gif_probe")
+        state = "atomic_gif_state"
+        try:
+            with tempfile.TemporaryDirectory() as root:
+                good = Path(root) / "good.png"
+                good.write_bytes(b"good")
+                bad = Path(root) / "bad.gif"
+                bad.write_bytes(b"definitely not a gif")
+                self.backend.import_character_state_assets({
+                    "character_name": character.name, "state_name": state, "paths": [good.as_posix()],
+                })
+                saved = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                previous_path = self._sprite_path(saved.sprites[0])
+                self.assertTrue(previous_path.is_file())
+
+                with self.assertRaises(UnidentifiedImageError):
+                    self.backend.import_character_state_assets({
+                        "character_name": character.name, "state_name": state, "paths": [bad.as_posix()],
+                    })
+
+                after = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                self.assertEqual(len(after.sprites), 1)
+                self.assertEqual(self._sprite_path(after.sprites[0]), previous_path)
+                self.assertTrue(previous_path.is_file(), "failed replacement must keep the previous sprite file")
+                leftovers = [
+                    item.name for item in previous_path.parent.parent.iterdir()
+                    if item.name.startswith((".pending-", ".backup-"))
+                ]
+                self.assertEqual(leftovers, [])
+        finally:
+            self._remove_probe_character(character)
+
+    def test_undecodable_video_replacement_keeps_previous_asset(self) -> None:
+        character = self._add_probe_character("AtomicVideoProbe", "atomic_video_probe")
+        state = "atomic_video_state"
+        try:
+            with tempfile.TemporaryDirectory() as root:
+                good = Path(root) / "good.png"
+                good.write_bytes(b"good")
+                broken_video = Path(root) / "broken.mov"
+                broken_video.write_bytes(b"not a real video")
+                self.backend.import_character_state_assets({
+                    "character_name": character.name, "state_name": state, "paths": [good.as_posix()],
+                })
+                saved = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                previous_path = self._sprite_path(saved.sprites[0])
+
+                with self.assertRaises(RuntimeError):
+                    self.backend.import_character_state_assets({
+                        "character_name": character.name, "state_name": state, "paths": [broken_video.as_posix()],
+                    })
+
+                after = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                self.assertEqual(self._sprite_path(after.sprites[0]), previous_path)
+                self.assertTrue(previous_path.is_file())
+        finally:
+            self._remove_probe_character(character)
+
+    def test_copy_failure_during_replacement_keeps_previous_asset(self) -> None:
+        character = self._add_probe_character("AtomicCopyProbe", "atomic_copy_probe")
+        state = "atomic_copy_state"
+        try:
+            with tempfile.TemporaryDirectory() as root:
+                good = Path(root) / "good.png"
+                good.write_bytes(b"good")
+                replacement = Path(root) / "replacement.png"
+                replacement.write_bytes(b"replacement")
+                self.backend.import_character_state_assets({
+                    "character_name": character.name, "state_name": state, "paths": [good.as_posix()],
+                })
+                saved = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                previous_path = self._sprite_path(saved.sprites[0])
+
+                with patch("bridge.characters.shutil.copy2", side_effect=OSError("simulated copy failure")):
+                    with self.assertRaises(OSError):
+                        self.backend.import_character_state_assets({
+                            "character_name": character.name, "state_name": state,
+                            "paths": [replacement.as_posix()],
+                        })
+
+                after = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                self.assertEqual(self._sprite_path(after.sprites[0]), previous_path)
+                self.assertTrue(previous_path.is_file())
+        finally:
+            self._remove_probe_character(character)
+
+    def test_config_save_failure_during_replacement_restores_previous_asset(self) -> None:
+        character = self._add_probe_character("AtomicSaveProbe", "atomic_save_probe")
+        state = "atomic_save_state"
+        try:
+            with tempfile.TemporaryDirectory() as root:
+                good = Path(root) / "good.png"
+                good.write_bytes(b"good")
+                replacement = Path(root) / "replacement.png"
+                replacement.write_bytes(b"replacement")
+                self.backend.import_character_state_assets({
+                    "character_name": character.name, "state_name": state, "paths": [good.as_posix()],
+                })
+                saved = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                previous_path = self._sprite_path(saved.sprites[0])
+
+                with patch.object(self.backend.config, "save_characters_config", side_effect=OSError("disk full")):
+                    with self.assertRaises(OSError):
+                        self.backend.import_character_state_assets({
+                            "character_name": character.name, "state_name": state,
+                            "paths": [replacement.as_posix()],
+                        })
+
+                after = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                self.assertEqual(self._sprite_path(after.sprites[0]), previous_path)
+                self.assertTrue(previous_path.is_file(), "config failure must restore the previous sprite folder")
+                leftovers = [
+                    item.name for item in previous_path.parent.parent.iterdir()
+                    if item.name.startswith((".pending-", ".backup-"))
+                ]
+                self.assertEqual(leftovers, [])
+        finally:
+            self._remove_probe_character(character)
+
+    def test_replacement_using_source_inside_target_directory_succeeds(self) -> None:
+        character = self._add_probe_character("AtomicSelfProbe", "atomic_self_probe")
+        state = "atomic_self_state"
+        try:
+            with tempfile.TemporaryDirectory() as root:
+                good = Path(root) / "good.png"
+                good.write_bytes(b"good")
+                self.backend.import_character_state_assets({
+                    "character_name": character.name, "state_name": state, "paths": [good.as_posix()],
+                })
+                saved = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                previous_path = self._sprite_path(saved.sprites[0])
+
+                self.backend.import_character_state_assets({
+                    "character_name": character.name, "state_name": state,
+                    "paths": [previous_path.as_posix()],
+                })
+
+                after = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                self.assertTrue(self._sprite_path(after.sprites[0]).is_file())
+                leftovers = [
+                    item.name for item in previous_path.parent.parent.iterdir()
+                    if item.name.startswith((".pending-", ".backup-"))
+                ]
+                self.assertEqual(leftovers, [])
+        finally:
+            self._remove_probe_character(character)
+
     def test_choice_is_published_as_options_and_recorded(self) -> None:
         events: list[tuple[str, object]] = []
         with patch.object(rpc_bridge, "event", side_effect=lambda name, payload=None: events.append((name, payload))):

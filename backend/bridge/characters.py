@@ -182,70 +182,10 @@ def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, An
     interval = max(20, min(10_000, int(payload.get("frame_interval_ms") or 120)))
     prefix = str(character.sprite_prefix or "").strip() or self._safe_asset_name(name, "character")
     character_dir = prepare_owned_character_dir(self.paths.characters_dir, prefix)
-    target_dir = character_dir / "animations" / state_name
-    if target_dir.exists():
-        if not is_inside_owned_dir(target_dir, character_dir, allow_root=False):
-            raise UnsafeSpritePrefixError("资源路径超出允许的目录。")
-        shutil.rmtree(target_dir, ignore_errors=True)
-    target_dir.mkdir(parents=True, exist_ok=True)
-    if not is_inside_owned_dir(target_dir, character_dir, allow_root=False):
-        raise UnsafeSpritePrefixError("资源路径超出允许的目录。")
+    animations_dir = character_dir / "animations"
+    target_dir = animations_dir / state_name
 
-    video_suffixes = {".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm"}
-    frames: list[Path] = []
-    native_video = len(source_paths) == 1 and state_name == "video_call" and source_paths[0].suffix.lower() in {".mp4", ".webm", ".m4v"}
-    if native_video:
-        first_path = target_dir / f"video_call{source_paths[0].suffix.lower()}"
-        shutil.copy2(source_paths[0], first_path)
-    elif len(source_paths) == 1 and source_paths[0].suffix.lower() in video_suffixes:
-        try:
-            import cv2
-        except ImportError as exc:
-            raise RuntimeError("导入视频立绘需要 opencv-python，请先在语音与依赖页安装视频支持。") from exc
-        capture = cv2.VideoCapture(source_paths[0].as_posix())
-        frame_index = 0
-        try:
-            while capture.isOpened():
-                ok, frame = capture.read()
-                if not ok:
-                    break
-                destination = target_dir / f"frame_{frame_index + 1:04d}.png"
-                if cv2.imwrite(destination.as_posix(), frame):
-                    frames.append(destination)
-                frame_index += 1
-        finally:
-            capture.release()
-        if not frames:
-            raise RuntimeError("没有从视频中提取到有效帧。")
-    elif len(source_paths) == 1 and source_paths[0].suffix.lower() in {".gif", ".webp"}:
-        from PIL import Image, ImageSequence
-
-        with Image.open(source_paths[0]) as image:
-            for frame_index, frame in enumerate(ImageSequence.Iterator(image)):
-                destination = target_dir / f"frame_{frame_index + 1:04d}.png"
-                frame.convert("RGBA").save(destination, format="PNG")
-                frames.append(destination)
-                duration = int(frame.info.get("duration") or 0)
-                if frame_index == 0 and duration > 0 and not payload.get("frame_interval_ms"):
-                    interval = max(20, min(10_000, duration))
-        if len(frames) <= 1:
-            frames = []
-    if native_video:
-        pass
-    elif not frames:
-        copied: list[Path] = []
-        for index, source in enumerate(source_paths):
-            suffix = source.suffix.lower()
-            if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}:
-                raise ValueError(f"不支持的立绘格式：{source.name}")
-            destination = target_dir / f"frame_{index + 1:04d}{suffix}"
-            shutil.copy2(source, destination)
-            copied.append(destination)
-        frames = copied if len(copied) > 1 else []
-        first_path = copied[0]
-    else:
-        first_path = frames[0]
-
+    previous_sprites = list(character.sprites)
     target_index: int | None = None
     previous_sprite: dict[str, Any] = {}
     if payload.get("sprite_index") is not None:
@@ -254,33 +194,130 @@ def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, An
             raise ValueError("立绘索引无效。")
         previous_sprite = hooks.model_json(character.sprites[target_index])
 
-    sprite = Sprite(
-        path=first_path,
-        frames=[path.as_posix() for path in frames],
-        frame_interval_ms=interval,
-        state_name=state_name,
-        state_group=state_group,
-        source_state=state_name,
-        voice_path=previous_sprite.get("voice_path") or None,
-        voice_text=previous_sprite.get("voice_text") or None,
-    )
-    if target_index is not None:
-        character.sprites[target_index] = sprite
-    else:
-        existing_index = next(
-            (
-                index
-                for index, existing in enumerate(character.sprites)
-                if str(getattr(existing, "state_name", "") or (existing.get("state_name") if isinstance(existing, dict) else "")) == state_name
-            ),
-            -1,
-        )
-        if existing_index >= 0:
-            character.sprites[existing_index] = sprite
+    # Build every frame in a staging folder first. The previously imported
+    # state stays untouched until the new assets are fully generated, so a
+    # failed conversion can never destroy the working sprites.
+    staging_dir = animations_dir / f".pending-{uuid.uuid4().hex}"
+    backup_dir = animations_dir / f".backup-{uuid.uuid4().hex}"
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    if not is_inside_owned_dir(staging_dir, character_dir, allow_root=False):
+        shutil.rmtree(staging_dir, ignore_errors=True)
+        raise UnsafeSpritePrefixError("资源路径超出允许的目录。")
+
+    def _final_path(path: Path) -> Path:
+        try:
+            return target_dir / path.relative_to(staging_dir)
+        except ValueError:
+            return path
+
+    installed = False
+    moved_old = False
+    try:
+        video_suffixes = {".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm"}
+        frames: list[Path] = []
+        native_video = len(source_paths) == 1 and state_name == "video_call" and source_paths[0].suffix.lower() in {".mp4", ".webm", ".m4v"}
+        if native_video:
+            first_path = staging_dir / f"video_call{source_paths[0].suffix.lower()}"
+            shutil.copy2(source_paths[0], first_path)
+        elif len(source_paths) == 1 and source_paths[0].suffix.lower() in video_suffixes:
+            try:
+                import cv2
+            except ImportError as exc:
+                raise RuntimeError("导入视频立绘需要 opencv-python，请先在语音与依赖页安装视频支持。") from exc
+            capture = cv2.VideoCapture(source_paths[0].as_posix())
+            frame_index = 0
+            try:
+                while capture.isOpened():
+                    ok, frame = capture.read()
+                    if not ok:
+                        break
+                    destination = staging_dir / f"frame_{frame_index + 1:04d}.png"
+                    if cv2.imwrite(destination.as_posix(), frame):
+                        frames.append(destination)
+                    frame_index += 1
+            finally:
+                capture.release()
+            if not frames:
+                raise RuntimeError("没有从视频中提取到有效帧。")
+        elif len(source_paths) == 1 and source_paths[0].suffix.lower() in {".gif", ".webp"}:
+            from PIL import Image, ImageSequence
+
+            with Image.open(source_paths[0]) as image:
+                for frame_index, frame in enumerate(ImageSequence.Iterator(image)):
+                    destination = staging_dir / f"frame_{frame_index + 1:04d}.png"
+                    frame.convert("RGBA").save(destination, format="PNG")
+                    frames.append(destination)
+                    duration = int(frame.info.get("duration") or 0)
+                    if frame_index == 0 and duration > 0 and not payload.get("frame_interval_ms"):
+                        interval = max(20, min(10_000, duration))
+            if len(frames) <= 1:
+                frames = []
+        if native_video:
+            pass
+        elif not frames:
+            copied: list[Path] = []
+            for index, source in enumerate(source_paths):
+                suffix = source.suffix.lower()
+                if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}:
+                    raise ValueError(f"不支持的立绘格式：{source.name}")
+                destination = staging_dir / f"frame_{index + 1:04d}{suffix}"
+                shutil.copy2(source, destination)
+                copied.append(destination)
+            frames = copied if len(copied) > 1 else []
+            first_path = copied[0]
         else:
-            character.sprites.append(sprite)
-    self.config.save_characters_config()
-    return self.state()
+            first_path = frames[0]
+
+        # Publish the staged folder atomically, keeping the old one as backup.
+        if target_dir.exists():
+            if not is_inside_owned_dir(target_dir, character_dir, allow_root=False):
+                raise UnsafeSpritePrefixError("资源路径超出允许的目录。")
+            target_dir.rename(backup_dir)
+            moved_old = True
+        staging_dir.rename(target_dir)
+        installed = True
+
+        try:
+            sprite = Sprite(
+                path=_final_path(first_path),
+                frames=[_final_path(path).as_posix() for path in frames],
+                frame_interval_ms=interval,
+                state_name=state_name,
+                state_group=state_group,
+                source_state=state_name,
+                voice_path=previous_sprite.get("voice_path") or None,
+                voice_text=previous_sprite.get("voice_text") or None,
+            )
+            if target_index is not None:
+                character.sprites[target_index] = sprite
+            else:
+                existing_index = next(
+                    (
+                        index
+                        for index, existing in enumerate(character.sprites)
+                        if str(getattr(existing, "state_name", "") or (existing.get("state_name") if isinstance(existing, dict) else "")) == state_name
+                    ),
+                    -1,
+                )
+                if existing_index >= 0:
+                    character.sprites[existing_index] = sprite
+                else:
+                    character.sprites.append(sprite)
+            self.config.save_characters_config()
+        except Exception:
+            character.sprites = previous_sprites
+            if installed:
+                shutil.rmtree(target_dir, ignore_errors=True)
+            if moved_old and backup_dir.exists() and not target_dir.exists():
+                backup_dir.rename(target_dir)
+            raise
+        shutil.rmtree(backup_dir, ignore_errors=True)
+        return self.state()
+    except Exception:
+        shutil.rmtree(staging_dir, ignore_errors=True)
+        if moved_old and not installed and backup_dir.exists() and not target_dir.exists():
+            backup_dir.rename(target_dir)
+        raise
 
 
 def delete_character_sprite(self, payload: dict[str, Any]) -> dict[str, Any]:
