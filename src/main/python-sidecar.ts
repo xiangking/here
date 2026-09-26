@@ -70,6 +70,7 @@ export class PythonSidecar extends EventEmitter {
       env: {
         ...process.env,
         PYTHONUNBUFFERED: "1",
+        PYTHONIOENCODING: "utf-8",
         HERE_PROJECT_ROOT: root,
         HERE_APP_HOME: this.dataRoot,
         DYLD_LIBRARY_PATH: process.platform === "darwin"

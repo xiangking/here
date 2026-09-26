@@ -146,6 +146,7 @@ def smoke_test() -> None:
             "HERE_APP_HOME": app_home,
             "HERE_PROJECT_ROOT": str(ROOT),
             "PYTHONUNBUFFERED": "1",
+            "PYTHONIOENCODING": "utf-8",
         }
         if sys.platform == "darwin":
             env["DYLD_LIBRARY_PATH"] = str(RUNTIME / "lib")
@@ -157,6 +158,7 @@ def smoke_test() -> None:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            encoding="utf-8",
         )
         assert process.stdin is not None and process.stdout is not None
         try:
