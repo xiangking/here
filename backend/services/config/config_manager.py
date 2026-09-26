@@ -449,14 +449,46 @@ class ConfigManager:
         print("background.yaml 保存完成。")
 
     def _save_single_config(self, file_path: Path, data: Union[Dict, List]) -> None:
-        """保存单个配置到 YAML 文件"""
+        """保存单个配置到 YAML 文件（原子操作）"""
+        import tempfile
+        import os
+
         file_path.parent.mkdir(parents=True, exist_ok=True) # 确保目录存在
+
+        # 使用临时文件实现原子写入
+        fd = None
+        temp_path = None
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                # 使用 default_flow_style=False 提高 YAML 的可读性
+            # 在同一目录下创建临时文件，确保在同一文件系统上以支持原子重命名
+            fd, temp_path = tempfile.mkstemp(
+                dir=file_path.parent,
+                prefix=f".{file_path.name}.",
+                suffix=".tmp"
+            )
+
+            # 将数据序列化为 YAML 并写入临时文件
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                fd = None  # fdopen 会接管文件描述符
                 yaml.dump(data, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+            # 原子替换：成功写入后才替换原文件
+            os.replace(temp_path, file_path)
+            temp_path = None  # 标记已成功移动
+
         except Exception as e:
-            print(f"错误：保存配置到 {file_path} 失败: {e}")
+            # 清理临时文件
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except:
+                    pass
+            if temp_path is not None and os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
+            # 向调用方抛出异常，而不是吞掉
+            raise RuntimeError(f"保存配置到 {file_path} 失败: {e}") from e
 
     def get_background_by_name(self, name: str) -> Optional[Background]:
         for char in self.config.background_list:
