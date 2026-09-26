@@ -166,6 +166,8 @@ def reload_runtime(self) -> None:
     if had_asr_adapter:
         hooks.event("asr_state", {"running": False, "paused": False})
     self.config.reload()
+    # Recreate memory store after config reload to pick up new paths
+    self.memory = AgentMemoryStore()
     self._initialize_runtime()
 
 
