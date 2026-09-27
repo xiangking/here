@@ -4,11 +4,15 @@ from typing import Any
 
 from bridge import hooks
 from bridge.deps import (
+    AppPaths,
     Path,
+    STORAGE_PATHS_CONFIG_FILE,
+    copy_directory_contents,
     default_character_assets_dir,
     default_character_memory_dir,
     is_strict_child,
     load_storage_paths,
+    relocate_character_asset_paths,
     resolve_storage_path,
     save_storage_paths,
     shutil,
@@ -65,6 +69,23 @@ def save_storage(self, payload: dict[str, Any]) -> dict[str, Any]:
         raise
 
 
+def _copy_legacy_config(source_config: Path, target_config: Path) -> None:
+    """Copy legacy config files without adopting the legacy storage layout."""
+    if not source_config.exists():
+        return
+    target_config.mkdir(parents=True, exist_ok=True)
+    for item in source_config.iterdir():
+        # ``storage_paths.yaml`` describes the legacy machine's custom folders.
+        # Adopting it would make Electron write back into the old install.
+        if item.name == STORAGE_PATHS_CONFIG_FILE:
+            continue
+        destination = target_config / item.name
+        if item.is_dir():
+            shutil.copytree(item, destination, dirs_exist_ok=True)
+        elif item.is_file():
+            shutil.copy2(item, destination)
+
+
 def import_legacy(self, payload: dict[str, Any]) -> dict[str, Any]:
     selected = Path(str(payload.get("source_path") or "")).expanduser().resolve()
     candidates = [selected / ".local" / "here", selected]
@@ -76,19 +97,51 @@ def import_legacy(self, payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("没有找到旧版 config/system_config.yaml。")
     if source == self.paths.root.resolve():
         raise ValueError("所选目录已经是 Electron 数据目录。")
+
+    legacy_storage = load_storage_paths(source)
+    legacy_memory = resolve_storage_path(
+        legacy_storage.character_memory_dir,
+        root=source,
+        fallback=default_character_memory_dir(source),
+    )
+    legacy_assets = resolve_storage_path(
+        legacy_storage.character_assets_dir,
+        root=source,
+        fallback=default_character_assets_dir(source),
+    )
+    electron_memory = self.paths.memory_dir
+    electron_assets = self.paths.characters_dir
+
     copied: list[str] = []
-    for name in ("config", "memory", "characters", "backgrounds", "state", "character_templates"):
-        origin = source / name
-        if not origin.exists():
-            continue
-        destination = self.paths.root / name
-        if origin.is_dir():
-            shutil.copytree(origin, destination, dirs_exist_ok=True)
-        else:
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(origin, destination)
-        copied.append(name)
-    self.reload_runtime()
+    try:
+        for name, origin, destination in (
+            ("memory", legacy_memory, electron_memory),
+            ("characters", legacy_assets, electron_assets),
+            ("backgrounds", source / "backgrounds", self.paths.backgrounds_dir),
+            ("state", source / "state", self.paths.state_dir),
+            ("character_templates", source / "character_templates", self.paths.templates_dir),
+        ):
+            if origin.exists():
+                copy_directory_contents(origin, destination)
+                copied.append(name)
+        _copy_legacy_config(source / "config", self.paths.config_dir)
+        if (source / "config").exists():
+            copied.insert(0, "config")
+        # Load the imported config, then point its asset paths (absolute or
+        # supported relative forms) at the Electron-owned folders instead of
+        # the legacy install.
+        self.config.reload()
+        relocate_character_asset_paths(
+            legacy_layout=AppPaths(source),
+            old_assets_dir=legacy_assets,
+            new_assets_dir=electron_assets,
+            config_manager=self.config,
+        )
+        self.reload_runtime()
+    except Exception:
+        # Never leave the runtime pointed at the legacy storage layout on failure.
+        self.config.reload()
+        raise
     return {
         "sourcePath": str(source),
         "charactersImported": len(self.config.config.characters),
