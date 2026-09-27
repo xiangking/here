@@ -38,13 +38,13 @@ npm run dev
 
 `npm run backend:setup`（`scripts/backend-tasks.mjs setup`）用 `uv` 创建 `backend/.venv` 并安装 `backend/requirements.txt` 的基础依赖。后端命令会根据当前系统自动选择虚拟环境路径（Unix 使用 `.venv/bin`，Windows 使用 `.venv/Scripts`）。
 
-需要 ASR、视频或 Hermes 等可选能力时：
+需要 ASR 或 Hermes 等可选能力时：
 
 ```bash
 npm run backend:setup:full
 ```
 
-`backend:setup:full` 在 `backend:setup` 之后追加安装 `backend/requirements-asr.txt`（`pyaudio`、`vosk==0.3.44`、`faster-whisper`、`RealtimeSTT`）和 `backend/requirements-hermes.txt`（`hermes-agent`，从 Git 安装）。
+`backend:setup:full` 在 `backend:setup` 之后追加安装 `backend/requirements-asr.txt`（`pyaudio`、`vosk==0.3.44`、`faster-whisper`、`RealtimeSTT`）和 `backend/requirements-hermes.txt`（`hermes-agent`，从 Git 安装）。它**不包含视频依赖**：`opencv-python` 不在 `requirements.txt` / `requirements-asr.txt` / `requirements-hermes.txt` 中，视频立绘支持请通过设置页「安装视频立绘支持」按需安装，或自行向 `backend/.venv` 安装 `opencv-python`。
 
 ## 依赖安装方式
 
@@ -53,11 +53,13 @@ npm run backend:setup:full
 | 方式 | 命令 / 入口 | 安装位置 | 适用场景 |
 | --- | --- | --- | --- |
 | 开发基础依赖 | `npm run backend:setup` | `backend/.venv`（`backend/requirements.txt`） | 本地开发运行 sidecar |
-| 开发完整依赖 | `npm run backend:setup:full` | `backend/.venv`（追加 `requirements-asr.txt`、`requirements-hermes.txt`） | 本地开发的 ASR / 视频 / Hermes |
+| 开发完整依赖 | `npm run backend:setup:full` | `backend/.venv`（追加 `requirements-asr.txt`、`requirements-hermes.txt`） | 本地开发的 ASR / Hermes（**不含视频**） |
 | 设置页按需安装 | 设置页「安装当前识别依赖」「安装视频立绘支持」「安装 Hermes Agent」，对应 RPC `install_dependencies` | 应用数据目录下的 `cache/python-packages/py3.11`，运行时加入 `sys.path` | 已安装的桌面应用按需补齐可选能力 |
 | 发布包运行时 | `npm run backend:runtime` | `backend/runtime/`（可搬运 CPython + `backend/requirements-runtime.txt`） | 打包发布包（`npm run dist`） |
 
 设置页按需安装的功能名：ASR 取决于当前「识别后端」（`vosk`、`faster_whisper`、`realtime_stt`），视频为 `video`，另有 `hermes`。安装需要能访问 pip 源（Hermes 还需要 `git` 与 GitHub 访问权限）和可写的应用数据目录；完成后页面会自动重新检查依赖状态，Vosk 还需用「检查 / 预载模型」下载模型，个别能力可能需要重启应用才会生效。
+
+`opencv-python` 既不在 `backend:setup:full` 中，也不在发布运行时 `backend/requirements-runtime.txt` 中：视频能力无论开发还是发布都通过设置页按需安装。
 
 ## 验证
 
