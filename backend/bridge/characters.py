@@ -232,8 +232,14 @@ def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, An
                     if not ok:
                         break
                     destination = staging_dir / f"frame_{frame_index + 1:04d}.png"
-                    if cv2.imwrite(destination.as_posix(), frame):
-                        frames.append(destination)
+                    if not cv2.imwrite(destination.as_posix(), frame):
+                        # OpenCV reports write failures (e.g. disk full) by returning
+                        # False instead of raising, so surface it as an error to keep
+                        # the previous assets intact.
+                        raise RuntimeError(
+                            f"写入视频帧失败：{source_paths[0].name}（第 {frame_index + 1} 帧）。"
+                        )
+                    frames.append(destination)
                     frame_index += 1
             finally:
                 capture.release()

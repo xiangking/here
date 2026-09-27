@@ -12,6 +12,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import yaml
+
 
 _APP_HOME = tempfile.TemporaryDirectory(prefix="here-electron-tests-")
 os.environ["HERE_APP_HOME"] = _APP_HOME.name
@@ -188,6 +190,73 @@ class RpcBridgeTests(unittest.TestCase):
                 after = next(item for item in self.backend.config.config.characters if item.name == character.name)
                 self.assertEqual(self._sprite_path(after.sprites[0]), previous_path)
                 self.assertTrue(previous_path.is_file())
+        finally:
+            self._remove_probe_character(character)
+
+    def test_video_frame_write_failure_keeps_previous_asset_and_config(self) -> None:
+        character = self._add_probe_character("AtomicImwriteProbe", "atomic_imwrite_probe")
+        state = "atomic_imwrite_state"
+        try:
+            with tempfile.TemporaryDirectory() as root:
+                good = Path(root) / "good.png"
+                good.write_bytes(b"previous-good-bytes")
+                video = Path(root) / "clip.mov"
+                video.write_bytes(b"video")
+                self.backend.import_character_state_assets({
+                    "character_name": character.name, "state_name": state, "paths": [good.as_posix()],
+                })
+                saved = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                previous_path = self._sprite_path(saved.sprites[0])
+                previous_bytes = previous_path.read_bytes()
+                config_path = self.backend.paths.config_dir / "characters.yaml"
+
+                class FakeCapture:
+                    def __init__(self) -> None:
+                        self.reads = 0
+
+                    def isOpened(self) -> bool:
+                        return True
+
+                    def read(self):
+                        self.reads += 1
+                        if self.reads <= 2:
+                            return True, object()
+                        return False, None
+
+                    def release(self) -> None:
+                        pass
+
+                calls = {"imwrite": 0}
+
+                def fake_imwrite(path: str, frame: object) -> bool:
+                    calls["imwrite"] += 1
+                    if calls["imwrite"] == 1:
+                        Path(path).write_bytes(b"frame-one")
+                        return True
+                    return False
+
+                fake_cv2 = SimpleNamespace(
+                    VideoCapture=lambda source: FakeCapture(),
+                    imwrite=fake_imwrite,
+                )
+                with patch.dict(sys.modules, {"cv2": fake_cv2}):
+                    with self.assertRaisesRegex(RuntimeError, "写入视频帧失败"):
+                        self.backend.import_character_state_assets({
+                            "character_name": character.name, "state_name": state,
+                            "paths": [video.as_posix()],
+                        })
+
+                after = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                self.assertEqual(self._sprite_path(after.sprites[0]), previous_path)
+                self.assertEqual(previous_path.read_bytes(), previous_bytes)
+                disk = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+                disk_character = next(item for item in disk if item["name"] == character.name)
+                self.assertEqual(Path(disk_character["sprites"][0]["path"]), previous_path)
+                leftovers = [
+                    item.name for item in previous_path.parent.parent.iterdir()
+                    if item.name.startswith((".pending-", ".backup-"))
+                ]
+                self.assertEqual(leftovers, [])
         finally:
             self._remove_probe_character(character)
 
