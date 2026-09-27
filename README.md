@@ -1,32 +1,83 @@
-# here Electron
+# here
 
-`here-Electron` 是 Qt/PySide6 版 [here](../here) 的 Electron 桌面实现。功能对齐基线为原项目提交：
+<p align="center">
+  <img src="src/renderer/public/assets/icon.png" width="96" alt="here app icon">
+</p>
 
-```text
-2e782b26ca83e92ee9c484c5a095f5331526d72b
-```
+<p align="center">
+  <b>A desktop-resident AI companion with characters, memory, speech, proactive contact, and image selfies.</b>
+</p>
 
-迁移遵守两个边界：
+<p align="center">
+  <a href="README.md">Project README</a>
+</p>
 
-- 原 `here` 仓库只作为只读参考，不修改其代码和数据。
-- Electron 运行数据写入 Electron 自己的 `userData/python-data`；旧版数据只能通过“导入旧版数据”显式复制。
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.11-blue?logo=python">
+  <img alt="Electron" src="https://img.shields.io/badge/Electron-desktop-47848F?logo=electron&logoColor=white">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white">
+  <img alt="License" src="https://img.shields.io/badge/License-PolyForm%20NC%201.0.0-blue">
+</p>
 
-## 架构
+<p align="center">
+  <a href="#-features">Features</a>
+  ·
+  <a href="#-requirements">Requirements</a>
+  ·
+  <a href="#-installation">Installation</a>
+  ·
+  <a href="#-configuration">Configuration</a>
+  ·
+  <a href="#-image-generation-and-selfies">Image Generation</a>
+  ·
+  <a href="#-acknowledgements">Acknowledgements</a>
+  ·
+  <a href="#license">License</a>
+</p>
 
-```mermaid
-flowchart LR
-  R["Renderer / TypeScript"] -->|contextBridge IPC| M["Electron Main"]
-  M -->|JSONL RPC| P["Python sidecar"]
-  P --> D["here domain modules"]
-  M --> O["Window / tray / dialogs / local media"]
-  P --> S["Agent / memory / TTS / ASR / T2I / delivery"]
-```
+here is an AI lover and companion who feels like they live on your desktop. With character profiles, long-term memory, voice, animated sprites, daily-life state, and proactive contact, here does not just wait for you to open a chat box; they can naturally think of you, reach out first, and share little moments from their day through optional current-state photos.
 
-Electron 负责窗口、托盘、系统文件对话框、本地媒体和安全 IPC；Python sidecar 继续使用原版的 Agent、记忆、生活计划、主动联系、语音、图像与消息平台领域代码。Qt UI、`QThread` 和 Qt signal/slot 不进入新运行时。
+here can use the user's locally installed Hermes Agent for model reasoning, with a bundled OpenAI-compatible Internal Agent as a lightweight fallback. Image generation is provider-agnostic, so Grok Imagine, GPT Image, OpenAI-compatible services, and future adapters can all power the same proactive photo experience.
 
-## 开发
+## ✨ Features
 
-需要 Node.js、npm、Python 3.11 和 `uv`。
+<p align="center">
+  <img src="docs/assets/screenshot/feature-showcase-01.jpg" width="720" alt="here showcase">
+</p>
+
+| Feature | Description | Preview |
+| --- | --- | --- |
+| Character system | Create, import, and edit personas, visual identity, emotion tags, voice references, and character bundles. | <img src="docs/assets/screenshot/feature-character-01.png" width="120" alt="Character desktop preview"> <img src="docs/assets/screenshot/feature-character-02.png" width="150" alt="Character import menu"> <img src="docs/assets/screenshot/feature-character-03.png" width="150" alt="Create character dialog"> |
+| ASR and TTS | Support microphone voice input, ASR backend selection, TTS playback, and multi-provider voice settings. | <img src="docs/assets/screenshot/feature-voice-01.png" width="135" alt="ASR settings"> <img src="docs/assets/screenshot/feature-voice-02.png" width="135" alt="TTS settings"> <img src="docs/assets/screenshot/feature-voice-03.png" width="120" alt="Microphone permission prompt"> <img src="docs/assets/screenshot/feature-voice-04.png" width="120" alt="Voice synthesis status"> |
+| Desktop chat | Dialog, sprite switching, TTS playback, microphone input, history save and restore. | <img src="docs/assets/screenshot/feature-chat-01.png" width="150" alt="Desktop chat and call UI"> <img src="docs/assets/screenshot/feature-chat-02.png" width="150" alt="External delivery settings"> <img src="docs/assets/screenshot/feature-chat-03.png" width="160" alt="External chat preview"> |
+| Agent backend | Choose the user's local Hermes Agent, the bundled Internal Agent fallback, or automatic selection from the main menu. |  |
+| Proactive contact | Characters can reach out based on their own daily state through desktop chat or external delivery channels such as WeChat. | <img src="docs/assets/screenshot/feature-proactive-01.png" width="110" alt="External conversation alert"> <img src="docs/assets/screenshot/feature-proactive-02.png" width="120" alt="External chat content"> <img src="docs/assets/screenshot/feature-proactive-03.png" width="120" alt="Desktop proactive contact preview"> |
+| Proactive photos | Proactive contact can attach a natural current-state photo generated from character identity, life state, and optional reference images. | <img src="docs/assets/screenshot/feature-proactive-image-01.jpg" width="160" alt="Proactive photo preview"> |
+| Configurable image APIs | Switch image-api, Grok Imagine, GPT Image, OpenAI-compatible endpoints, and future adapters without changing the scheduler. | <img src="docs/assets/screenshot/feature-image-api-01.png" width="220" alt="Image API settings"> |
+
+## 💻 Requirements
+
+| Item | Requirement |
+| --- | --- |
+| Node.js | Required for Electron, Vite, tests, and packaging. |
+| Python | Python 3.11 is used by the backend sidecar. |
+| Environment manager | [uv](https://docs.astral.sh/uv/) prepares backend development and release runtimes. |
+| Desktop UI | Electron with a Vite renderer and TypeScript main process. |
+| Optional native extras | Video sprite import and AI background removal are optional extras to keep default installs and release bundles smaller. |
+| Local Hermes Agent | If Hermes Agent is not already installed in this project environment, install it with `--with-hermes`. This helper extra is fetched from GitHub and requires Git/network access. |
+| ASR | Windows source installs and release bundles provide the lightweight Vosk path by default. Use `--with-asr` for the full ASR extras, such as faster-whisper, RealtimeSTT, and local ASR dependencies needed by non-Windows source environments. |
+| TTS and image APIs | Optional. API keys can be entered in the UI or provided through environment variables. |
+| External delivery | Optional. WeChat and other delivery channels need their own local configuration. |
+
+On Windows, keep the project in an ASCII-only path such as `D:\here` to avoid path issues in audio, Qt, or embedded Python components.
+
+On macOS source installs, ASR requires Homebrew PortAudio so `pyaudio` can build. Release bundles embed the PortAudio library used by Vosk.
+
+## 📦 Installation
+
+### Source Run
+
+Install the Node and Python dependencies, then start the Electron application:
 
 ```bash
 npm install
@@ -34,99 +85,92 @@ npm run backend:setup
 npm run dev
 ```
 
-开发地址固定为 `http://127.0.0.1:5180`。Vite 页面在普通浏览器中使用 mock API；由 Electron 打开时使用 preload 暴露的真实 API。
-
-`npm run backend:setup`（`scripts/backend-tasks.mjs setup`）用 `uv` 创建 `backend/.venv` 并安装 `backend/requirements.txt` 的基础依赖。后端命令会根据当前系统自动选择虚拟环境路径（Unix 使用 `.venv/bin`，Windows 使用 `.venv/Scripts`）。
-
-需要 ASR 或 Hermes 等可选能力时：
+The development renderer is available at `http://127.0.0.1:5180`. Optional ASR and Hermes dependencies can be installed with:
 
 ```bash
 npm run backend:setup:full
 ```
 
-`backend:setup:full` 在 `backend:setup` 之后追加安装 `backend/requirements-asr.txt`（`pyaudio`、`vosk==0.3.44`、`faster-whisper`、`RealtimeSTT`）和 `backend/requirements-hermes.txt`（`hermes-agent`，从 Git 安装）。它**不包含视频依赖**：`opencv-python` 不在 `requirements.txt` / `requirements-asr.txt` / `requirements-hermes.txt` 中，视频立绘支持请通过设置页「安装视频立绘支持」按需安装，或自行向 `backend/.venv` 安装 `opencv-python`。
+| Option | Installs | Enables |
+| --- | --- | --- |
+| `backend:setup` | `backend/requirements.txt` | Base backend dependencies for local development. |
+| `backend:setup:full` | ASR and Hermes requirement files | Adds optional ASR and Hermes dependencies; video support is installed from the settings page when needed. |
+| Settings page | ASR, video, and Hermes packages | Installs optional packages into the application data directory for packaged applications. |
 
-## 依赖安装方式
+`backend:setup:full` intentionally excludes video dependencies. Video support is installed on demand from the application settings page.
 
-开发环境依赖与发布包运行时是两条不同的路径，互不替代：
+Source runs download the Vosk model on first use when it is missing. Release bundles include the small Chinese Vosk model, so the default Vosk backend can start without a model download.
 
-| 方式 | 命令 / 入口 | 安装位置 | 适用场景 |
-| --- | --- | --- | --- |
-| 开发基础依赖 | `npm run backend:setup` | `backend/.venv`（`backend/requirements.txt`） | 本地开发运行 sidecar |
-| 开发完整依赖 | `npm run backend:setup:full` | `backend/.venv`（追加 `requirements-asr.txt`、`requirements-hermes.txt`） | 本地开发的 ASR / Hermes（**不含视频**） |
-| 设置页按需安装 | 设置页「安装当前识别依赖」「安装视频立绘支持」「安装 Hermes Agent」，对应 RPC `install_dependencies` | 应用数据目录下的 `cache/python-packages/py3.11`，运行时加入 `sys.path` | 已安装的桌面应用按需补齐可选能力 |
-| 发布包运行时 | `npm run backend:runtime` | `backend/runtime/`（可搬运 CPython + `backend/requirements-runtime.txt`） | 打包发布包（`npm run dist`） |
+### Packaged Builds
 
-设置页按需安装的功能名：ASR 取决于当前「识别后端」（`vosk`、`faster_whisper`、`realtime_stt`），视频为 `video`，另有 `hermes`。安装需要能访问 pip 源（Hermes 还需要 `git` 与 GitHub 访问权限）和可写的应用数据目录；完成后页面会自动重新检查依赖状态，Vosk 还需用「检查 / 预载模型」下载模型，个别能力可能需要重启应用才会生效。
-
-`opencv-python` 既不在 `backend:setup:full` 中，也不在发布运行时 `backend/requirements-runtime.txt` 中：视频能力无论开发还是发布都通过设置页按需安装。
-
-## 验证
-
-```bash
-npm run typecheck
-npm test
-npm run backend:test
-npm run build
-```
-
-## 打包
+Build a local release package with Electron Builder:
 
 ```bash
 npm run dist
 ```
 
-`npm run dist` 依次执行 `npm run build`、`npm run backend:runtime` 和 `electron-builder`。
+The output is written to `release/`. Build on the target platform so Electron Builder packages the correct native runtime.
 
-`npm run backend:runtime`（`backend/build_runtime.py`）需要 `uv`，并会：
+## ⚙️ Configuration
 
-1. 下载当前平台的 python-build-standalone CPython 3.11 到 `backend/runtime/`；
-2. 安装 `backend/requirements-runtime.txt`；
-3. 在 macOS 上要求 Homebrew，用 `brew --prefix portaudio`（缺失时自动 `brew install portaudio`）编译 PyAudio，复制并重签 `libportaudio.2.dylib`；
-4. 清理测试文件，并用真实 JSONL RPC 做 `ping` 冒烟测试。
+Default configs contain no real secrets. Electron stores runtime data under the platform application data directory. The development backend uses `backend/.venv`, while packaged applications use their bundled runtime.
 
-发布包不依赖开发 `.venv` 或原 `here` 目录。当 `backend/runtime/` 已按当前平台构建且冒烟通过时，命令会直接复用；需要强制重建时执行 `npm run backend:runtime -- --force`。
+```bash
+HERE_API_BASE_URL=https://api.openai.com/v1
+HERE_API_MODEL=gpt-4o-mini
+```
 
-### Vosk / PyAudio 的平台差异
+Main configuration entry points:
 
-`backend/requirements-runtime.txt` 用平台条件控制语音依赖，因此不同平台的发布运行时并不相同：
+| Setting | UI |
+| --- | --- |
+| Agent backend | Settings page and backend configuration |
+| TTS | Settings page: voice provider and API credentials |
+| ASR | Settings page: recognition backend and model preparation |
+| Character memory and animation folders | Settings page: character and storage paths |
+| Proactive contact | Settings page: scheduler and delivery channels |
+| External delivery such as WeChat | Settings page: platform credentials |
+| Proactive photo generation | Settings page: image provider and model |
 
-| 平台 | 发布运行时是否包含 `pyaudio` / `vosk` | 说明 |
-| --- | --- | --- |
-| macOS | 是 | 需要 Homebrew；PyAudio 链接并重签打包的 PortAudio |
-| Windows | 是 | 使用预编译 wheel；请在 Windows 环境执行 `npm run dist` |
-| Linux | 否 | 平台条件不满足，发布运行时只有基础依赖，不含 Vosk/PyAudio |
+Useful environment variables:
 
-Linux 发布包默认不含语音识别；如需在 Linux 使用，请在开发环境安装系统 PortAudio 开发包后用 `npm run backend:setup:full`，或自行放开 `backend/requirements-runtime.txt` 的平台条件并重建运行时。
+| Variable | Purpose |
+| --- | --- |
+| `HERE_API_BASE_URL` | OpenAI-compatible API base URL. |
+| `HERE_API_MODEL` | Default model for the internal agent. |
+| `OPENAI_API_KEY` | Used by Internal Agent, OpenAI TTS, and GPT Image. |
+| `FAL_KEY` / `XAI_API_KEY` | Used by Grok Imagine / fal-style image APIs. |
+| `OPENROUTER_API_KEY` | Used by OpenRouter Grok Imagine. |
+| `ELEVENLABS_API_KEY` | Used by ElevenLabs TTS. |
+| `MINIMAX_API_KEY` / `MINIMAX_GROUP_ID` | Used by MiniMax TTS. |
+| `FISH_AUDIO_API_KEY` / `FISH_AUDIO_REFERENCE_ID` | Used by Fish Audio TTS. |
+| `HERE_MESSAGING_CONFIG` | Override external messaging config path. |
+| `HERE_WECHAT_STATE_DIR` | Override WeChat login state directory. |
 
-macOS 产物写入 `release/`。没有 Apple Developer ID 时能生成 `.app/.dmg/.zip`，但跨机器打开会受到 Gatekeeper 提示；正式分发需配置签名与公证。
+API keys can also be entered in the UI. UI-written config is local-only and should not be committed.
 
-Windows 发布请在 Windows 环境执行 `npm run dist`，这样才会打包 Windows 版本的 CPython 和 Vosk/PyAudio，然后由 Electron Builder 生成 NSIS 安装包。macOS 目录中的 runtime 是 macOS 专用，不能直接用于 Windows。
+## 🖼️ Image Generation And Selfies
 
-## 故障排查
+Proactive photos are an attachment capability of proactive contact; they do not drive the proactive scheduler by themselves. When enabled, the character may generate a natural current-state photo from daily state, visual identity, and an optional reference image.
 
-### 依赖安装失败
+<p align="center">
+  <img src="docs/assets/screenshot/feature-selfie-example-01.jpg" width="420" alt="Proactive selfie example">
+</p>
 
-- 设置页按需安装需要访问 pip 源；Hermes 还需要 `git` 与 GitHub 访问权限。网络不可用时错误会显示在设置页，恢复网络或代理后重试；也可以改用命令行 `npm run backend:setup:full`。
-- 按需安装写入应用数据目录下的 `cache/python-packages/py3.11`，请确认该目录可写且磁盘空间充足。
-- 安装失败不会让界面卡在忙碌状态：成功、非零退出、超时或子进程启动失败都会清除忙碌状态，并在状态文本中保留可读的错误尾部。
+Supported image adapters:
 
-### 系统音频库缺失
+| Adapter | Description |
+| --- | --- |
+| `image-api` | OpenAI-compatible `/v1/images/generations` or simple image API. |
+| `xai-grok-imagine` | fal / OpenRouter / OpenAI-compatible Grok Imagine configuration. |
+| `openai-gpt-image` | OpenAI GPT Image images API with reference-image edits. |
 
-- macOS：PyAudio 需要 PortAudio，先执行 `brew install portaudio`（`backend:runtime` 会自动尝试安装）。
-- Linux：需要系统开发包，例如 Debian/Ubuntu 的 `portaudio19-dev`，以及 `build-essential`、`python3-dev`。
-- Windows：通常直接使用 PyAudio 预编译 wheel，无需额外系统库。
+Each adapter exposes its own URL, API key, model, size, quality, and related options in `Proactive selfie image settings`.
 
-### 安装后仍显示缺少依赖
+## 🙏 Acknowledgements
 
-- 设置页安装完成后会自动重新检查；Vosk 还需点「检查 / 预载模型」下载模型。
-- 若某个能力仍未生效，重启应用让 sidecar 重新加载用户安装的包。
+here is inspired by [openai/codex](https://github.com/openai/codex)'s pet, [RachelForster/Shinsekai](https://github.com/RachelForster/Shinsekai), [SumeLabs/clawra](https://github.com/SumeLabs/clawra), and [xiangking/agent-pet](https://github.com/xiangking/agent-pet). Thank you to their creators and contributors for what they have shared with the open-source community.
 
-## 数据与迁移
+## License
 
-- macOS 默认数据：`~/Library/Application Support/here-electron/python-data`
-- Windows/Linux：跟随 Electron `app.getPath("userData")`
-- 旧数据导入只读取所选目录，然后复制 `config/memory/characters/backgrounds/state/character_templates`
-- 导入会读取旧数据的 `storage_paths.yaml`，把自定义角色记忆/资产目录的内容一并复制到 Electron 数据目录，并改用 Electron 自己的存储配置；原目录保持不变
-
-功能对齐证据见 [功能对齐矩阵](docs/FUNCTION_PARITY.md)，迁移方法和经验见 [Qt 到 Electron 迁移总结](docs/QT_TO_ELECTRON_MIGRATION.md)。
+here is released under the [PolyForm Noncommercial License 1.0.0](LICENSE). Commercial use is not permitted without separate written permission.
