@@ -22,9 +22,12 @@ from bridge.deps import (
 )
 from infrastructure.asset_paths import (
     UnsafeSpritePrefixError,
+    collect_referenced_asset_paths,
     is_inside_owned_dir,
+    is_referenced_target,
     owned_character_dir,
     prepare_owned_character_dir,
+    referenced_inside_directory,
     remove_owned_character_dir,
     validate_sprite_prefix,
 )
@@ -194,6 +197,31 @@ def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, An
             raise ValueError("立绘索引无效。")
         previous_sprite = hooks.model_json(character.sprites[target_index])
 
+    # Replacing a state folder must not destroy frames another character (or
+    # another sprite of this character) still points at.
+    replaced_index: int | None = target_index
+    if replaced_index is None:
+        replaced_index = next(
+            (
+                index
+                for index, existing in enumerate(character.sprites)
+                if str(
+                    getattr(existing, "state_name", "")
+                    or (existing.get("state_name") if isinstance(existing, dict) else "")
+                )
+                == state_name
+            ),
+            None,
+        )
+    if target_dir.exists():
+        referenced = collect_referenced_asset_paths(
+            self.config.config.characters,
+            lambda text: resolve_character_asset_path(text, self.paths),
+            skip=(name, replaced_index) if replaced_index is not None else None,
+        )
+        if referenced_inside_directory(target_dir, referenced):
+            raise UnsafeSpritePrefixError("目标目录中的文件仍被其他立绘或角色引用，已取消替换。")
+
     # Build every frame in a staging folder first. The previously imported
     # state stays untouched until the new assets are fully generated, so a
     # failed conversion can never destroy the working sprites.
@@ -347,16 +375,25 @@ def delete_character_sprite(self, payload: dict[str, Any]) -> dict[str, Any]:
         prefix = ""
         asset_root = None
         voice_root = None
-    referenced = [raw.get("path"), *(raw.get("frames") or []), raw.get("spritesheet_path"), raw.get("voice_path")]
-    for candidate in referenced:
+    # A file shared with another character (or another sprite of this character)
+    # must survive the removal of this one reference.
+    referenced = collect_referenced_asset_paths(
+        self.config.config.characters,
+        lambda text: resolve_character_asset_path(text, self.paths),
+        skip=(name, index),
+    )
+    referenced_values = [raw.get("path"), *(raw.get("frames") or []), raw.get("spritesheet_path"), raw.get("voice_path")]
+    for candidate in referenced_values:
         if not candidate or asset_root is None:
             continue
         try:
             path = resolve_character_asset_path(candidate, self.paths).resolve()
             if path.is_file() and is_inside_owned_dir(path, asset_root):
-                path.unlink(missing_ok=True)
+                if not is_referenced_target(path, referenced):
+                    path.unlink(missing_ok=True)
             elif path.is_dir() and is_inside_owned_dir(path, asset_root):
-                shutil.rmtree(path, ignore_errors=True)
+                if not referenced_inside_directory(path, referenced):
+                    shutil.rmtree(path, ignore_errors=True)
         except (OSError, RuntimeError, ValueError):
             continue
     voice_path = str(raw.get("voice_path") or "").strip()
@@ -364,7 +401,8 @@ def delete_character_sprite(self, payload: dict[str, Any]) -> dict[str, Any]:
         try:
             voice = Path(voice_path).expanduser().resolve()
             if voice.is_file() and is_inside_owned_dir(voice, voice_root):
-                voice.unlink(missing_ok=True)
+                if not is_referenced_target(voice, referenced):
+                    voice.unlink(missing_ok=True)
         except (OSError, RuntimeError, ValueError):
             pass
     character.sprites.pop(index)

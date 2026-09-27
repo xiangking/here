@@ -20,7 +20,7 @@ from infrastructure.asset_paths import (  # noqa: E402
     validate_sprite_prefix,
 )
 from services.config.character_manager import CharacterManager  # noqa: E402
-from services.config.schema import Character  # noqa: E402
+from services.config.schema import Character, Sprite  # noqa: E402
 
 
 def _character(name: str, prefix: str) -> Character:
@@ -182,6 +182,85 @@ class CharacterManagerAssetGuardTests(unittest.TestCase):
             self.assertEqual(remaining, [])
             self.assertTrue(outside.is_file())
             self.assertEqual(character.sprites, [])
+
+    def test_delete_single_sprite_keeps_a_file_shared_with_another_sprite(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="here-char-shared-sprite-") as raw:
+            base = Path(raw)
+            assets = base / "characters"
+            owned = assets / "hero"
+            owned.mkdir(parents=True)
+            shared = owned / "neutral.png"
+            shared.write_bytes(b"png")
+            character = _character("hero", "hero")
+            character.sprites = [
+                Sprite(path=shared, state_name="neutral"),
+                Sprite(path=shared, state_name="happy"),
+            ]
+            manager = self._manager([character], assets, base / "voices", base / "models")
+
+            manager.delete_single_sprite("hero", 0)
+
+            self.assertTrue(shared.is_file())
+            self.assertEqual(len(character.sprites), 1)
+
+    def test_delete_single_sprite_keeps_a_file_shared_with_another_character(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="here-char-shared-file-") as raw:
+            base = Path(raw)
+            assets = base / "characters"
+            shared_dir = assets / "shared"
+            shared_dir.mkdir(parents=True)
+            shared = shared_dir / "sprite.png"
+            shared.write_bytes(b"png")
+            one = _character("one", "shared")
+            two = _character("two", "shared")
+            one.sprites = [Sprite(path=shared, state_name="neutral")]
+            two.sprites = [Sprite(path=shared, state_name="neutral")]
+            manager = self._manager([one, two], assets, base / "voices", base / "models")
+
+            manager.delete_single_sprite("one", 0)
+
+            self.assertTrue(shared.is_file())
+            self.assertEqual(len(one.sprites), 0)
+            self.assertEqual(len(two.sprites), 1)
+
+    def test_delete_all_sprites_keeps_a_directory_referenced_by_another_character(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="here-char-shared-dir-") as raw:
+            base = Path(raw)
+            assets = base / "characters"
+            shared_dir = assets / "shared"
+            shared_dir.mkdir(parents=True)
+            shared = shared_dir / "sprite.png"
+            shared.write_bytes(b"png")
+            one = _character("one", "shared")
+            two = _character("two", "other")
+            one.sprites = [Sprite(path=shared, state_name="neutral")]
+            two.sprites = [Sprite(path=shared, state_name="neutral")]
+            manager = self._manager([one, two], assets, base / "voices", base / "models")
+
+            manager.delete_all_sprites("one")
+
+            self.assertTrue(shared.is_file())
+            self.assertEqual(one.sprites, [])
+
+    def test_delete_character_keeps_a_file_referenced_by_a_surviving_character(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="here-char-survivor-") as raw:
+            base = Path(raw)
+            assets = base / "characters"
+            shared_dir = assets / "shared"
+            shared_dir.mkdir(parents=True)
+            shared = shared_dir / "sprite.png"
+            shared.write_bytes(b"png")
+            one = _character("one", "shared")
+            two = _character("two", "other")
+            one.sprites = [Sprite(path=shared, state_name="neutral")]
+            two.sprites = [Sprite(path=shared, state_name="neutral")]
+            manager = self._manager([one, two], assets, base / "voices", base / "models")
+
+            message, names = manager.delete_character("one")
+
+            self.assertIn("已删除", message)
+            self.assertEqual(names, ["two"])
+            self.assertTrue(shared.is_file())
 
     def test_add_character_rejects_traversal_prefix(self) -> None:
         with tempfile.TemporaryDirectory(prefix="here-char-add-") as raw:

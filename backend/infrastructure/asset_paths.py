@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import stat
+from collections.abc import Callable
 from pathlib import Path
 
 SPRITE_PREFIX_PATTERN = re.compile(r"^[0-9A-Za-z_\-\u4e00-\u9fff]+$")
@@ -138,3 +139,71 @@ def is_inside_owned_dir(path: str | Path, owned_dir: str | Path, *, allow_root: 
     if resolved == root:
         return allow_root
     return is_strict_child(resolved, root)
+
+
+# Sprite fields that can hold a filesystem asset reference.
+SPRITE_REFERENCE_FIELDS = ("path", "frames", "spritesheet_path", "voice_path")
+
+
+def _sprite_reference_value(sprite: object, field: str) -> object:
+    if isinstance(sprite, dict):
+        return sprite.get(field)
+    return getattr(sprite, field, "")
+
+
+def _is_external_reference(text: str) -> bool:
+    return text.lower().startswith(("http://", "https://", "data:"))
+
+
+def collect_referenced_asset_paths(
+    characters: list[object],
+    resolve: Callable[[str], str | Path],
+    *,
+    skip: tuple[str, int] | None = None,
+    exclude_character: str | None = None,
+) -> set[Path]:
+    """Resolve every sprite asset reference held by ``characters``.
+
+    ``resolve`` maps a stored reference (absolute or a supported relative form)
+    to a concrete path. Pass ``skip=(name, index)`` to omit the one sprite being
+    removed, or ``exclude_character=name`` to omit a whole character's sprites.
+    """
+    referenced: set[Path] = set()
+    for character in characters or []:
+        name = str(getattr(character, "name", "") or "").strip()
+        if exclude_character is not None and name == exclude_character:
+            continue
+        sprites = list(getattr(character, "sprites", []) or [])
+        for index, sprite in enumerate(sprites):
+            if skip is not None and (name, index) == skip:
+                continue
+            for field in SPRITE_REFERENCE_FIELDS:
+                value = _sprite_reference_value(sprite, field)
+                values = value if isinstance(value, (list, tuple, set)) else (value,)
+                for item in values:
+                    text = str(item or "").strip()
+                    if not text or _is_external_reference(text):
+                        continue
+                    try:
+                        referenced.add(Path(resolve(text)).expanduser().resolve(strict=False))
+                    except (OSError, RuntimeError, ValueError):
+                        continue
+    return referenced
+
+
+def is_referenced_target(path: str | Path, referenced: set[Path]) -> bool:
+    """True when ``path`` itself, or a directory containing it, is referenced."""
+    try:
+        resolved = Path(path).expanduser().resolve(strict=False)
+    except OSError:
+        return False
+    return any(item == resolved or is_strict_child(item, resolved) for item in referenced)
+
+
+def referenced_inside_directory(directory: str | Path, referenced: set[Path]) -> bool:
+    """True when any referenced path lives strictly inside ``directory``."""
+    try:
+        resolved = Path(directory).expanduser().resolve(strict=False)
+    except OSError:
+        return False
+    return any(is_strict_child(item, resolved) for item in referenced)

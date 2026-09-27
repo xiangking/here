@@ -24,6 +24,7 @@ sys.path.insert(0, str(_BACKEND_ROOT))
 import rpc_bridge  # noqa: E402
 from core.messaging.messages import AgentDialogMessage  # noqa: E402
 from core.sprite.character_profile import default_character_profile  # noqa: E402
+from infrastructure.asset_paths import UnsafeSpritePrefixError  # noqa: E402
 from infrastructure.paths import load_storage_paths  # noqa: E402
 from services.config.schema import Character, Sprite  # noqa: E402
 
@@ -490,6 +491,82 @@ class RpcBridgeTests(unittest.TestCase):
             finally:
                 character.__dict__.update(copy.deepcopy(original.__dict__))
                 self.backend.config.save_characters_config()
+
+    def test_delete_character_sprite_keeps_shared_prefix_file_used_by_another_character(self) -> None:
+        prefix = "shared_sprite_guard"
+        asset_root = self.backend.paths.characters_dir / prefix
+        shared_file = asset_root / "sprite.png"
+        original_characters = list(self.backend.config.config.characters)
+        try:
+            asset_root.mkdir(parents=True, exist_ok=True)
+            shared_file.write_bytes(b"shared")
+            owners = [
+                Character(
+                    name=name,
+                    color="#84c2d5",
+                    sprite_prefix=prefix,
+                    sprites=[Sprite(path=shared_file, state_name="neutral")],
+                    character_profile=default_character_profile(name),
+                    character_setting="test",
+                )
+                for name in ("SharedOwnerA", "SharedOwnerB")
+            ]
+            self.backend.config.config.characters.extend(owners)
+            self.backend.config.save_characters_config()
+
+            self.backend.delete_character_sprite({"character_name": "SharedOwnerA", "index": 0})
+
+            self.assertTrue(shared_file.is_file(), "a file another character references must survive")
+            remaining_owner = self.backend.config.get_character_by_name("SharedOwnerB")
+            self.assertIsNotNone(remaining_owner)
+            self.assertEqual(len(remaining_owner.sprites), 1)
+            self.assertEqual(Path(remaining_owner.sprites[0].path), shared_file)
+        finally:
+            self.backend.config.config.characters = original_characters
+            shutil.rmtree(asset_root, ignore_errors=True)
+            self.backend.config.save_characters_config()
+
+    def test_import_state_assets_refuses_to_clobber_shared_prefix_frames(self) -> None:
+        prefix = "shared_import_guard"
+        asset_root = self.backend.paths.characters_dir / prefix
+        state_dir = asset_root / "animations" / "shared_state"
+        shared_file = state_dir / "frame_0001.png"
+        original_characters = list(self.backend.config.config.characters)
+        try:
+            state_dir.mkdir(parents=True, exist_ok=True)
+            shared_file.write_bytes(b"shared-frame")
+            owners = [
+                Character(
+                    name=name,
+                    color="#84c2d5",
+                    sprite_prefix=prefix,
+                    sprites=[Sprite(path=shared_file, state_name="shared_state")],
+                    character_profile=default_character_profile(name),
+                    character_setting="test",
+                )
+                for name in ("ImportOwnerA", "ImportOwnerB")
+            ]
+            self.backend.config.config.characters.extend(owners)
+            self.backend.config.save_characters_config()
+
+            with tempfile.TemporaryDirectory() as root:
+                replacement = Path(root) / "replacement.png"
+                replacement.write_bytes(b"replacement")
+                with self.assertRaises(UnsafeSpritePrefixError):
+                    self.backend.import_character_state_assets({
+                        "character_name": "ImportOwnerA",
+                        "state_name": "shared_state",
+                        "paths": [replacement.as_posix()],
+                    })
+
+            self.assertTrue(shared_file.is_file())
+            self.assertEqual(shared_file.read_bytes(), b"shared-frame")
+            owner_a = self.backend.config.get_character_by_name("ImportOwnerA")
+            self.assertEqual(Path(owner_a.sprites[0].path), shared_file)
+        finally:
+            self.backend.config.config.characters = original_characters
+            shutil.rmtree(asset_root, ignore_errors=True)
+            self.backend.config.save_characters_config()
 
     def test_case_only_character_rename_through_save_config_keeps_memory(self) -> None:
         probe = Path(_APP_HOME.name) / "case-probe"
