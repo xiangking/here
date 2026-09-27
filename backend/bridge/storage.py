@@ -1,0 +1,154 @@
+from __future__ import annotations
+
+from typing import Any
+
+from bridge import hooks
+from bridge.deps import (
+    AppPaths,
+    Path,
+    STORAGE_PATHS_CONFIG_FILE,
+    copy_directory_contents,
+    default_character_assets_dir,
+    default_character_memory_dir,
+    is_strict_child,
+    load_storage_paths,
+    relocate_character_asset_paths,
+    resolve_storage_path,
+    save_storage_paths,
+    shutil,
+)
+
+
+def save_storage(self, payload: dict[str, Any]) -> dict[str, Any]:
+    old_memory = self.paths.memory_dir
+    old_assets = self.paths.characters_dir
+    old_config = load_storage_paths(self.paths.root)
+    memory_raw = str(payload.get("character_memory_dir") or "").strip()
+    assets_raw = str(payload.get("character_assets_dir") or "").strip()
+    new_memory = resolve_storage_path(
+        memory_raw, root=self.paths.root, fallback=default_character_memory_dir(self.paths.root)
+    )
+    new_assets = resolve_storage_path(
+        assets_raw, root=self.paths.root, fallback=default_character_assets_dir(self.paths.root)
+    )
+    copy_memory = bool(payload.get("copy_memory", True))
+    copy_assets = bool(payload.get("copy_assets", True))
+    if copy_memory and is_strict_child(new_memory, old_memory):
+        raise ValueError("新的角色记忆目录不能位于旧目录内部。")
+    if copy_assets and is_strict_child(new_assets, old_assets):
+        raise ValueError("新的角色资产目录不能位于旧目录内部。")
+    saved = False
+    try:
+        new_memory.mkdir(parents=True, exist_ok=True)
+        new_assets.mkdir(parents=True, exist_ok=True)
+        value = save_storage_paths(
+            character_memory_dir=memory_raw,
+            character_assets_dir=assets_raw,
+            root=self.paths.root,
+        )
+        saved = True
+        hooks.migrate_storage_locations(
+            old_memory_dir=old_memory,
+            old_assets_dir=old_assets,
+            new_memory_dir=new_memory,
+            new_assets_dir=new_assets,
+            config_manager=self.config,
+            copy_memory=copy_memory,
+            copy_assets=copy_assets,
+        )
+        self.reload_runtime()
+        return hooks.model_json(value.__dict__)
+    except Exception:
+        if saved:
+            save_storage_paths(
+                character_memory_dir=old_config.character_memory_dir,
+                character_assets_dir=old_config.character_assets_dir,
+                root=self.paths.root,
+            )
+            self.config.reload()
+        raise
+
+
+def _copy_legacy_config(source_config: Path, target_config: Path) -> None:
+    """Copy legacy config files without adopting the legacy storage layout."""
+    if not source_config.exists():
+        return
+    target_config.mkdir(parents=True, exist_ok=True)
+    for item in source_config.iterdir():
+        # ``storage_paths.yaml`` describes the legacy machine's custom folders.
+        # Adopting it would make Electron write back into the old install.
+        if item.name == STORAGE_PATHS_CONFIG_FILE:
+            continue
+        destination = target_config / item.name
+        if item.is_dir():
+            shutil.copytree(item, destination, dirs_exist_ok=True)
+        elif item.is_file():
+            shutil.copy2(item, destination)
+
+
+def import_legacy(self, payload: dict[str, Any]) -> dict[str, Any]:
+    selected = Path(str(payload.get("source_path") or "")).expanduser().resolve()
+    candidates = [selected / ".local" / "here", selected]
+    source = next(
+        (path for path in candidates if (path / "config" / "system_config.yaml").is_file()),
+        None,
+    )
+    if source is None:
+        raise ValueError("没有找到旧版 config/system_config.yaml。")
+    if source == self.paths.root.resolve():
+        raise ValueError("所选目录已经是 Electron 数据目录。")
+
+    legacy_storage = load_storage_paths(source)
+    legacy_memory = resolve_storage_path(
+        legacy_storage.character_memory_dir,
+        root=source,
+        fallback=default_character_memory_dir(source),
+    )
+    legacy_assets = resolve_storage_path(
+        legacy_storage.character_assets_dir,
+        root=source,
+        fallback=default_character_assets_dir(source),
+    )
+    electron_memory = self.paths.memory_dir
+    electron_assets = self.paths.characters_dir
+
+    copied: list[str] = []
+    try:
+        for name, origin, destination in (
+            ("memory", legacy_memory, electron_memory),
+            ("characters", legacy_assets, electron_assets),
+            ("backgrounds", source / "backgrounds", self.paths.backgrounds_dir),
+            ("state", source / "state", self.paths.state_dir),
+            ("character_templates", source / "character_templates", self.paths.templates_dir),
+        ):
+            if origin.exists():
+                copy_directory_contents(origin, destination)
+                copied.append(name)
+        _copy_legacy_config(source / "config", self.paths.config_dir)
+        if (source / "config").exists():
+            copied.insert(0, "config")
+        # Load the imported config, then point its asset paths (absolute or
+        # supported relative forms) at the Electron-owned folders instead of
+        # the legacy install.
+        self.config.reload()
+        relocate_character_asset_paths(
+            legacy_layout=AppPaths(source),
+            old_assets_dir=legacy_assets,
+            new_assets_dir=electron_assets,
+            config_manager=self.config,
+        )
+        self.reload_runtime()
+    except Exception:
+        # Never leave the runtime pointed at the legacy storage layout on failure.
+        self.config.reload()
+        raise
+    return {
+        "sourcePath": str(source),
+        "charactersImported": len(self.config.config.characters),
+        "settingsImported": "config" in copied,
+        "warnings": [
+            "旧数据已复制到 Electron 目录；原目录未被修改。",
+            "Hermes 自身的全局配置仍由本机 Hermes 安装管理。",
+        ],
+        "copied": copied,
+    }

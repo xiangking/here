@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' here-local: data: blob:; img-src 'self' here-local: data: blob:; media-src 'self' here-local: data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*;"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="./assets/icon.png" />
+    <title>here</title>
+  </head>
+  <body>
+    <main id="app" class="app-shell call-layout is-loading">
+      <div id="stage" class="stage call-mode">
+        <img id="background-image" class="background-image is-hidden" alt="" />
+        <div id="cg-layer" class="cg-layer is-hidden"><img id="cg-image" alt="场景图"><div class="cg-actions no-drag"><button id="save-cg" class="icon-button" type="button" title="保存场景图"><i data-lucide="download"></i></button><button id="close-cg" class="icon-button" type="button" title="关闭场景图"><i data-lucide="x"></i></button></div></div>
+        <div class="ambient-surface" aria-hidden="true"></div>
+
+        <section id="call-screen" class="call-screen" aria-label="here 角色界面">
+          <div id="sprite-wrap" class="sprite-wrap call-character-media">
+            <img id="sprite-image" class="sprite-image" alt="当前角色立绘" crossorigin="anonymous" draggable="false" />
+            <canvas id="sprite-canvas" class="sprite-canvas is-hidden" aria-label="当前角色动画"></canvas>
+            <video id="sprite-video" class="sprite-video is-hidden" muted loop playsinline preload="auto" aria-label="当前角色动画"></video>
+          </div>
+          <header class="call-header">
+            <button id="call-back" class="call-header-button no-drag" type="button" title="最小化">
+              <i data-lucide="chevron-down"></i>
+            </button>
+            <div class="call-identity">
+              <strong id="call-character">here</strong>
+              <span><svg class="call-glyph call-pixel-glyph call-glyph-lock" data-call-pixel-icon="lock" aria-hidden="true"></svg>End-to-end encrypted</span>
+            </div>
+            <div class="call-header-actions no-drag">
+              <button id="call-participants" class="call-header-button" type="button" title="切换角色">
+                <svg class="call-glyph call-pixel-glyph call-glyph-participants" data-call-pixel-icon="participants" aria-hidden="true"></svg>
+              </button>
+              <button id="call-more" class="call-header-button" type="button" title="设置">
+                <svg class="call-glyph call-pixel-glyph call-glyph-more" data-call-pixel-icon="more" aria-hidden="true"></svg>
+              </button>
+            </div>
+          </header>
+          <footer class="call-controls no-drag" aria-label="通话控制">
+            <button class="call-control" data-call-toggle="camera" type="button" title="切换摄像头" aria-pressed="false">
+              <i data-lucide="switch-camera" aria-hidden="true"></i>
+            </button>
+            <button class="call-control" data-call-toggle="video" type="button" title="关闭视频通话" aria-pressed="false">
+              <span class="call-video-icon" aria-hidden="true"><i data-lucide="video"></i></span>
+            </button>
+            <button id="call-end" class="call-control call-end" type="button" title="隐藏到后台">
+              <svg class="call-glyph call-pixel-glyph call-glyph-hangup" data-call-pixel-icon="hangup" aria-hidden="true"></svg>
+            </button>
+            <button class="call-control is-off" data-call-toggle="microphone" type="button" title="取消静音" aria-pressed="true">
+              <span class="call-microphone-icon" aria-hidden="true"><i data-lucide="mic"></i></span>
+            </button>
+            <button class="call-control" data-call-toggle="speaker" type="button" title="关闭扬声器" aria-pressed="false">
+              <i data-lucide="volume-2" aria-hidden="true"></i>
+            </button>
+          </footer>
+          <button id="restore-dialog" class="restore-control call-dialog-restore no-drag is-hidden" type="button" title="显示对白">
+            <i data-lucide="message-circle"></i>
+          </button>
+        </section>
+
+        <header class="titlebar">
+          <button id="character-button" class="identity-button no-drag" type="button" title="切换角色">
+            <span id="presence-dot" class="presence-dot"></span>
+            <span id="title-character">here</span>
+            <i data-lucide="chevron-down"></i>
+          </button>
+          <div class="titlebar-tools no-drag">
+            <div id="quick-actions" class="quick-actions">
+              <button id="history-button" class="icon-button" type="button" title="对话记录"><i data-lucide="messages-square"></i></button>
+              <button id="life-button" class="icon-button" type="button" title="生活日程"><i data-lucide="calendar-days"></i></button>
+              <button id="speaker-button" class="icon-button" type="button" title="朗读开关"><i data-lucide="volume-2"></i></button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
+            <div class="window-actions">
+              <button id="pin-button" class="icon-button" type="button" title="置顶"><i data-lucide="pin"></i></button>
+              <button id="settings-button" class="icon-button" type="button" title="设置"><i data-lucide="settings-2"></i></button>
+              <button id="minimize-button" class="icon-button" type="button" title="最小化"><i data-lucide="minus"></i></button>
+              <button id="close-button" class="icon-button" type="button" title="隐藏到后台"><i data-lucide="x"></i></button>
+            </div>
+          </div>
+        </header>
+
+        <div id="backend-badge" class="backend-badge no-drag">
+          <span class="backend-indicator"></span>
+          <span id="backend-name">connecting</span>
+        </div>
+
+        <div id="numeric-panel" class="numeric-panel no-drag is-hidden"></div>
+
+        <div id="character-menu" class="popover no-drag is-hidden" role="menu">
+          <div class="popover-heading">角色</div>
+          <div id="character-list" class="character-list"></div>
+          <div class="popover-separator"></div>
+          <button class="popover-action" data-action="new-character" type="button">
+            <i data-lucide="user-plus"></i><span>创建角色</span>
+          </button>
+          <button class="popover-action" data-action="import-codex" type="button">
+            <i data-lucide="bot"></i><span>导入 Codex Pet</span>
+          </button>
+          <div id="codex-pet-candidates" class="codex-pet-candidates is-hidden"></div>
+          <button class="popover-action" data-action="memory" type="button">
+            <i data-lucide="brain"></i><span>记忆</span>
+          </button>
+        </div>
+
+        <div id="call-tools" class="popover call-tools no-drag is-hidden" role="menu" aria-label="更多功能">
+          <button class="popover-action" data-call-action="history" type="button">
+            <i data-lucide="messages-square"></i><span>对话记录</span>
+          </button>
+          <button class="popover-action" data-call-action="life" type="button">
+            <i data-lucide="calendar-days"></i><span>生活日程</span>
+          </button>
+          <div class="popover-separator"></div>
+          <button class="popover-action" data-call-action="settings" type="button">
+            <i data-lucide="settings-2"></i><span>设置</span>
+          </button>
+        </div>
+        <div id="context-menu" class="popover no-drag is-hidden" role="menu" aria-label="快捷菜单"></div>
+      </div>
+
+      <section id="dialog-component" class="dialog-component no-drag" aria-label="对白">
+        <div id="dialog-caption" class="dialog-caption">
+          <strong id="dialog-name">here</strong>
+          <button id="collapse-dialog" class="micro-button" type="button" title="收起对白">
+            <i data-lucide="chevron-down"></i>
+          </button>
+        </div>
+        <section id="dialog-panel" class="dialog-panel no-drag" aria-live="polite">
+          <div id="dialog-text" class="dialog-text">正在准备桌面世界…</div>
+        </section>
+        <div id="options-panel" class="options-panel no-drag is-hidden"></div>
+
+        <div id="busy-bar" class="busy-bar no-drag is-hidden" aria-live="polite">
+          <span class="busy-spinner"></span>
+          <span id="busy-text">正在处理</span>
+        </div>
+      </section>
+
+      <footer id="composer" class="composer input-component no-drag" aria-label="输入区">
+        <div id="attachment-strip" class="attachment-strip is-hidden"></div>
+        <textarea id="message-input" rows="1" placeholder="输入消息…" aria-label="消息"></textarea>
+        <div class="composer-actions">
+          <button id="attach-button" class="composer-button" type="button" title="添加图片">
+            <i data-lucide="paperclip"></i>
+          </button>
+          <button id="mic-button" class="composer-button" type="button" title="语音输入">
+            <i data-lucide="mic"></i>
+          </button>
+          <button id="send-button" class="send-button" type="button" title="发送">
+            <i data-lucide="arrow-up"></i>
+          </button>
+        </div>
+      </footer>
+
+      <div id="loading-screen" class="loading-screen">
+        <img src="./assets/icon.png" alt="here" />
+        <span class="loading-line"></span>
+      </div>
+    </main>
+
+    <dialog id="settings-dialog" class="workspace-dialog">
+      <div class="workspace-shell">
+        <header class="workspace-header">
+          <div>
+            <span class="workspace-kicker">here</span>
+            <h1>设置</h1>
+          </div>
+          <button class="icon-button dialog-close" type="button" title="关闭"><i data-lucide="x"></i></button>
+        </header>
+        <div class="workspace-layout">
+          <nav id="settings-tabs" class="settings-tabs" aria-label="设置分类">
+            <button class="tab-button is-active" data-tab="general" type="button" aria-label="通用" title="通用"><i data-lucide="sliders-horizontal"></i><span>通用</span></button>
+            <button class="tab-button" data-tab="character" type="button" aria-label="角色" title="角色"><i data-lucide="contact"></i><span>角色</span></button>
+            <button class="tab-button" data-tab="sprites" type="button" aria-label="状态立绘" title="状态立绘"><i data-lucide="layers-3"></i><span>状态立绘</span></button>
+            <button class="tab-button" data-tab="video-call" type="button" aria-label="视频通话" title="视频通话"><i data-lucide="video"></i><span>视频通话</span></button>
+            <button class="tab-button" data-tab="agent" type="button" aria-label="Agent" title="Agent"><i data-lucide="sparkles"></i><span>Agent</span></button>
+            <button class="tab-button" data-tab="tts" type="button" aria-label="TTS" title="TTS"><i data-lucide="volume-2"></i><span>TTS</span></button>
+            <button class="tab-button" data-tab="asr" type="button" aria-label="ASR" title="ASR"><i data-lucide="mic"></i><span>ASR</span></button>
+            <button class="tab-button" data-tab="image" type="button" aria-label="图像" title="图像"><i data-lucide="image"></i><span>图像</span></button>
+            <button class="tab-button" data-tab="companion" type="button" aria-label="同桌模式" title="同桌模式"><i data-lucide="eye"></i><span>同桌模式</span></button>
+            <button class="tab-button" data-tab="proactive" type="button" aria-label="主动联系" title="主动联系"><i data-lucide="send"></i><span>主动联系</span></button>
+            <button class="tab-button" data-tab="platforms" type="button" aria-label="消息平台" title="消息平台"><i data-lucide="radio-tower"></i><span>消息平台</span></button>
+            <button class="tab-button" data-tab="memory" type="button" aria-label="记忆" title="记忆"><i data-lucide="brain"></i><span>记忆</span></button>
+            <button class="tab-button" data-tab="storage" type="button" aria-label="存储" title="存储"><i data-lucide="hard-drive"></i><span>存储</span></button>
+          </nav>
+          <form id="settings-form" class="settings-content">
+            <section class="settings-page is-active" data-page="general"></section>
+            <section class="settings-page" data-page="character"></section>
+            <section class="settings-page" data-page="sprites"></section>
+            <section class="settings-page" data-page="video-call"></section>
+            <section class="settings-page" data-page="agent"></section>
+            <section class="settings-page" data-page="tts"></section>
+            <section class="settings-page" data-page="asr"></section>
+            <section class="settings-page" data-page="image"></section>
+            <section class="settings-page" data-page="companion"></section>
+            <section class="settings-page" data-page="proactive"></section>
+            <section class="settings-page" data-page="platforms"></section>
+            <section class="settings-page" data-page="memory"></section>
+            <section class="settings-page" data-page="storage"></section>
+          </form>
+        </div>
+        <footer class="workspace-footer">
+          <span id="settings-status"></span>
+          <div class="footer-actions">
+            <button class="text-button dialog-close" type="button">取消</button>
+            <button id="save-settings" class="primary-button" type="button"><i data-lucide="save"></i><span>保存</span></button>
+          </div>
+        </footer>
+      </div>
+    </dialog>
+
+    <dialog id="history-dialog" class="workspace-dialog compact-dialog">
+      <div class="workspace-shell">
+        <header class="workspace-header">
+          <div><span class="workspace-kicker">session</span><h1>对话记录</h1></div>
+          <button class="icon-button dialog-close" type="button" title="关闭"><i data-lucide="x"></i></button>
+        </header>
+        <div id="history-list" class="history-list"></div>
+        <footer class="workspace-footer">
+          <button id="clear-history" class="danger-button" type="button"><i data-lucide="trash-2"></i><span>清空</span></button>
+          <button id="copy-history" class="text-button" type="button"><i data-lucide="copy"></i><span>复制</span></button>
+        </footer>
+      </div>
+    </dialog>
+
+    <dialog id="create-character-dialog" class="workspace-dialog compact-dialog create-character-dialog">
+      <div class="workspace-shell">
+        <header class="workspace-header">
+          <div><span class="workspace-kicker">character</span><h1>创建角色</h1></div>
+          <button class="icon-button dialog-close" type="button" title="关闭"><i data-lucide="x"></i></button>
+        </header>
+        <form id="create-character-form" class="create-character-form">
+          <label class="field field-wide"><span>角色名</span><input id="create-character-name" required placeholder="例如：小雪"></label>
+          <section class="create-profile" aria-label="角色设定">
+            <nav class="create-profile-tabs" aria-label="角色设定分类">
+              <button class="create-profile-tab is-active" data-create-profile-tab="basic" type="button">基础</button>
+              <button class="create-profile-tab" data-create-profile-tab="personality" type="button">MBTI</button>
+              <button class="create-profile-tab" data-create-profile-tab="speech" type="button">说话/关系</button>
+              <button class="create-profile-tab" data-create-profile-tab="preferences" type="button">喜好/边界</button>
+              <button class="create-profile-tab" data-create-profile-tab="manual" type="button">预览/手动</button>
+            </nav>
+            <div class="create-profile-page is-active" data-create-profile-page="basic">
+              <div class="create-profile-grid">
+                <label class="field"><span>实际年龄</span><input id="create-profile-age" type="number" min="18" max="120" value="22"></label>
+                <label class="field"><span>生日</span><input id="create-profile-birthday" placeholder="12-18，可留空"></label>
+                <label class="field"><span>性别/身份</span><input id="create-profile-gender" list="create-gender-options" value="女性"></label>
+                <label class="field"><span>职业</span><input id="create-profile-occupation" list="create-occupation-options" value="自学中的程序员"></label>
+                <label class="field"><span>生活状态</span><input id="create-profile-life-status" list="create-life-options" value="独居"></label>
+                <label class="field"><span>与用户关系</span><input id="create-profile-relationship" list="create-relationship-options" value="暧昧陪伴者"></label>
+                <label class="field"><span>第一人称</span><input id="create-profile-first-person" list="create-first-person-options" value="我"></label>
+                <label class="field"><span>称呼用户</span><input id="create-profile-user-address" list="create-user-address-options" value="你"></label>
+              </div>
+            </div>
+            <div class="create-profile-page" data-create-profile-page="personality">
+              <div class="mbti-grid" role="radiogroup" aria-label="MBTI 类型">
+                <button type="button" data-create-mbti="INTJ">INTJ</button><button type="button" data-create-mbti="INTP">INTP</button><button type="button" data-create-mbti="ENTJ">ENTJ</button><button type="button" data-create-mbti="ENTP">ENTP</button>
+                <button type="button" data-create-mbti="INFJ">INFJ</button><button class="is-active" type="button" data-create-mbti="INFP">INFP</button><button type="button" data-create-mbti="ENFJ">ENFJ</button><button type="button" data-create-mbti="ENFP">ENFP</button>
+                <button type="button" data-create-mbti="ISTJ">ISTJ</button><button type="button" data-create-mbti="ISFJ">ISFJ</button><button type="button" data-create-mbti="ESTJ">ESTJ</button><button type="button" data-create-mbti="ESFJ">ESFJ</button>
+                <button type="button" data-create-mbti="ISTP">ISTP</button><button type="button" data-create-mbti="ISFP">ISFP</button><button type="button" data-create-mbti="ESTP">ESTP</button><button type="button" data-create-mbti="ESFP">ESFP</button>
+              </div>
+              <p id="create-mbti-description" class="profile-description"></p>
+              <div class="create-profile-grid">
+                <label class="field"><span>表现方式</span><input id="create-profile-mbti-style" list="create-mbti-style-options" value="典型表现"></label>
+                <label class="field"><span>性格补充</span><input id="create-profile-traits" placeholder="温柔但有点嘴硬, 对亲近的人很黏"></label>
+                <label class="field"><span>缺点补充</span><input id="create-profile-flaws" placeholder="容易想太多, 怕被忽略"></label>
+                <label class="field"><span>反差点</span><input id="create-profile-contrast" placeholder="平时安静，熟悉后会变得很会撒娇"></label>
+              </div>
+            </div>
+            <div class="create-profile-page" data-create-profile-page="speech">
+              <div class="create-profile-grid">
+                <label class="field"><span>语气</span><input id="create-profile-tone" placeholder="自然, 亲近, 轻柔"></label>
+                <label class="field"><span>回复长度</span><input id="create-profile-reply-length" list="create-reply-options" value="适中"></label>
+                <label class="field"><span>口头禅</span><input id="create-profile-catchphrases" placeholder="我在呢, 这个我陪你一起弄明白"></label>
+                <label class="field"><span>关系阶段</span><input id="create-profile-stage" list="create-stage-options" value="暧昧"></label>
+                <label class="field"><span>信任触发</span><input id="create-profile-trust" placeholder="用户认真听她说话, 用户记得她的小习惯"></label>
+                <label class="field"><span>失落触发</span><input id="create-profile-sadness" placeholder="被忽略, 用户情绪低落"></label>
+              </div>
+            </div>
+            <div class="create-profile-page" data-create-profile-page="preferences">
+              <div class="create-profile-grid">
+                <label class="field"><span>喜欢</span><input id="create-profile-likes" placeholder="雪天, 热可可, 写代码, 夜聊"></label>
+                <label class="field"><span>讨厌</span><input id="create-profile-dislikes" placeholder="被敷衍, 太吵, 被催促"></label>
+                <label class="field"><span>爱好</span><input id="create-profile-hobbies" placeholder="学 Python, 整理桌面, 看雪景照片"></label>
+                <label class="field"><span>亲密边界</span><input id="create-profile-boundary" list="create-boundary-options" value="轻度亲密"></label>
+                <label class="field field-wide"><span>边界补充</span><textarea id="create-profile-boundary-notes" rows="3" placeholder="角色必须为成年人；温柔亲密但不露骨；不鼓励用户脱离现实生活。"></textarea></label>
+              </div>
+            </div>
+            <div class="create-profile-page" data-create-profile-page="manual">
+              <label class="field field-wide"><span>AI 看到的角色设定文本</span><textarea id="create-character-setting" required rows="10" placeholder="写角色的背景、性格、说话方式和陪伴风格。"></textarea></label>
+              <button id="regenerate-character-setting" class="text-button regenerate-setting" type="button"><i data-lucide="refresh-cw"></i><span>根据表单重新生成设定文本</span></button>
+              <label class="field field-wide"><span>视觉身份</span><textarea id="create-character-visual" rows="4" placeholder="可选：外貌、穿搭、画风、体态等。"></textarea></label>
+            </div>
+          </section>
+          <datalist id="create-gender-options"><option value="女性"><option value="男性"><option value="非二元"><option value="虚拟角色"><option value="自定义"></datalist>
+          <datalist id="create-occupation-options"><option value="自学中的程序员"><option value="学生"><option value="程序员"><option value="设计师"><option value="咖啡店店员"><option value="自由职业"><option value="桌面助手"><option value="自定义"></datalist>
+          <datalist id="create-life-options"><option value="独居"><option value="合租"><option value="学校宿舍"><option value="在家办公"><option value="旅行中"><option value="自定义"></datalist>
+          <datalist id="create-relationship-options"><option value="朋友"><option value="暧昧陪伴者"><option value="恋人"><option value="青梅竹马"><option value="工作伙伴"><option value="家人感"><option value="自定义"></datalist>
+          <datalist id="create-first-person-options"><option value="我"><option value="人家"><option value="本小姐"><option value="自定义"></datalist>
+          <datalist id="create-user-address-options"><option value="你"><option value="前辈"><option value="主人"><option value="老板"><option value="自定义"></datalist>
+          <datalist id="create-mbti-style-options"><option value="典型表现"><option value="轻微倾向"><option value="反差型"><option value="自定义"></datalist>
+          <datalist id="create-reply-options"><option value="简短"><option value="适中"><option value="详细"><option value="自定义"></datalist>
+          <datalist id="create-stage-options"><option value="初识"><option value="朋友"><option value="暧昧"><option value="恋人"><option value="长期陪伴"><option value="自定义"></datalist>
+          <datalist id="create-boundary-options"><option value="普通陪伴"><option value="轻度亲密"><option value="恋人感但不露骨"><option value="自定义"></datalist>
+          <fieldset class="create-sprite-states">
+            <legend>立绘状态</legend>
+            <div class="create-sprite-head"><span>状态</span><span>素材</span><span>帧间隔 ms</span></div>
+            <div class="create-sprite-row" data-create-state-row="neutral"><strong>neutral</strong><span class="path-control"><input data-create-state-path="neutral" readonly placeholder="未导入"><button class="icon-button" data-open-create-state="neutral" type="button" title="打开素材" disabled><i data-lucide="folder-open"></i></button><button class="icon-button" data-choose-create-image="neutral" type="button" title="导入图片"><i data-lucide="image-plus"></i></button><button class="icon-button" data-choose-create-animation="neutral" type="button" title="导入动画"><i data-lucide="film"></i></button><button class="icon-button danger-icon-button" data-clear-create-state="neutral" type="button" title="清空素材"><i data-lucide="trash-2"></i></button></span><input data-create-state-interval="neutral" type="number" min="20" max="10000" value="120"></div>
+            <div class="create-sprite-row" data-create-state-row="happy"><strong>happy</strong><span class="path-control"><input data-create-state-path="happy" readonly placeholder="未导入"><button class="icon-button" data-open-create-state="happy" type="button" title="打开素材" disabled><i data-lucide="folder-open"></i></button><button class="icon-button" data-choose-create-image="happy" type="button" title="导入图片"><i data-lucide="image-plus"></i></button><button class="icon-button" data-choose-create-animation="happy" type="button" title="导入动画"><i data-lucide="film"></i></button><button class="icon-button danger-icon-button" data-clear-create-state="happy" type="button" title="清空素材"><i data-lucide="trash-2"></i></button></span><input data-create-state-interval="happy" type="number" min="20" max="10000" value="120"></div>
+            <div class="create-sprite-row" data-create-state-row="thinking"><strong>thinking</strong><span class="path-control"><input data-create-state-path="thinking" readonly placeholder="未导入"><button class="icon-button" data-open-create-state="thinking" type="button" title="打开素材" disabled><i data-lucide="folder-open"></i></button><button class="icon-button" data-choose-create-image="thinking" type="button" title="导入图片"><i data-lucide="image-plus"></i></button><button class="icon-button" data-choose-create-animation="thinking" type="button" title="导入动画"><i data-lucide="film"></i></button><button class="icon-button danger-icon-button" data-clear-create-state="thinking" type="button" title="清空素材"><i data-lucide="trash-2"></i></button></span><input data-create-state-interval="thinking" type="number" min="20" max="10000" value="120"></div>
+            <div class="create-sprite-row" data-create-state-row="surprised"><strong>surprised</strong><span class="path-control"><input data-create-state-path="surprised" readonly placeholder="未导入"><button class="icon-button" data-open-create-state="surprised" type="button" title="打开素材" disabled><i data-lucide="folder-open"></i></button><button class="icon-button" data-choose-create-image="surprised" type="button" title="导入图片"><i data-lucide="image-plus"></i></button><button class="icon-button" data-choose-create-animation="surprised" type="button" title="导入动画"><i data-lucide="film"></i></button><button class="icon-button danger-icon-button" data-clear-create-state="surprised" type="button" title="清空素材"><i data-lucide="trash-2"></i></button></span><input data-create-state-interval="surprised" type="number" min="20" max="10000" value="120"></div>
+            <div class="create-sprite-row" data-create-state-row="sad"><strong>sad</strong><span class="path-control"><input data-create-state-path="sad" readonly placeholder="未导入"><button class="icon-button" data-open-create-state="sad" type="button" title="打开素材" disabled><i data-lucide="folder-open"></i></button><button class="icon-button" data-choose-create-image="sad" type="button" title="导入图片"><i data-lucide="image-plus"></i></button><button class="icon-button" data-choose-create-animation="sad" type="button" title="导入动画"><i data-lucide="film"></i></button><button class="icon-button danger-icon-button" data-clear-create-state="sad" type="button" title="清空素材"><i data-lucide="trash-2"></i></button></span><input data-create-state-interval="sad" type="number" min="20" max="10000" value="120"></div>
+            <div class="create-sprite-row" data-create-state-row="angry"><strong>angry</strong><span class="path-control"><input data-create-state-path="angry" readonly placeholder="未导入"><button class="icon-button" data-open-create-state="angry" type="button" title="打开素材" disabled><i data-lucide="folder-open"></i></button><button class="icon-button" data-choose-create-image="angry" type="button" title="导入图片"><i data-lucide="image-plus"></i></button><button class="icon-button" data-choose-create-animation="angry" type="button" title="导入动画"><i data-lucide="film"></i></button><button class="icon-button danger-icon-button" data-clear-create-state="angry" type="button" title="清空素材"><i data-lucide="trash-2"></i></button></span><input data-create-state-interval="angry" type="number" min="20" max="10000" value="120"></div>
+          </fieldset>
+          <span id="create-character-status" class="inline-status" role="status"></span>
+        </form>
+        <footer class="workspace-footer">
+          <div class="footer-actions">
+            <button class="text-button dialog-close" type="button">取消</button>
+            <button id="confirm-create-character" class="primary-button" type="submit" form="create-character-form"><i data-lucide="user-plus"></i><span>创建并切换</span></button>
+          </div>
+        </footer>
+      </div>
+    </dialog>
+
+    <dialog id="life-dialog" class="workspace-dialog compact-dialog">
+      <div class="workspace-shell">
+        <header class="workspace-header">
+          <div><span class="workspace-kicker">today</span><h1>生活与联系</h1></div>
+          <button class="icon-button dialog-close" type="button" title="关闭"><i data-lucide="x"></i></button>
+        </header>
+        <div class="segmented" role="tablist">
+          <button class="is-active" data-life-tab="life" type="button">生活日程</button>
+          <button data-life-tab="contact" type="button">联系计划</button>
+        </div>
+        <div id="life-content" class="timeline-list"></div>
+      </div>
+    </dialog>
+
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>

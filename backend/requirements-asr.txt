@@ -1,0 +1,5 @@
+-r requirements.txt
+pyaudio
+vosk==0.3.44
+faster-whisper
+RealtimeSTT

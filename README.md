@@ -1,7 +1,7 @@
 # here
 
 <p align="center">
-  <img src="assets/system/picture/Icon.png" width="96" alt="here app icon">
+  <img src="src/renderer/public/assets/icon.png" width="96" alt="here app icon">
 </p>
 
 <p align="center">
@@ -9,21 +9,13 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a>
-  ·
-  <a href="README.zh-CN.md">简体中文</a>
-  ·
-  <a href="README.zh-TW.md">繁體中文</a>
-  ·
-  <a href="README.ja.md">日本語</a>
-  ·
-  <a href="README.ko.md">한국어</a>
+  <a href="README.md">Project README</a>
 </p>
 
 <p align="center">
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11-blue?logo=python">
-  <img alt="uv" src="https://img.shields.io/badge/uv-managed-6f42c1">
-  <img alt="PySide6" src="https://img.shields.io/badge/PySide6-Qt-green?logo=qt">
+  <img alt="Electron" src="https://img.shields.io/badge/Electron-desktop-47848F?logo=electron&logoColor=white">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/License-PolyForm%20NC%201.0.0-blue">
 </p>
 
@@ -67,9 +59,10 @@ here can use the user's locally installed Hermes Agent for model reasoning, with
 
 | Item | Requirement |
 | --- | --- |
-| Python | Validated on Python 3.11 to 3.13. |
-| Environment manager | [uv](https://docs.astral.sh/uv/) is required for source installs and development. |
-| Desktop UI | PySide6 / Qt runtime. |
+| Node.js | Required for Electron, Vite, tests, and packaging. |
+| Python | Python 3.11 is used by the backend sidecar. |
+| Environment manager | [uv](https://docs.astral.sh/uv/) prepares backend development and release runtimes. |
+| Desktop UI | Electron with a Vite renderer and TypeScript main process. |
 | Optional native extras | Video sprite import and AI background removal are optional extras to keep default installs and release bundles smaller. |
 | Local Hermes Agent | If Hermes Agent is not already installed in this project environment, install it with `--with-hermes`. This helper extra is fetched from GitHub and requires Git/network access. |
 | ASR | Windows source installs and release bundles provide the lightweight Vosk path by default. Use `--with-asr` for the full ASR extras, such as faster-whisper, RealtimeSTT, and local ASR dependencies needed by non-Windows source environments. |
@@ -84,108 +77,67 @@ On macOS source installs, ASR requires Homebrew PortAudio so `pyaudio` can build
 
 ### Source Run
 
-Source development and runtime are managed with uv. Do not manage the project environment with a system Python or manual `pip install`.
-If uv is not already available, the install and start scripts will install it automatically through Astral's official installer.
-
-Windows users should run the batch scripts from PowerShell or Command Prompt:
-
-```powershell
-.\install.bat
-.\start.bat
-```
-
-Do not run the `.sh` scripts from Git Bash on Windows; they are for macOS/Linux only.
-
-macOS and Linux users should run the shell scripts:
+Install the Node and Python dependencies, then start the Electron application:
 
 ```bash
-bash scripts/install.sh
-bash scripts/start.sh
+npm install
+npm run backend:setup
+npm run dev
 ```
 
-Optional native capabilities can be added when needed. Use the same option names on each platform:
-
-```powershell
-.\install.bat --with-asr
-.\install.bat --with-video
-.\install.bat --with-background-removal
-.\install.bat --with-hermes
-.\install.bat --full
-```
+The development renderer is available at `http://127.0.0.1:5180`. Optional ASR and Hermes dependencies can be installed with:
 
 ```bash
-bash scripts/install.sh --with-asr
-bash scripts/install.sh --with-video
-bash scripts/install.sh --with-background-removal
-bash scripts/install.sh --with-hermes
-bash scripts/install.sh --full
+npm run backend:setup:full
 ```
 
 | Option | Installs | Enables |
 | --- | --- | --- |
-| `--with-asr` | `pyaudio`, `vosk`, `faster-whisper`, `RealtimeSTT` | Full ASR extras: adds advanced/alternative backends such as faster-whisper and RealtimeSTT, plus local speech dependencies for non-Windows source environments. The basic Windows Vosk path does not require it. |
-| `--with-video` | `opencv_python` | Extracting frames from video files when creating or editing character sprite animations. Still images, multi-image frame imports, and Codex Pet imports do not need it. |
-| `--with-background-removal` | `rembg` | AI background removal for imported character images, useful for transparent sprite assets. |
-| `--with-hermes` | `hermes-agent` | Installs Hermes Agent into this project environment for the local Agent backend. Requires Git and network access. |
-| `--full` | ASR, video import, and AI background-removal native extras | Installs the local native capabilities in one pass; does not include Hermes Agent. |
+| `backend:setup` | `backend/requirements.txt` | Base backend dependencies for local development. |
+| `backend:setup:full` | ASR and Hermes requirement files | Adds optional ASR and Hermes dependencies; video support is installed from the settings page when needed. |
+| Settings page | ASR, video, and Hermes packages | Installs optional packages into the application data directory for packaged applications. |
 
-`--full` installs the native extras, but it intentionally does not install Hermes Agent because that package is fetched from GitHub. Use `--with-hermes` only when you need here to install Hermes Agent into this environment.
-
-On macOS, ASR extras require Homebrew PortAudio. The installer checks Homebrew and installs `portaudio` before running `uv sync --extra asr`, so `pyaudio` can build from a clean environment.
+`backend:setup:full` intentionally excludes video dependencies. Video support is installed on demand from the application settings page.
 
 Source runs download the Vosk model on first use when it is missing. Release bundles include the small Chinese Vosk model, so the default Vosk backend can start without a model download.
 
 ### Packaged Builds
 
-Release bundles include start scripts. Source development should still use uv; packaged scripts prefer the bundled runtime when available.
-
-Build a local macOS bundle from the source tree:
+Build a local release package with Electron Builder:
 
 ```bash
-python3 scripts/build_bundle.py --target macos-arm64 --name here-local-macos-arm64-lite
+npm run dist
 ```
 
-GitHub Releases are built by `.github/workflows/release.yml` for macOS arm64 and Windows x64. Use the launcher for your platform.
-
-macOS/Linux:
-
-```bash
-bash scripts/start.sh
-```
-
-Windows:
-
-```powershell
-.\start.bat
-```
-
-Release bundles include the Vosk ASR runtime and the small Chinese Vosk model for first-run voice input. Video import, faster-whisper, RealtimeSTT, and AI background-removal dependencies remain optional.
+The output is written to `release/`. Build on the target platform so Electron Builder packages the correct native runtime.
 
 ## ⚙️ Configuration
 
-Default configs contain no real secrets. Source runs store local data under `.local/here/`; packaged apps use the platform application data directory. You can override the app data root:
+Default configs contain no real secrets. Electron stores runtime data under the platform application data directory. The development backend uses `backend/.venv`, while packaged applications use their bundled runtime.
 
 ```bash
-HERE_APP_HOME=/path/to/here-data uv run python -m app.desktop.main
+HERE_API_BASE_URL=https://api.openai.com/v1
+HERE_API_MODEL=gpt-4o-mini
 ```
 
 Main configuration entry points:
 
 | Setting | UI |
 | --- | --- |
-| Agent backend | Main menu: `API / Agent backend` |
-| TTS | Main menu: `TTS settings` |
-| ASR | Main menu: `Speech recognition ASR` |
-| Character memory and animation folders | Main menu: `Character data folders` |
-| Proactive contact | Main menu: `Let her reach out first` |
-| External delivery such as WeChat | Main menu: `Chat platform settings` |
-| Proactive photo generation | Main menu: `Proactive selfie image settings` |
+| Agent backend | Settings page and backend configuration |
+| TTS | Settings page: voice provider and API credentials |
+| ASR | Settings page: recognition backend and model preparation |
+| Character memory and animation folders | Settings page: character and storage paths |
+| Proactive contact | Settings page: scheduler and delivery channels |
+| External delivery such as WeChat | Settings page: platform credentials |
+| Proactive photo generation | Settings page: image provider and model |
 
 Useful environment variables:
 
 | Variable | Purpose |
 | --- | --- |
-| `HERE_APP_HOME` | Override local config, memory, generated files, and state directory. |
+| `HERE_API_BASE_URL` | OpenAI-compatible API base URL. |
+| `HERE_API_MODEL` | Default model for the internal agent. |
 | `OPENAI_API_KEY` | Used by Internal Agent, OpenAI TTS, and GPT Image. |
 | `FAL_KEY` / `XAI_API_KEY` | Used by Grok Imagine / fal-style image APIs. |
 | `OPENROUTER_API_KEY` | Used by OpenRouter Grok Imagine. |
