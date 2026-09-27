@@ -168,10 +168,24 @@ def install_dependencies(self, payload: dict[str, Any]) -> dict[str, Any]:
     target.mkdir(parents=True, exist_ok=True)
     hooks.event("status", {"text": f"正在安装 {feature} 依赖…", "busy": True})
     command = [sys.executable, "-m", "pip", "install", "--upgrade", "--target", str(target), *packages]
-    completed = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30 * 60)
-    if completed.returncode != 0:
-        tail = "\n".join(completed.stdout.splitlines()[-12:])
-        raise RuntimeError(f"依赖安装失败：\n{tail}")
-    importlib.invalidate_caches()
-    hooks.event("status", {"text": f"{feature} 依赖安装完成。", "busy": False})
-    return self.dependency_status()
+    # Always publish exactly one matching busy=false, whatever happens below,
+    # so a failed install cannot leave the renderer's busy bar stuck on until
+    # the backend restarts. Failures keep a readable message instead of
+    # pretending the install succeeded.
+    status_text = ""
+    try:
+        completed = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30 * 60)
+        if completed.returncode != 0:
+            tail = "\n".join(completed.stdout.splitlines()[-12:])
+            raise RuntimeError(f"依赖安装失败：\n{tail}")
+        importlib.invalidate_caches()
+        status_text = f"{feature} 依赖安装完成。"
+        return self.dependency_status()
+    except subprocess.TimeoutExpired as exc:
+        status_text = f"依赖安装超时（30 分钟）：{exc}"
+        raise RuntimeError(status_text) from exc
+    except Exception as exc:
+        status_text = str(exc) or f"{feature} 依赖安装失败。"
+        raise
+    finally:
+        hooks.event("status", {"text": status_text, "busy": False})

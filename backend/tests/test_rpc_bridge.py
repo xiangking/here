@@ -948,6 +948,65 @@ class RpcBridgeTests(unittest.TestCase):
         vosk_call = next(call for call in build_status.call_args_list if call.args[0] == "vosk")
         self.assertEqual(vosk_call.kwargs["model_path"], custom_path)
 
+    def test_install_dependencies_clears_busy_after_success(self) -> None:
+        events: list[tuple[str, object]] = []
+        with (
+            patch.object(rpc_bridge, "event", side_effect=lambda name, payload=None: events.append((name, payload))),
+            patch("bridge.asr.subprocess.run", return_value=SimpleNamespace(returncode=0, stdout="ok")),
+            patch.object(self.backend, "dependency_status", return_value={"asr": {"ready": True}}),
+        ):
+            result = self.backend.install_dependencies({"feature": "video"})
+
+        self.assertEqual(result, {"asr": {"ready": True}})
+        statuses = [payload for name, payload in events if name == "status"]
+        self.assertEqual([payload["busy"] for payload in statuses], [True, False])
+        self.assertIn("安装完成", statuses[-1]["text"])
+
+    def test_install_dependencies_clears_busy_and_reports_tail_on_failure(self) -> None:
+        events: list[tuple[str, object]] = []
+        stdout = "\n".join(f"line {index}" for index in range(1, 21))
+        with (
+            patch.object(rpc_bridge, "event", side_effect=lambda name, payload=None: events.append((name, payload))),
+            patch("bridge.asr.subprocess.run", return_value=SimpleNamespace(returncode=1, stdout=stdout)),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "依赖安装失败"):
+                self.backend.install_dependencies({"feature": "video"})
+
+        statuses = [payload for name, payload in events if name == "status"]
+        self.assertEqual([payload["busy"] for payload in statuses], [True, False])
+        self.assertIn("line 20", statuses[-1]["text"])
+        self.assertNotIn("line 8", statuses[-1]["text"])
+        self.assertNotIn("安装完成", statuses[-1]["text"])
+
+    def test_install_dependencies_clears_busy_on_timeout(self) -> None:
+        events: list[tuple[str, object]] = []
+        with (
+            patch.object(rpc_bridge, "event", side_effect=lambda name, payload=None: events.append((name, payload))),
+            patch(
+                "bridge.asr.subprocess.run",
+                side_effect=subprocess.TimeoutExpired(cmd="pip", timeout=30 * 60),
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "依赖安装超时"):
+                self.backend.install_dependencies({"feature": "video"})
+
+        statuses = [payload for name, payload in events if name == "status"]
+        self.assertEqual([payload["busy"] for payload in statuses], [True, False])
+        self.assertIn("超时", statuses[-1]["text"])
+
+    def test_install_dependencies_clears_busy_on_start_failure(self) -> None:
+        events: list[tuple[str, object]] = []
+        with (
+            patch.object(rpc_bridge, "event", side_effect=lambda name, payload=None: events.append((name, payload))),
+            patch("bridge.asr.subprocess.run", side_effect=OSError("无法启动 pip 子进程")),
+        ):
+            with self.assertRaisesRegex(OSError, "无法启动 pip 子进程"):
+                self.backend.install_dependencies({"feature": "video"})
+
+        statuses = [payload for name, payload in events if name == "status"]
+        self.assertEqual([payload["busy"] for payload in statuses], [True, False])
+        self.assertIn("无法启动 pip 子进程", statuses[-1]["text"])
+
     def test_cg_marks_no_person_scene_as_background_only(self) -> None:
         class FakeT2I:
             def t2i(self, prompt: str) -> str:
