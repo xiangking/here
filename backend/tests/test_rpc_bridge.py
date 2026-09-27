@@ -246,6 +246,47 @@ class RpcBridgeTests(unittest.TestCase):
                 character.__dict__.update(copy.deepcopy(original.__dict__))
                 self.backend.config.save_characters_config()
 
+    def test_case_only_character_rename_through_save_config_keeps_memory(self) -> None:
+        probe = Path(_APP_HOME.name) / "case-probe"
+        probe.mkdir()
+        try:
+            if not (Path(_APP_HOME.name) / "CASE-PROBE").exists():
+                self.skipTest("requires a case-insensitive filesystem")
+        finally:
+            probe.rmdir()
+        name = "RenameCaseProbe"
+        renamed = name.upper()
+        extra = Character(
+            name=name,
+            color="#84c2d5",
+            sprite_prefix="rename_case_probe",
+            sprites=[],
+            character_profile=default_character_profile(name),
+            character_setting="test",
+        )
+        self.backend.config.config.characters.append(extra)
+        self.backend.config.save_characters_config()
+        try:
+            self.backend.update_memory({"character_name": name, "kind": "character", "entries": ["必须保留"]})
+            payload = self.backend.state()
+            characters = payload["config"]["characters"]
+            for item in characters:
+                if item["name"] == name:
+                    item["name"] = renamed
+            self.backend.save_config({
+                "characters": characters,
+                "character_rename": {"old_name": name, "new_name": renamed},
+            })
+            self.assertIn("必须保留", self.backend.memory.read_character_memories(renamed))
+            self.assertTrue((self.backend.memory.agent_home(renamed) / "memories" / "MEMORY.md").is_file())
+        finally:
+            self.backend.memory.delete_character(name)
+            self.backend.config.config.characters = [
+                item for item in self.backend.config.config.characters if item.name != renamed
+            ]
+            self.backend.config.save_characters_config()
+            self.backend.reload_runtime()
+
     def test_save_config_rejects_absolute_sprite_prefix(self) -> None:
         payload = self.backend.state()
         characters = payload["config"]["characters"]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import shutil
 from dataclasses import dataclass, field
@@ -188,13 +189,19 @@ class AgentMemoryStore:
         """Move memory files after a role is renamed."""
         old_home = self.agent_home(old_name)
         new_home = self.agent_home(new_name)
-        if old_home != new_home and old_home.exists():
-            new_home.parent.mkdir(parents=True, exist_ok=True)
-            if not new_home.exists():
-                shutil.move(str(old_home), str(new_home))
-            else:
-                self._merge_agent_home(old_home, new_home)
-                shutil.rmtree(old_home, ignore_errors=True)
+        if not old_home.exists():
+            return
+        # Comparing Path strings is not enough on case-insensitive filesystems:
+        # ``here`` and ``HERE`` are the same folder there, so merging would copy
+        # the home into itself and then delete it. Same-path renames are no-ops.
+        if _same_directory(old_home, new_home):
+            return
+        new_home.parent.mkdir(parents=True, exist_ok=True)
+        if not new_home.exists():
+            shutil.move(str(old_home), str(new_home))
+        else:
+            self._merge_agent_home(old_home, new_home)
+            shutil.rmtree(old_home, ignore_errors=True)
 
     def delete_character(self, character_name: str) -> None:
         """Delete memory files for a removed role."""
@@ -220,6 +227,25 @@ class AgentMemoryStore:
             if src_text and src_text not in dst_text:
                 joined = "\n\n".join(part for part in (dst_text, src_text) if part)
                 dst_path.write_text(joined + "\n", encoding="utf-8")
+
+
+def _same_directory(first: Path, second: Path) -> bool:
+    """True when both paths point at the same directory entry.
+
+    ``Path.resolve`` keeps the spelling the caller passed in, so it does not
+    collapse ``here`` and ``HERE`` on a case-insensitive filesystem. Only
+    ``os.path.samefile`` (inode comparison) can tell they are one folder.
+    """
+    try:
+        if first.exists() and second.exists() and os.path.samefile(first, second):
+            return True
+    except OSError:
+        pass
+    try:
+        return first.resolve(strict=False) == second.resolve(strict=False)
+    except OSError:
+        return str(first) == str(second)
+
 
 def _character_soul(character: Any) -> CharacterSoul:
     state_names = render_available_state_names(character).strip()
