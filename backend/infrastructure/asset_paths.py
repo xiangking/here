@@ -155,39 +155,49 @@ def _is_external_reference(text: str) -> bool:
     return text.lower().startswith(("http://", "https://", "data:"))
 
 
+def _add_resolved_reference(target: set[Path], value: object, resolve: Callable[[str], str | Path]) -> None:
+    values = value if isinstance(value, (list, tuple, set)) else (value,)
+    for item in values:
+        text = str(item or "").strip()
+        if not text or _is_external_reference(text):
+            continue
+        try:
+            target.add(Path(resolve(text)).expanduser().resolve(strict=False))
+        except (OSError, RuntimeError, ValueError):
+            continue
+
+
 def collect_referenced_asset_paths(
     characters: list[object],
     resolve: Callable[[str], str | Path],
     *,
     skip: tuple[str, int] | None = None,
-    exclude_character: str | None = None,
+    skip_sprites_of: str | None = None,
+    skip_visual_reference_of: str | None = None,
 ) -> set[Path]:
-    """Resolve every sprite asset reference held by ``characters``.
+    """Resolve every sprite- and character-level asset reference.
 
     ``resolve`` maps a stored reference (absolute or a supported relative form)
-    to a concrete path. Pass ``skip=(name, index)`` to omit the one sprite being
-    removed, or ``exclude_character=name`` to omit a whole character's sprites.
+    to a concrete path. ``skip=(name, index)`` omits one sprite, while
+    ``skip_sprites_of=name`` omits every sprite of a character that survives
+    (e.g. when only its sprites are cleared). ``skip_visual_reference_of=name``
+    omits one character's ``visual_reference_image``; the character-level
+    reference is otherwise always included, because it keeps the file alive
+    even when every sprite of that character is removed.
     """
     referenced: set[Path] = set()
     for character in characters or []:
         name = str(getattr(character, "name", "") or "").strip()
-        if exclude_character is not None and name == exclude_character:
+        if skip_sprites_of is None or name != skip_sprites_of:
+            sprites = list(getattr(character, "sprites", []) or [])
+            for index, sprite in enumerate(sprites):
+                if skip is not None and (name, index) == skip:
+                    continue
+                for field in SPRITE_REFERENCE_FIELDS:
+                    _add_resolved_reference(referenced, _sprite_reference_value(sprite, field), resolve)
+        if skip_visual_reference_of is not None and name == skip_visual_reference_of:
             continue
-        sprites = list(getattr(character, "sprites", []) or [])
-        for index, sprite in enumerate(sprites):
-            if skip is not None and (name, index) == skip:
-                continue
-            for field in SPRITE_REFERENCE_FIELDS:
-                value = _sprite_reference_value(sprite, field)
-                values = value if isinstance(value, (list, tuple, set)) else (value,)
-                for item in values:
-                    text = str(item or "").strip()
-                    if not text or _is_external_reference(text):
-                        continue
-                    try:
-                        referenced.add(Path(resolve(text)).expanduser().resolve(strict=False))
-                    except (OSError, RuntimeError, ValueError):
-                        continue
+        _add_resolved_reference(referenced, getattr(character, "visual_reference_image", ""), resolve)
     return referenced
 
 

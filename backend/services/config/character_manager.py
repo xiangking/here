@@ -14,7 +14,7 @@ from infrastructure.asset_paths import (
     sprite_prefix_in_use,
     validate_sprite_prefix,
 )
-from infrastructure.paths import get_app_paths
+from infrastructure.paths import get_app_paths, resolve_character_asset_path
 from typing import List, Dict, Any, Tuple, Optional, Union
 from services.config.schema import Character, Sprite
 from services.config.config_manager import ConfigManager, SYSTEM_CHARACTER_NAME
@@ -332,7 +332,9 @@ class CharacterManager:
         if can_remove_files:
             # Files reachable from a surviving character must never be removed,
             # even when the prefix itself is not shared.
-            referenced = collect_referenced_asset_paths(characters, lambda text: text)
+            referenced = collect_referenced_asset_paths(
+                characters, lambda text: resolve_character_asset_path(text, get_app_paths())
+            )
             for base_dir in [_characters_dir(), _voice_dir(), _models_dir()]:
                 target = owned_character_dir(base_dir, sprite_prefix)
                 if referenced_inside_directory(target, referenced):
@@ -418,7 +420,9 @@ class CharacterManager:
             return str(exc), remaining_paths, character.emotion_tags or ""
         # Never remove a directory that still backs a sprite of another character.
         referenced = collect_referenced_asset_paths(
-            self._get_characters(), lambda text: text, exclude_character=character_name
+            self._get_characters(),
+            lambda text: resolve_character_asset_path(text, get_app_paths()),
+            skip_sprites_of=character_name,
         )
         if not referenced_inside_directory(owned_character_dir(_characters_dir(), prefix), referenced):
             remove_owned_character_dir(_characters_dir(), prefix)
@@ -469,7 +473,9 @@ class CharacterManager:
         # A file still referenced by another character or another sprite of this
         # character must not be physically deleted.
         referenced = collect_referenced_asset_paths(
-            self._get_characters(), lambda text: text, skip=(character_name, sprite_index)
+            self._get_characters(),
+            lambda text: resolve_character_asset_path(text, get_app_paths()),
+            skip=(character_name, sprite_index),
         )
         if (
             sprite_path

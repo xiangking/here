@@ -169,6 +169,17 @@ def _safe_asset_name(value: str, fallback: str) -> str:
     return cleaned or fallback
 
 
+def _reference_inside_directory(reference: str, directory: Path, paths: Any) -> bool:
+    text = str(reference or "").strip()
+    if not text or text.lower().startswith(("http://", "https://", "data:")):
+        return False
+    try:
+        resolved = resolve_character_asset_path(text, paths).resolve()
+    except (OSError, RuntimeError, ValueError):
+        return False
+    return resolved == Path(directory).resolve() or is_inside_owned_dir(resolved, directory)
+
+
 def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, Any]:
     name = str(payload.get("character_name") or self.config.resolve_active_character_name())
     character = self.config.get_character_by_name(name)
@@ -189,6 +200,7 @@ def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, An
     target_dir = animations_dir / state_name
 
     previous_sprites = list(character.sprites)
+    previous_visual_reference = str(getattr(character, "visual_reference_image", "") or "")
     target_index: int | None = None
     previous_sprite: dict[str, Any] = {}
     if payload.get("sprite_index") is not None:
@@ -218,6 +230,7 @@ def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, An
             self.config.config.characters,
             lambda text: resolve_character_asset_path(text, self.paths),
             skip=(name, replaced_index) if replaced_index is not None else None,
+            skip_visual_reference_of=name,
         )
         if referenced_inside_directory(target_dir, referenced):
             raise UnsafeSpritePrefixError("目标目录中的文件仍被其他立绘或角色引用，已取消替换。")
@@ -337,9 +350,16 @@ def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, An
                     character.sprites[existing_index] = sprite
                 else:
                     character.sprites.append(sprite)
+            # The character-level reference image is replaced in the same commit
+            # so it never points at a frame that is about to be deleted.
+            if previous_visual_reference and _reference_inside_directory(
+                previous_visual_reference, target_dir, self.paths
+            ):
+                character.visual_reference_image = str(sprite.path)
             self.config.save_characters_config()
         except Exception:
             character.sprites = previous_sprites
+            character.visual_reference_image = previous_visual_reference
             if installed:
                 shutil.rmtree(target_dir, ignore_errors=True)
             if moved_old and backup_dir.exists() and not target_dir.exists():

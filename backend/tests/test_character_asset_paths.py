@@ -19,6 +19,7 @@ from infrastructure.asset_paths import (  # noqa: E402
     remove_owned_character_dir,
     validate_sprite_prefix,
 )
+from infrastructure.paths import AppPaths  # noqa: E402
 from services.config.character_manager import CharacterManager  # noqa: E402
 from services.config.schema import Character, Sprite  # noqa: E402
 
@@ -106,6 +107,16 @@ class CharacterManagerAssetGuardTests(unittest.TestCase):
     def tearDown(self) -> None:
         for item in getattr(self, "patches", []):
             item.stop()
+
+    def _manager_with_app_paths(self, base: Path, characters: list[Character]) -> CharacterManager:
+        manager = CharacterManager.__new__(CharacterManager)
+        manager._config_manager = FakeConfigManager(characters)
+        self.patches = [
+            patch("services.config.character_manager.get_app_paths", return_value=AppPaths(base)),
+        ]
+        for item in self.patches:
+            item.start()
+        return manager
 
     def test_delete_character_removes_owned_dir_only(self) -> None:
         with tempfile.TemporaryDirectory(prefix="here-char-delete-") as raw:
@@ -261,6 +272,43 @@ class CharacterManagerAssetGuardTests(unittest.TestCase):
             self.assertIn("已删除", message)
             self.assertEqual(names, ["two"])
             self.assertTrue(shared.is_file())
+
+    def test_delete_character_keeps_relative_reference_used_by_another_character(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="here-char-relative-") as raw:
+            base = Path(raw)
+            paths = AppPaths(base)
+            owned_dir = paths.characters_dir / "relative_owner"
+            owned_dir.mkdir(parents=True)
+            shared = owned_dir / "sprite.png"
+            shared.write_bytes(b"png")
+            owner = _character("RelativeOwner", "relative_owner")
+            owner.sprites = [Sprite(path=shared, state_name="neutral")]
+            user = _character("RelativeUser", "relative_user")
+            user.sprites = [{"path": "characters/relative_owner/sprite.png", "state_name": "neutral"}]
+            manager = self._manager_with_app_paths(base, [owner, user])
+
+            message, names = manager.delete_character("RelativeOwner")
+
+            self.assertIn("已删除", message)
+            self.assertNotIn("RelativeOwner", names)
+            self.assertTrue(shared.is_file(), "supported characters/... references must resolve via AppPaths")
+
+    def test_delete_all_sprites_keeps_visual_reference_file(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="here-char-visual-ref-") as raw:
+            base = Path(raw)
+            owned_dir = AppPaths(base).characters_dir / "visual_owner"
+            owned_dir.mkdir(parents=True)
+            shared = owned_dir / "sprite.png"
+            shared.write_bytes(b"png")
+            owner = _character("VisualOwner", "visual_owner")
+            owner.sprites = [Sprite(path=shared, state_name="neutral")]
+            owner.visual_reference_image = shared.as_posix()
+            manager = self._manager_with_app_paths(base, [owner])
+
+            manager.delete_all_sprites("VisualOwner")
+
+            self.assertTrue(shared.is_file(), "visual_reference_image must keep the file alive")
+            self.assertEqual(owner.sprites, [])
 
     def test_add_character_rejects_traversal_prefix(self) -> None:
         with tempfile.TemporaryDirectory(prefix="here-char-add-") as raw:
