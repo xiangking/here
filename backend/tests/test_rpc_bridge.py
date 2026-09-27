@@ -24,6 +24,7 @@ sys.path.insert(0, str(_BACKEND_ROOT))
 import rpc_bridge  # noqa: E402
 from core.messaging.messages import AgentDialogMessage  # noqa: E402
 from core.sprite.character_profile import default_character_profile  # noqa: E402
+from infrastructure.asset_paths import UnsafeSpritePrefixError  # noqa: E402
 from infrastructure.paths import load_storage_paths  # noqa: E402
 from services.config.schema import Character, Sprite  # noqa: E402
 
@@ -321,6 +322,67 @@ class RpcBridgeTests(unittest.TestCase):
         finally:
             self._remove_probe_character(character)
 
+    def test_replacing_state_retargets_visual_reference_image(self) -> None:
+        character = self._add_probe_character("VisualRetargetProbe", "visual_retarget_probe")
+        state = "neutral"
+        try:
+            with tempfile.TemporaryDirectory() as root:
+                original = Path(root) / "original.png"
+                original.write_bytes(b"old")
+                self.backend.import_character_state_assets({
+                    "character_name": character.name, "state_name": state, "paths": [original.as_posix()],
+                })
+                saved = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                previous_path = self._sprite_path(saved.sprites[0])
+                saved.visual_reference_image = previous_path.as_posix()
+                self.backend.config.save_characters_config()
+
+                replacement = Path(root) / "replacement.jpg"
+                replacement.write_bytes(b"new")
+                self.backend.import_character_state_assets({
+                    "character_name": character.name, "state_name": state, "paths": [replacement.as_posix()],
+                })
+
+            after = next(item for item in self.backend.config.config.characters if item.name == character.name)
+            new_path = self._sprite_path(after.sprites[0])
+            self.assertEqual(new_path.name, "frame_0001.jpg")
+            self.assertEqual(Path(after.visual_reference_image), new_path)
+            self.assertEqual(new_path.read_bytes(), b"new")
+            self.assertFalse(previous_path.exists())
+        finally:
+            self._remove_probe_character(character)
+
+    def test_failed_replacement_restores_visual_reference_image(self) -> None:
+        character = self._add_probe_character("VisualRollbackProbe", "visual_rollback_probe")
+        state = "neutral"
+        try:
+            with tempfile.TemporaryDirectory() as root:
+                original = Path(root) / "original.png"
+                original.write_bytes(b"old")
+                self.backend.import_character_state_assets({
+                    "character_name": character.name, "state_name": state, "paths": [original.as_posix()],
+                })
+                saved = next(item for item in self.backend.config.config.characters if item.name == character.name)
+                previous_path = self._sprite_path(saved.sprites[0])
+                saved.visual_reference_image = previous_path.as_posix()
+                self.backend.config.save_characters_config()
+
+                replacement = Path(root) / "replacement.jpg"
+                replacement.write_bytes(b"new")
+                with patch.object(self.backend.config, "save_characters_config", side_effect=OSError("disk full")):
+                    with self.assertRaises(OSError):
+                        self.backend.import_character_state_assets({
+                            "character_name": character.name, "state_name": state,
+                            "paths": [replacement.as_posix()],
+                        })
+
+            after = next(item for item in self.backend.config.config.characters if item.name == character.name)
+            self.assertEqual(after.visual_reference_image, previous_path.as_posix())
+            self.assertTrue(previous_path.is_file())
+            self.assertEqual(previous_path.read_bytes(), b"old")
+        finally:
+            self._remove_probe_character(character)
+
     def test_replacement_using_source_inside_target_directory_succeeds(self) -> None:
         character = self._add_probe_character("AtomicSelfProbe", "atomic_self_probe")
         state = "atomic_self_state"
@@ -490,6 +552,207 @@ class RpcBridgeTests(unittest.TestCase):
             finally:
                 character.__dict__.update(copy.deepcopy(original.__dict__))
                 self.backend.config.save_characters_config()
+
+    def test_delete_character_sprite_keeps_shared_prefix_file_used_by_another_character(self) -> None:
+        prefix = "shared_sprite_guard"
+        asset_root = self.backend.paths.characters_dir / prefix
+        shared_file = asset_root / "sprite.png"
+        original_characters = list(self.backend.config.config.characters)
+        try:
+            asset_root.mkdir(parents=True, exist_ok=True)
+            shared_file.write_bytes(b"shared")
+            owners = [
+                Character(
+                    name=name,
+                    color="#84c2d5",
+                    sprite_prefix=prefix,
+                    sprites=[Sprite(path=shared_file, state_name="neutral")],
+                    character_profile=default_character_profile(name),
+                    character_setting="test",
+                )
+                for name in ("SharedOwnerA", "SharedOwnerB")
+            ]
+            self.backend.config.config.characters.extend(owners)
+            self.backend.config.save_characters_config()
+
+            self.backend.delete_character_sprite({"character_name": "SharedOwnerA", "index": 0})
+
+            self.assertTrue(shared_file.is_file(), "a file another character references must survive")
+            remaining_owner = self.backend.config.get_character_by_name("SharedOwnerB")
+            self.assertIsNotNone(remaining_owner)
+            self.assertEqual(len(remaining_owner.sprites), 1)
+            self.assertEqual(Path(remaining_owner.sprites[0].path), shared_file)
+        finally:
+            self.backend.config.config.characters = original_characters
+            shutil.rmtree(asset_root, ignore_errors=True)
+            self.backend.config.save_characters_config()
+
+    def test_import_state_assets_refuses_to_clobber_shared_prefix_frames(self) -> None:
+        prefix = "shared_import_guard"
+        asset_root = self.backend.paths.characters_dir / prefix
+        state_dir = asset_root / "animations" / "shared_state"
+        shared_file = state_dir / "frame_0001.png"
+        original_characters = list(self.backend.config.config.characters)
+        try:
+            state_dir.mkdir(parents=True, exist_ok=True)
+            shared_file.write_bytes(b"shared-frame")
+            owners = [
+                Character(
+                    name=name,
+                    color="#84c2d5",
+                    sprite_prefix=prefix,
+                    sprites=[Sprite(path=shared_file, state_name="shared_state")],
+                    character_profile=default_character_profile(name),
+                    character_setting="test",
+                )
+                for name in ("ImportOwnerA", "ImportOwnerB")
+            ]
+            self.backend.config.config.characters.extend(owners)
+            self.backend.config.save_characters_config()
+
+            with tempfile.TemporaryDirectory() as root:
+                replacement = Path(root) / "replacement.png"
+                replacement.write_bytes(b"replacement")
+                with self.assertRaises(UnsafeSpritePrefixError):
+                    self.backend.import_character_state_assets({
+                        "character_name": "ImportOwnerA",
+                        "state_name": "shared_state",
+                        "paths": [replacement.as_posix()],
+                    })
+
+            self.assertTrue(shared_file.is_file())
+            self.assertEqual(shared_file.read_bytes(), b"shared-frame")
+            owner_a = self.backend.config.get_character_by_name("ImportOwnerA")
+            self.assertEqual(Path(owner_a.sprites[0].path), shared_file)
+        finally:
+            self.backend.config.config.characters = original_characters
+            shutil.rmtree(asset_root, ignore_errors=True)
+            self.backend.config.save_characters_config()
+
+    def test_delete_character_sprite_keeps_file_used_only_as_visual_reference(self) -> None:
+        prefix = "visual_ref_guard"
+        asset_root = self.backend.paths.characters_dir / prefix
+        shared_file = asset_root / "sprite.png"
+        original_characters = list(self.backend.config.config.characters)
+        try:
+            asset_root.mkdir(parents=True, exist_ok=True)
+            shared_file.write_bytes(b"shared-visual")
+            owner = Character(
+                name="VisualOwner",
+                color="#84c2d5",
+                sprite_prefix=prefix,
+                sprites=[Sprite(path=shared_file, state_name="neutral")],
+                character_profile=default_character_profile("VisualOwner"),
+                character_setting="test",
+            )
+            viewer = Character(
+                name="VisualUser",
+                color="#84c2d5",
+                sprite_prefix="visual_user",
+                sprites=[],
+                visual_reference_image=shared_file.as_posix(),
+                character_profile=default_character_profile("VisualUser"),
+                character_setting="test",
+            )
+            self.backend.config.config.characters.extend([owner, viewer])
+            self.backend.config.save_characters_config()
+
+            self.backend.delete_character_sprite({"character_name": "VisualOwner", "index": 0})
+
+            self.assertTrue(shared_file.is_file(), "a surviving visual_reference_image must keep the file alive")
+            self.assertEqual(
+                self.backend.config.get_character_by_name("VisualUser").visual_reference_image,
+                shared_file.as_posix(),
+            )
+        finally:
+            self.backend.config.config.characters = original_characters
+            shutil.rmtree(asset_root, ignore_errors=True)
+            self.backend.config.save_characters_config()
+
+    def test_delete_character_keeps_relative_asset_used_by_another_character(self) -> None:
+        prefix = "relative_owner"
+        relative_reference = f"characters/{prefix}/sprite.png"
+        asset_root = self.backend.paths.characters_dir / prefix
+        shared_file = asset_root / "sprite.png"
+        original_characters = list(self.backend.config.config.characters)
+        try:
+            asset_root.mkdir(parents=True, exist_ok=True)
+            shared_file.write_bytes(b"relative-shared")
+            owner = Character(
+                name="RelativeOwner",
+                color="#84c2d5",
+                sprite_prefix=prefix,
+                sprites=[Sprite(path=shared_file, state_name="neutral")],
+                character_profile=default_character_profile("RelativeOwner"),
+                character_setting="test",
+            )
+            user = Character(
+                name="RelativeUser",
+                color="#84c2d5",
+                sprite_prefix="relative_user",
+                sprites=[{"path": relative_reference, "state_name": "neutral"}],
+                character_profile=default_character_profile("RelativeUser"),
+                character_setting="test",
+            )
+            self.backend.config.config.characters.extend([owner, user])
+            self.backend.config.save_characters_config()
+
+            self.backend.delete_character({"name": "RelativeOwner"})
+
+            self.assertTrue(shared_file.is_file(), "supported characters/... references must keep the file alive")
+            self.assertNotIn(
+                "RelativeOwner", [item.name for item in self.backend.config.config.characters]
+            )
+        finally:
+            self.backend.config.config.characters = original_characters
+            shutil.rmtree(asset_root, ignore_errors=True)
+            self.backend.config.save_characters_config()
+
+    def test_import_state_assets_refuses_when_visual_reference_uses_target(self) -> None:
+        prefix = "visual_import_guard"
+        asset_root = self.backend.paths.characters_dir / prefix
+        state_dir = asset_root / "animations" / "shared_state"
+        shared_file = state_dir / "frame_0001.png"
+        original_characters = list(self.backend.config.config.characters)
+        try:
+            state_dir.mkdir(parents=True, exist_ok=True)
+            shared_file.write_bytes(b"visual-frame")
+            owner = Character(
+                name="ImportVisualOwner",
+                color="#84c2d5",
+                sprite_prefix=prefix,
+                sprites=[Sprite(path=shared_file, state_name="shared_state")],
+                character_profile=default_character_profile("ImportVisualOwner"),
+                character_setting="test",
+            )
+            viewer = Character(
+                name="ImportVisualUser",
+                color="#84c2d5",
+                sprite_prefix="visual_import_user",
+                sprites=[],
+                visual_reference_image=shared_file.as_posix(),
+                character_profile=default_character_profile("ImportVisualUser"),
+                character_setting="test",
+            )
+            self.backend.config.config.characters.extend([owner, viewer])
+            self.backend.config.save_characters_config()
+
+            with tempfile.TemporaryDirectory() as root:
+                replacement = Path(root) / "replacement.png"
+                replacement.write_bytes(b"replacement")
+                with self.assertRaises(UnsafeSpritePrefixError):
+                    self.backend.import_character_state_assets({
+                        "character_name": "ImportVisualOwner",
+                        "state_name": "shared_state",
+                        "paths": [replacement.as_posix()],
+                    })
+
+            self.assertTrue(shared_file.is_file())
+            self.assertEqual(shared_file.read_bytes(), b"visual-frame")
+        finally:
+            self.backend.config.config.characters = original_characters
+            shutil.rmtree(asset_root, ignore_errors=True)
+            self.backend.config.save_characters_config()
 
     def test_case_only_character_rename_through_save_config_keeps_memory(self) -> None:
         probe = Path(_APP_HOME.name) / "case-probe"

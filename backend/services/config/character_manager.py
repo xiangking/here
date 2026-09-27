@@ -4,14 +4,17 @@ from pathlib import Path
 
 from infrastructure.asset_paths import (
     UnsafeSpritePrefixError,
+    collect_referenced_asset_paths,
     is_inside_owned_dir,
+    is_referenced_target,
     owned_character_dir,
     prepare_owned_character_dir,
+    referenced_inside_directory,
     remove_owned_character_dir,
     sprite_prefix_in_use,
     validate_sprite_prefix,
 )
-from infrastructure.paths import get_app_paths
+from infrastructure.paths import get_app_paths, resolve_character_asset_path
 from typing import List, Dict, Any, Tuple, Optional, Union
 from services.config.schema import Character, Sprite
 from services.config.config_manager import ConfigManager, SYSTEM_CHARACTER_NAME
@@ -327,7 +330,15 @@ class CharacterManager:
         new_names = [c.name for c in characters]
 
         if can_remove_files:
+            # Files reachable from a surviving character must never be removed,
+            # even when the prefix itself is not shared.
+            referenced = collect_referenced_asset_paths(
+                characters, lambda text: resolve_character_asset_path(text, get_app_paths())
+            )
             for base_dir in [_characters_dir(), _voice_dir(), _models_dir()]:
+                target = owned_character_dir(base_dir, sprite_prefix)
+                if referenced_inside_directory(target, referenced):
+                    continue
                 remove_owned_character_dir(base_dir, sprite_prefix)
 
         if delete_memory:
@@ -407,8 +418,16 @@ class CharacterManager:
             owned_character_dir(_voice_dir(), prefix)
         except UnsafeSpritePrefixError as exc:
             return str(exc), remaining_paths, character.emotion_tags or ""
-        remove_owned_character_dir(_characters_dir(), prefix)
-        remove_owned_character_dir(_voice_dir(), prefix)
+        # Never remove a directory that still backs a sprite of another character.
+        referenced = collect_referenced_asset_paths(
+            self._get_characters(),
+            lambda text: resolve_character_asset_path(text, get_app_paths()),
+            skip_sprites_of=character_name,
+        )
+        if not referenced_inside_directory(owned_character_dir(_characters_dir(), prefix), referenced):
+            remove_owned_character_dir(_characters_dir(), prefix)
+        if not referenced_inside_directory(owned_character_dir(_voice_dir(), prefix), referenced):
+            remove_owned_character_dir(_voice_dir(), prefix)
         
         # 清空角色属性
         character.sprites = []
@@ -451,9 +470,28 @@ class CharacterManager:
         except UnsafeSpritePrefixError:
             asset_root = None
             voice_root = None
-        if sprite_path and os.path.isfile(sprite_path) and asset_root is not None and is_inside_owned_dir(sprite_path, asset_root):
+        # A file still referenced by another character or another sprite of this
+        # character must not be physically deleted.
+        referenced = collect_referenced_asset_paths(
+            self._get_characters(),
+            lambda text: resolve_character_asset_path(text, get_app_paths()),
+            skip=(character_name, sprite_index),
+        )
+        if (
+            sprite_path
+            and os.path.isfile(sprite_path)
+            and asset_root is not None
+            and is_inside_owned_dir(sprite_path, asset_root)
+            and not is_referenced_target(sprite_path, referenced)
+        ):
             os.remove(sprite_path)
-        if voice_path and os.path.isfile(voice_path) and voice_root is not None and is_inside_owned_dir(voice_path, voice_root):
+        if (
+            voice_path
+            and os.path.isfile(voice_path)
+            and voice_root is not None
+            and is_inside_owned_dir(voice_path, voice_root)
+            and not is_referenced_target(voice_path, referenced)
+        ):
             os.remove(voice_path)
         
         # 从列表中移除

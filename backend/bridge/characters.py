@@ -22,9 +22,12 @@ from bridge.deps import (
 )
 from infrastructure.asset_paths import (
     UnsafeSpritePrefixError,
+    collect_referenced_asset_paths,
     is_inside_owned_dir,
+    is_referenced_target,
     owned_character_dir,
     prepare_owned_character_dir,
+    referenced_inside_directory,
     remove_owned_character_dir,
     validate_sprite_prefix,
 )
@@ -166,6 +169,17 @@ def _safe_asset_name(value: str, fallback: str) -> str:
     return cleaned or fallback
 
 
+def _reference_inside_directory(reference: str, directory: Path, paths: Any) -> bool:
+    text = str(reference or "").strip()
+    if not text or text.lower().startswith(("http://", "https://", "data:")):
+        return False
+    try:
+        resolved = resolve_character_asset_path(text, paths).resolve()
+    except (OSError, RuntimeError, ValueError):
+        return False
+    return resolved == Path(directory).resolve() or is_inside_owned_dir(resolved, directory)
+
+
 def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, Any]:
     name = str(payload.get("character_name") or self.config.resolve_active_character_name())
     character = self.config.get_character_by_name(name)
@@ -186,6 +200,7 @@ def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, An
     target_dir = animations_dir / state_name
 
     previous_sprites = list(character.sprites)
+    previous_visual_reference = str(getattr(character, "visual_reference_image", "") or "")
     target_index: int | None = None
     previous_sprite: dict[str, Any] = {}
     if payload.get("sprite_index") is not None:
@@ -193,6 +208,32 @@ def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, An
         if target_index < 0 or target_index >= len(character.sprites):
             raise ValueError("立绘索引无效。")
         previous_sprite = hooks.model_json(character.sprites[target_index])
+
+    # Replacing a state folder must not destroy frames another character (or
+    # another sprite of this character) still points at.
+    replaced_index: int | None = target_index
+    if replaced_index is None:
+        replaced_index = next(
+            (
+                index
+                for index, existing in enumerate(character.sprites)
+                if str(
+                    getattr(existing, "state_name", "")
+                    or (existing.get("state_name") if isinstance(existing, dict) else "")
+                )
+                == state_name
+            ),
+            None,
+        )
+    if target_dir.exists():
+        referenced = collect_referenced_asset_paths(
+            self.config.config.characters,
+            lambda text: resolve_character_asset_path(text, self.paths),
+            skip=(name, replaced_index) if replaced_index is not None else None,
+            skip_visual_reference_of=name,
+        )
+        if referenced_inside_directory(target_dir, referenced):
+            raise UnsafeSpritePrefixError("目标目录中的文件仍被其他立绘或角色引用，已取消替换。")
 
     # Build every frame in a staging folder first. The previously imported
     # state stays untouched until the new assets are fully generated, so a
@@ -309,9 +350,16 @@ def import_character_state_assets(self, payload: dict[str, Any]) -> dict[str, An
                     character.sprites[existing_index] = sprite
                 else:
                     character.sprites.append(sprite)
+            # The character-level reference image is replaced in the same commit
+            # so it never points at a frame that is about to be deleted.
+            if previous_visual_reference and _reference_inside_directory(
+                previous_visual_reference, target_dir, self.paths
+            ):
+                character.visual_reference_image = str(sprite.path)
             self.config.save_characters_config()
         except Exception:
             character.sprites = previous_sprites
+            character.visual_reference_image = previous_visual_reference
             if installed:
                 shutil.rmtree(target_dir, ignore_errors=True)
             if moved_old and backup_dir.exists() and not target_dir.exists():
@@ -347,16 +395,25 @@ def delete_character_sprite(self, payload: dict[str, Any]) -> dict[str, Any]:
         prefix = ""
         asset_root = None
         voice_root = None
-    referenced = [raw.get("path"), *(raw.get("frames") or []), raw.get("spritesheet_path"), raw.get("voice_path")]
-    for candidate in referenced:
+    # A file shared with another character (or another sprite of this character)
+    # must survive the removal of this one reference.
+    referenced = collect_referenced_asset_paths(
+        self.config.config.characters,
+        lambda text: resolve_character_asset_path(text, self.paths),
+        skip=(name, index),
+    )
+    referenced_values = [raw.get("path"), *(raw.get("frames") or []), raw.get("spritesheet_path"), raw.get("voice_path")]
+    for candidate in referenced_values:
         if not candidate or asset_root is None:
             continue
         try:
             path = resolve_character_asset_path(candidate, self.paths).resolve()
             if path.is_file() and is_inside_owned_dir(path, asset_root):
-                path.unlink(missing_ok=True)
+                if not is_referenced_target(path, referenced):
+                    path.unlink(missing_ok=True)
             elif path.is_dir() and is_inside_owned_dir(path, asset_root):
-                shutil.rmtree(path, ignore_errors=True)
+                if not referenced_inside_directory(path, referenced):
+                    shutil.rmtree(path, ignore_errors=True)
         except (OSError, RuntimeError, ValueError):
             continue
     voice_path = str(raw.get("voice_path") or "").strip()
@@ -364,7 +421,8 @@ def delete_character_sprite(self, payload: dict[str, Any]) -> dict[str, Any]:
         try:
             voice = Path(voice_path).expanduser().resolve()
             if voice.is_file() and is_inside_owned_dir(voice, voice_root):
-                voice.unlink(missing_ok=True)
+                if not is_referenced_target(voice, referenced):
+                    voice.unlink(missing_ok=True)
         except (OSError, RuntimeError, ValueError):
             pass
     character.sprites.pop(index)
