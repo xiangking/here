@@ -60,6 +60,7 @@ from core.sprite.character_profile import default_character_profile, normalize_c
 from core.sprite.emotion_resolver import resolve_sprite_index
 from core.sprite.text_processor import TextProcessor, name_map
 from infrastructure.paths import (
+    AppPaths,
     default_character_assets_dir,
     default_character_memory_dir,
     get_app_paths,
@@ -83,6 +84,6 @@ from services.config.config_manager import ConfigManager, SYSTEM_CHARACTER_NAME,
 from services.config.schema import ApiConfig, Character, Sprite, SystemConfig
 from services.selfie import SelfieRequest
 from services.selfie.factory import build_selfie_runtime
-from services.storage_migration import copy_directory_contents, is_strict_child, rewrite_character_asset_paths
+from services.storage_migration import copy_directory_contents, is_strict_child, relocate_character_asset_paths
 from services.t2i.t2i_manager import T2IAdapterFactory, T2IManager
 from services.tts.tts_manager import TTSAdapterFactory, TTSManager

@@ -4,6 +4,7 @@ from typing import Any
 
 from bridge import hooks
 from bridge.deps import (
+    AppPaths,
     Path,
     STORAGE_PATHS_CONFIG_FILE,
     copy_directory_contents,
@@ -11,8 +12,8 @@ from bridge.deps import (
     default_character_memory_dir,
     is_strict_child,
     load_storage_paths,
+    relocate_character_asset_paths,
     resolve_storage_path,
-    rewrite_character_asset_paths,
     save_storage_paths,
     shutil,
 )
@@ -126,10 +127,16 @@ def import_legacy(self, payload: dict[str, Any]) -> dict[str, Any]:
         _copy_legacy_config(source / "config", self.paths.config_dir)
         if (source / "config").exists():
             copied.insert(0, "config")
-        # Load the imported config, then point its absolute asset paths at the
-        # Electron-owned folders instead of the legacy install.
+        # Load the imported config, then point its asset paths (absolute or
+        # supported relative forms) at the Electron-owned folders instead of
+        # the legacy install.
         self.config.reload()
-        rewrite_character_asset_paths(legacy_assets, electron_assets, config_manager=self.config)
+        relocate_character_asset_paths(
+            legacy_layout=AppPaths(source),
+            old_assets_dir=legacy_assets,
+            new_assets_dir=electron_assets,
+            config_manager=self.config,
+        )
         self.reload_runtime()
     except Exception:
         # Never leave the runtime pointed at the legacy storage layout on failure.

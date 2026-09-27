@@ -6,6 +6,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from infrastructure.paths import resolve_character_asset_path
+
 
 PATH_FIELDS = (
     "path",
@@ -74,6 +76,85 @@ def rewrite_character_asset_paths(
                 changed = True
     if changed:
         config_manager.save_characters_config()
+    return changed
+
+
+def relocate_character_asset_paths(
+    *,
+    legacy_layout: Any,
+    old_assets_dir: str | Path,
+    new_assets_dir: str | Path,
+    config_manager: Any,
+) -> bool:
+    """Rewrite character asset fields that live under the legacy asset root.
+
+    ``legacy_layout`` is an ``infrastructure.paths.AppPaths`` rooted at the
+    legacy install. Supported relative references (``characters/...`` and
+    ``defaults/characters/...``) are resolved against that layout instead of the
+    process working directory, then mapped onto the Electron asset root.
+    """
+    old_root = Path(old_assets_dir).expanduser().resolve(strict=False)
+    new_root = Path(new_assets_dir).expanduser()
+    if old_root == new_root.resolve(strict=False):
+        return False
+    changed = False
+    for character in list(config_manager.config.characters or []):
+        replacement = _relocate_asset_value(
+            getattr(character, "visual_reference_image", ""), legacy_layout, old_root, new_root
+        )
+        if replacement is not None:
+            character.visual_reference_image = replacement
+            changed = True
+        for sprite in list(getattr(character, "sprites", []) or []):
+            if _relocate_sprite_paths(sprite, legacy_layout, old_root, new_root):
+                changed = True
+    if changed:
+        config_manager.save_characters_config()
+    return changed
+
+
+def _relocate_asset_value(
+    value: Any,
+    legacy_layout: Any,
+    old_root: Path,
+    new_root: Path,
+) -> str | None:
+    text = str(value or "").strip()
+    if not text or text.lower().startswith(("http://", "https://", "data:")):
+        return None
+    try:
+        resolved = resolve_character_asset_path(text, legacy_layout).expanduser().resolve(strict=False)
+    except (OSError, ValueError):
+        return None
+    if resolved == old_root or not is_strict_child(resolved, old_root):
+        return None
+    replacement = (new_root / resolved.relative_to(old_root)).as_posix()
+    if replacement == text:
+        return None
+    return replacement
+
+
+def _relocate_sprite_paths(
+    sprite: Any,
+    legacy_layout: Any,
+    old_root: Path,
+    new_root: Path,
+) -> bool:
+    changed = False
+    for field in PATH_FIELDS:
+        replacement = _relocate_asset_value(sprite_get(sprite, field), legacy_layout, old_root, new_root)
+        if replacement is not None:
+            sprite_set(sprite, field, replacement)
+            changed = True
+    frames = sprite_get(sprite, "frames")
+    if isinstance(frames, list):
+        rewritten = [
+            _relocate_asset_value(frame, legacy_layout, old_root, new_root) or frame
+            for frame in frames
+        ]
+        if rewritten != frames:
+            sprite_set(sprite, "frames", rewritten)
+            changed = True
     return changed
 
 

@@ -25,15 +25,45 @@ class LegacyImportRelocationTests(unittest.TestCase):
         custom_assets: Path,
         memory_config: str,
         assets_config: str,
+        relative_refs: bool = False,
     ) -> dict[str, Path]:
         legacy = base / "legacy-src"
         (legacy / "config").mkdir(parents=True)
-        sprite = custom_assets / "legacy_hero" / "neutral.png"
-        sprite.parent.mkdir(parents=True, exist_ok=True)
-        sprite.write_bytes(b"legacy-sprite")
+        hero = custom_assets / "legacy_hero"
+        hero.mkdir(parents=True, exist_ok=True)
+        files = {
+            "neutral": hero / "neutral.png",
+            "frame_0001": hero / "frame_0001.png",
+            "frame_0002": hero / "frame_0002.png",
+            "sheet": hero / "sheet.png",
+            "visible": hero / "visible.png",
+        }
+        for name, path in files.items():
+            path.write_bytes(f"legacy-{name}".encode("utf-8"))
+        sprite = files["neutral"]
         memory_file = custom_memory / "agents" / "LegacyHero" / "memories" / "MEMORY.md"
         memory_file.parent.mkdir(parents=True, exist_ok=True)
         memory_file.write_text("legacy-memory-entry\n", encoding="utf-8")
+
+        if relative_refs:
+            sprite_entry = {
+                "path": "characters/legacy_hero/neutral.png",
+                "state_name": "neutral",
+                "state_group": "core_emotion",
+                "frames": [
+                    "characters/legacy_hero/frame_0001.png",
+                    "characters/legacy_hero/frame_0002.png",
+                ],
+                "spritesheet_path": "characters/legacy_hero/sheet.png",
+            }
+            visual_reference = "characters/legacy_hero/visible.png"
+        else:
+            sprite_entry = {
+                "path": sprite.as_posix(),
+                "state_name": "neutral",
+                "state_group": "core_emotion",
+            }
+            visual_reference = ""
 
         (legacy / "config" / "system_config.yaml").write_text(
             "active_character_name: LegacyHero\n", encoding="utf-8"
@@ -44,11 +74,8 @@ class LegacyImportRelocationTests(unittest.TestCase):
                     "name": "LegacyHero",
                     "color": "#84C2D5",
                     "sprite_prefix": "legacy_hero",
-                    "sprites": [{
-                        "path": sprite.as_posix(),
-                        "state_name": "neutral",
-                        "state_group": "core_emotion",
-                    }],
+                    "sprites": [sprite_entry],
+                    "visual_reference_image": visual_reference,
                     "character_profile": {"identity": {"age": 20}},
                     "character_setting": "legacy setting",
                 }],
@@ -69,6 +96,7 @@ class LegacyImportRelocationTests(unittest.TestCase):
         return {
             "legacy": legacy,
             "sprite": sprite,
+            "files": files,
             "memory_file": memory_file,
             "legacy_storage": legacy_storage,
         }
@@ -129,6 +157,54 @@ class LegacyImportRelocationTests(unittest.TestCase):
             result = self._run_probe(app_home, fixture["legacy"])
             self.assertEqual(result.returncode, 0, result.stderr)
             self._assert_relocated(app_home, fixture["legacy"], fixture)
+
+    def test_relative_legacy_reference_maps_to_custom_electron_assets(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            base = Path(root)
+            legacy = base / "legacy-src"
+            legacy_assets = legacy / "characters"
+            fixture = self._prepare_legacy(
+                base,
+                custom_memory=legacy / "memory",
+                custom_assets=legacy_assets,
+                memory_config="",
+                assets_config="",
+                relative_refs=True,
+            )
+            app_home = base / "app-home"
+            electron_assets = base / "electron-custom-assets"
+            (app_home / "config").mkdir(parents=True)
+            (app_home / "config" / "storage_paths.yaml").write_text(
+                yaml.safe_dump({
+                    "character_memory_dir": "",
+                    "character_assets_dir": str(electron_assets),
+                }),
+                encoding="utf-8",
+            )
+
+            result = self._run_probe(app_home, fixture["legacy"])
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+            storage = yaml.safe_load((app_home / "config" / "storage_paths.yaml").read_text(encoding="utf-8"))
+            self.assertEqual(storage["character_assets_dir"], str(electron_assets))
+
+            characters = yaml.safe_load((app_home / "config" / "characters.yaml").read_text(encoding="utf-8"))
+            character = characters[0]
+            hero = electron_assets / "legacy_hero"
+            sprite = character["sprites"][0]
+            self.assertEqual(Path(sprite["path"]), hero / "neutral.png")
+            self.assertEqual(character["visual_reference_image"], (hero / "visible.png").as_posix())
+            self.assertEqual(
+                [Path(item) for item in sprite["frames"]],
+                [hero / "frame_0001.png", hero / "frame_0002.png"],
+            )
+            self.assertEqual(Path(sprite["spritesheet_path"]), hero / "sheet.png")
+            for name in ("neutral.png", "frame_0001.png", "frame_0002.png", "sheet.png", "visible.png"):
+                self.assertTrue((hero / name).is_file(), name)
+
+            # The legacy install must stay untouched.
+            for name in ("neutral.png", "visible.png"):
+                self.assertTrue((legacy_assets / "legacy_hero" / name).is_file(), name)
 
     def test_absolute_custom_storage_is_relocated(self) -> None:
         with tempfile.TemporaryDirectory() as root:

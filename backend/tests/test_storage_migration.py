@@ -10,7 +10,12 @@ from types import SimpleNamespace
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_BACKEND_ROOT))
 
-from services.storage_migration import is_strict_child, migrate_storage_locations  # noqa: E402
+from infrastructure.paths import AppPaths  # noqa: E402
+from services.storage_migration import (  # noqa: E402
+    is_strict_child,
+    migrate_storage_locations,
+    relocate_character_asset_paths,
+)
 
 
 class FakeConfigManager:
@@ -90,6 +95,70 @@ class StorageMigrationTests(unittest.TestCase):
 
             self.assertTrue(changed)
             self.assertEqual(character.sprites[0]["path"], (new_assets / "hero.png").as_posix())
+
+    def test_relocates_supported_relative_references_using_the_legacy_root(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            base = Path(root)
+            legacy_root = base / "legacy"
+            legacy_assets = legacy_root / "characters"
+            hero = legacy_assets / "hero"
+            hero.mkdir(parents=True)
+            for name in ("neutral.png", "frame_0001.png", "frame_0002.png", "sheet.png", "visible.png"):
+                (hero / name).write_bytes(b"x")
+            new_assets = base / "electron-assets"
+            character = SimpleNamespace(
+                visual_reference_image="characters/hero/visible.png",
+                sprites=[{
+                    "path": "characters/hero/neutral.png",
+                    "frames": ["characters/hero/frame_0001.png", "characters/hero/frame_0002.png"],
+                    "spritesheet_path": "characters/hero/sheet.png",
+                }],
+            )
+            config = FakeConfigManager(character)
+
+            changed = relocate_character_asset_paths(
+                legacy_layout=AppPaths(legacy_root),
+                old_assets_dir=legacy_assets,
+                new_assets_dir=new_assets,
+                config_manager=config,
+            )
+
+            self.assertTrue(changed)
+            self.assertTrue(config.saved)
+            self.assertEqual(character.visual_reference_image, (new_assets / "hero" / "visible.png").as_posix())
+            self.assertEqual(character.sprites[0]["path"], (new_assets / "hero" / "neutral.png").as_posix())
+            self.assertEqual(
+                character.sprites[0]["frames"],
+                [
+                    (new_assets / "hero" / "frame_0001.png").as_posix(),
+                    (new_assets / "hero" / "frame_0002.png").as_posix(),
+                ],
+            )
+            self.assertEqual(character.sprites[0]["spritesheet_path"], (new_assets / "hero" / "sheet.png").as_posix())
+
+    def test_relocation_leaves_paths_outside_the_legacy_asset_root_alone(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            base = Path(root)
+            legacy_root = base / "legacy"
+            (legacy_root / "characters").mkdir(parents=True)
+            new_assets = base / "electron-assets"
+            character = SimpleNamespace(
+                visual_reference_image="https://example.com/hero.png",
+                sprites=[{"path": "/tmp/unrelated/neutral.png", "frames": ["https://example.com/frame.png"]}],
+            )
+            config = FakeConfigManager(character)
+
+            changed = relocate_character_asset_paths(
+                legacy_layout=AppPaths(legacy_root),
+                old_assets_dir=legacy_root / "characters",
+                new_assets_dir=new_assets,
+                config_manager=config,
+            )
+
+            self.assertFalse(changed)
+            self.assertEqual(character.visual_reference_image, "https://example.com/hero.png")
+            self.assertEqual(character.sprites[0]["path"], "/tmp/unrelated/neutral.png")
+            self.assertEqual(character.sprites[0]["frames"], ["https://example.com/frame.png"])
 
     def test_detects_nested_migration_target(self) -> None:
         with tempfile.TemporaryDirectory() as root:
